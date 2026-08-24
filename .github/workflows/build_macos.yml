@@ -44,7 +44,11 @@ jobs:
         run: dart run build_runner build
 
       - name: Build macOS
-        run: flutter build macos --release --no-codesign --no-pub
+        env:
+          # setup-rust-toolchain defaults to -D warnings; rhttp's cargokit
+          # build would otherwise fail on compiler warnings.
+          RUSTFLAGS: ""
+        run: flutter build macos --release --no-pub
 
       - name: Package app
         run: |
