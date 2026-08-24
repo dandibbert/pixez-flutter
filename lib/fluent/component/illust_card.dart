@@ -41,12 +41,14 @@ class IllustCard extends StatefulWidget {
   final List<IllustStore>? iStores;
   final bool needToBan;
   final LightingStore lightingStore;
+  final bool allowDetailLoadMore;
 
   IllustCard({
     required this.store,
     required this.lightingStore,
     this.iStores,
     this.needToBan = false,
+    this.allowDetailLoadMore = true,
   });
 
   @override
@@ -191,7 +193,7 @@ class _IllustCardState extends State<IllustCard> {
       PictureListPage(
         iStores: iStores!,
         store: store,
-        lightingStore: _lightingStore,
+        lightingStore: this.widget.allowDetailLoadMore ? _lightingStore : null,
         heroString: tag,
       ),
       icon: const Icon(FluentIcons.picture),
@@ -294,7 +296,7 @@ class _IllustCardState extends State<IllustCard> {
       widget = PictureListPage(
         heroString: heroTag,
         store: store,
-        lightingStore: _lightingStore,
+        lightingStore: this.widget.allowDetailLoadMore ? _lightingStore : null,
         iStores: iStores!,
       );
     } else {

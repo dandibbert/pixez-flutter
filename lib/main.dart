@@ -25,6 +25,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pixez/component/app_keyboard_shortcuts.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/er/fetcher.dart';
 import 'package:pixez/er/illust_cacher.dart';
@@ -49,6 +50,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final UserSetting userSetting = UserSetting();
 final SaveStore saveStore = SaveStore();
 final MuteStore muteStore = MuteStore();
@@ -195,6 +197,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   );
                 }
                 return MaterialApp(
+                  navigatorKey: rootNavigatorKey,
                   navigatorObservers: [
                     BotToastNavigatorObserver(),
                     routeObserver,
@@ -219,7 +222,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       child = _buildMaskBuilder(context, child);
                     child = botToastBuilder(context, child);
                     I18n.context = context;
-                    return child;
+                    return AppKeyboardShortcuts(
+                      onEscape: Platform.isMacOS
+                          ? () {
+                              final navigator = rootNavigatorKey.currentState;
+                              if (navigator?.canPop() == true) {
+                                unawaited(navigator!.maybePop());
+                              }
+                            }
+                          : null,
+                      child: child,
+                    );
                   },
                   themeMode: userSetting.themeMode,
                   theme: ThemeData(

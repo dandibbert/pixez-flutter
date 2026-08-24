@@ -19,7 +19,7 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_compatibility_layer/dio_compatibility_layer.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager_dio/flutter_cache_manager_dio.dart';
 
 import 'package:pixez/er/hoster.dart';
@@ -32,13 +32,42 @@ import 'package:rhttp/rhttp.dart' as r;
 const ImageHost = "i.pximg.net";
 const ImageCatHost = "i.pixiv.re";
 const ImageSHost = "s.pximg.net";
+const int maxPixivDecodeDimension = 2048;
+const int pixivImageConcurrentFetches = 4;
 
-// 注意，stable的http_interceptor这里是无效的，因为实现send是todo
-// 实现CacheManager和混入ImageCacheManager缺一不可
+/// 将布局尺寸换算为图片解码所需的物理像素，避免小卡片完整解码超大原图。
+int? calculatePixivDecodeDimension(
+  double? logicalSize,
+  double devicePixelRatio, {
+  int maxDimension = maxPixivDecodeDimension,
+}) {
+  if (logicalSize == null ||
+      !logicalSize.isFinite ||
+      logicalSize <= 0 ||
+      !devicePixelRatio.isFinite ||
+      devicePixelRatio <= 0 ||
+      maxDimension <= 0) {
+    return null;
+  }
+  const bucketSize = 64;
+  final physicalSize = (logicalSize * devicePixelRatio).ceil();
+  final bucketedSize =
+      ((physicalSize + bucketSize - 1) ~/ bucketSize) * bucketSize;
+  return bucketedSize.clamp(bucketSize, maxDimension).toInt();
+}
+
+// 注意，stable 的 http_interceptor 这里无效，因为其 send 尚未实现。
+// 当前只使用 ResizeImage 做内存解码缩放，不启用需要 ImageCacheManager 的磁盘缩放。
 // 如果你恰好看到这个实现方法实例，且对你有些帮助或者启发：
 // 听一首Mili-Salt, Pepper, Birds, And the Thought Police吧 🎵
 
 DioCacheManager? pixivCacheManager = DioCacheManager.instance;
+
+/// 限制快速滚动时的图片并发，避免离屏请求同时占用网络、磁盘与解码资源。
+void configurePixivCacheManager(DioCacheManager manager) {
+  manager.config.fileService.concurrentFetches = pixivImageConcurrentFetches;
+  pixivCacheManager = manager;
+}
 
 class PixEzCacheHeaderData {
   final String key;
@@ -57,6 +86,8 @@ class PixivImage extends StatefulWidget {
   final double? width;
   final String? host;
   final PixEzCacheHeaderData? cacheHeaderData;
+  final bool autoResizeMemoryCache;
+  final int maxMemCacheWidth;
 
   PixivImage(
     this.url, {
@@ -68,6 +99,8 @@ class PixivImage extends StatefulWidget {
     this.host,
     this.width,
     this.cacheHeaderData,
+    this.autoResizeMemoryCache = false,
+    this.maxMemCacheWidth = maxPixivDecodeDimension,
   });
 
   @override
@@ -97,6 +130,7 @@ class PixivImage extends StatefulWidget {
     dio.httpClientAdapter = ConversionLayerAdapter(client);
     _cacheDio = dio;
     DioCacheManager.initialize(dio);
+    configurePixivCacheManager(DioCacheManager.instance);
   }
 }
 
@@ -139,23 +173,10 @@ class PixivImageInterceptor extends Interceptor {
 
 class _PixivImageState extends State<PixivImage> {
   late String url;
-  bool already = false;
-  bool? enableMemoryCache;
-  double? width;
-  double? height;
-  BoxFit? fit;
-  bool fade = true;
-  Widget? placeWidget;
 
   @override
   void initState() {
     url = widget.url;
-    enableMemoryCache = widget.enableMemoryCache ?? true;
-    width = widget.width;
-    height = widget.height;
-    fit = widget.fit;
-    fade = widget.fade;
-    placeWidget = widget.placeWidget;
     super.initState();
   }
 
@@ -163,53 +184,74 @@ class _PixivImageState extends State<PixivImage> {
   void didUpdateWidget(covariant PixivImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.url != widget.url) {
-      setState(() {
-        url = widget.url;
-        width = widget.width;
-        height = widget.height;
-      });
+      url = widget.url;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = min(min(width ?? 60, height ?? 60), 60.0);
-    return CachedNetworkImage(
-      placeholder: (context, url) =>
-          widget.placeWidget ??
-          Container(
-            height: height,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+        final constrainedWidth =
+            constraints.hasBoundedWidth &&
+                constraints.maxWidth.isFinite &&
+                constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : widget.width;
+        final memCacheWidth = widget.autoResizeMemoryCache
+            ? calculatePixivDecodeDimension(
+                constrainedWidth,
+                devicePixelRatio,
+                maxDimension: widget.maxMemCacheWidth,
+              )
+            : null;
+        final fadeDuration = widget.fade
+            ? const Duration(milliseconds: 120)
+            : Duration.zero;
+        return CachedNetworkImage(
+          placeholder: (context, url) {
+            final size = min(
+              min(widget.width ?? 60, widget.height ?? 60),
+              60.0,
+            );
+            return widget.placeWidget ??
+                Container(
+                  height: widget.height,
+                  child: Center(
+                    child: SizedBox(
+                      width: size,
+                      height: size,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  ),
+                );
+          },
+          errorWidget: (context, url, _) => Container(
+            height: widget.height,
             child: Center(
-              child: SizedBox(
-                width: size,
-                height: size,
-                child: const Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: const CircularProgressIndicator(),
-                ),
+              child: TextButton(
+                onPressed: () {
+                  setState(() {});
+                },
+                child: Text(":("),
               ),
             ),
           ),
-      errorWidget: (context, url, _) => Container(
-        height: height,
-        child: Center(
-          child: TextButton(
-            onPressed: () {
-              setState(() {});
-            },
-            child: Text(":("),
-          ),
-        ),
-      ),
-      fadeOutDuration: widget.fade ? const Duration(milliseconds: 1000) : null,
-      // memCacheWidth: width?.toInt(),
-      // memCacheHeight: height?.toInt(),
-      imageUrl: url,
-      cacheManager: pixivCacheManager,
-      height: height,
-      width: width,
-      fit: fit ?? BoxFit.fitWidth,
-      httpHeaders: {...Hoster.header(url: url)},
+          fadeInDuration: fadeDuration,
+          fadeOutDuration: fadeDuration,
+          memCacheWidth: memCacheWidth,
+          imageUrl: url,
+          cacheManager: pixivCacheManager,
+          height: widget.height,
+          width: widget.width,
+          fit: widget.fit ?? BoxFit.fitWidth,
+          httpHeaders: {...Hoster.header(url: url)},
+        );
+      },
     );
   }
 }

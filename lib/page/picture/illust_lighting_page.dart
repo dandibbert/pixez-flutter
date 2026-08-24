@@ -136,6 +136,9 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
   late IllustAboutStore _aboutStore;
   late ScrollController _scrollController;
   late EasyRefreshController _refreshController;
+  final IllustRecommendationStoreCache _recommendationStoreCache =
+      IllustRecommendationStoreCache();
+  bool _aboutLoadRequested = false;
   bool tempView = false;
   final _detailKey = GlobalKey<ScaffoldState>();
 
@@ -157,21 +160,24 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
   @override
   void didUpdateWidget(covariant IllustVerticalPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.store != widget.store) {
+    if (oldWidget.id != widget.id || oldWidget.store != widget.store) {
       _illustStore = widget.store ?? IllustStore(widget.id, null);
       _illustStore.fetch();
       _aboutStore = IllustAboutStore(widget.id, _refreshController);
+      _aboutLoadRequested = false;
+      _recommendationStoreCache.clear();
       LPrinter.d("state change");
     }
   }
 
-  void _loadAbout() {
-    if (mounted &&
-        _scrollController.hasClients &&
-        _aboutStore.illusts.isEmpty &&
-        !_aboutStore.fetching) {
-      _aboutStore.next();
-    }
+  Future<bool> _loadAbout() {
+    if (!mounted || _aboutLoadRequested) return Future.value(false);
+    _aboutLoadRequested = true;
+    return _aboutStore.next();
+  }
+
+  Future<bool> _loadMoreAbout() {
+    return _aboutLoadRequested ? _aboutStore.next() : _loadAbout();
   }
 
   Future<void> _autoBookmarkAfterSave(Illusts illust) async {
@@ -316,7 +322,8 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         tags: tags,
                       );
                       if (success && userSetting.followAfterStar) {
-                        bool followSuccess = await _illustStore.followAfterStar();
+                        bool followSuccess = await _illustStore
+                            .followAfterStar();
                         if (followSuccess) {
                           userStore?.isFollow = true;
                           BotToast.showText(
@@ -455,9 +462,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       controller: _refreshController,
       header: PixezDefault.header(context),
       footer: PixezDefault.footer(context),
-      onLoad: () {
-        _aboutStore.next();
-      },
+      onLoad: _loadMoreAbout,
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -472,7 +477,12 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               illusts: data,
               userStore: userStore,
               illustStore: _illustStore,
-              loadAbout: () {
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: IllustRecommendationLoadTrigger(
+              key: ValueKey('illust-recommendation-trigger-${widget.id}'),
+              onApproach: () {
                 _loadAbout();
               },
             ),
@@ -482,9 +492,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               BuildContext context,
               int index,
             ) {
-              var list = _aboutStore.illusts
-                  .map((element) => IllustStore(element.id, element))
-                  .toList();
+              final list = _recommendationStoreCache.stores;
               return InkWell(
                 onTap: () {
                   HapticUtil.selectionClick();
@@ -536,7 +544,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                   enableMemoryCache: false,
                 ),
               );
-            }, childCount: _aboutStore.illusts.length),
+            }, childCount: _syncRecommendationStores()),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
             ),
@@ -544,6 +552,11 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
         ],
       ),
     );
+  }
+
+  int _syncRecommendationStores() {
+    _recommendationStoreCache.sync(_aboutStore.illusts);
+    return _recommendationStoreCache.stores.length;
   }
 
   List<Widget> _buildPhotoList(Illusts data) {
@@ -589,6 +602,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                       child: PixivImage(
                         url,
                         fade: false,
+                        autoResizeMemoryCache: true,
                         width: MediaQuery.of(context).size.width,
                         cacheHeaderData: PixEzCacheHeaderData(
                           key: '${data.id}_0',
@@ -602,6 +616,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                             ? PixivImage(
                                 data.imageUrls.medium,
                                 width: MediaQuery.of(context).size.width,
+                                autoResizeMemoryCache: true,
                                 placeWidget: placeWidget,
                                 fade: false,
                               )
@@ -669,9 +684,11 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
         return NullHero(
           child: PixivImage(
             url,
+            autoResizeMemoryCache: true,
             placeWidget: PixivImage(
               illust.metaPages[index].imageUrls!.medium,
               width: MediaQuery.of(context).size.width,
+              autoResizeMemoryCache: true,
               fade: false,
             ),
             cacheHeaderData: PixEzCacheHeaderData(
@@ -688,6 +705,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       return PixivImage(
         url,
         fade: false,
+        autoResizeMemoryCache: true,
         width: MediaQuery.of(context).size.width,
         cacheHeaderData: PixEzCacheHeaderData(
           key: '${illust.id}_${index}',
@@ -709,9 +727,11 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               ? NullHero(
                   child: PixivImage(
                     illust.illustDetailImageUrl(index),
+                    autoResizeMemoryCache: true,
                     placeWidget: PixivImage(
                       illust.metaPages[index].imageUrls!.medium,
                       fade: false,
+                      autoResizeMemoryCache: true,
                     ),
                     fade: false,
                     cacheHeaderData: PixEzCacheHeaderData(
@@ -727,6 +747,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                   child: PixivImage(
                     illust.metaPages[index].imageUrls!.medium,
                     fade: false,
+                    autoResizeMemoryCache: true,
                     cacheHeaderData: PixEzCacheHeaderData(
                       key: '${illust.id}_${index}',
                       quality: IllustQuality.medium,
@@ -736,6 +757,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                 ))
         : PixivImage(
             illust.illustDetailImageUrl(index),
+            autoResizeMemoryCache: true,
             cacheHeaderData: PixEzCacheHeaderData(
               key: '${illust.id}_${index}',
               quality: IllustQualityExtension.fromValue(
@@ -892,9 +914,6 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       userStore = UserStore(illust.user.id, null, illust.user);
     return Observer(
       builder: (_) {
-        Future.delayed(Duration(seconds: 2), () {
-          _loadAbout();
-        });
         return InkWell(
           onTap: () async {
             await _push2UserPage(context, illust);
@@ -1361,7 +1380,11 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       if (userSetting.saveAfterStar && (_illustStore.state == 0)) {
         saveStore.saveImage(_illustStore.illusts!);
       }
-      bool success = await _illustStore.star(restrict: restrict, tags: tags, force: true);
+      bool success = await _illustStore.star(
+        restrict: restrict,
+        tags: tags,
+        force: true,
+      );
       if (success && userSetting.followAfterStar) {
         await _illustStore.followAfterStar();
       }

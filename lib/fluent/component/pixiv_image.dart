@@ -86,6 +86,7 @@ class PixivImage extends StatefulWidget {
     dio.httpClientAdapter = ConversionLayerAdapter(client);
     _cacheDio = dio;
     DioCacheManager.initialize(dio);
+    DioCacheManager.instance.config.fileService.concurrentFetches = 4;
   }
 }
 

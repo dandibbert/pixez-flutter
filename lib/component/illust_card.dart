@@ -41,12 +41,14 @@ class IllustCard extends StatefulWidget {
   final List<IllustStore>? iStores;
   final bool needToBan;
   final LightingStore lightingStore;
+  final bool allowDetailLoadMore;
 
   IllustCard({
     required this.store,
     required this.lightingStore,
     this.iStores,
     this.needToBan = false,
+    this.allowDetailLoadMore = true,
   });
 
   @override
@@ -147,7 +149,7 @@ class _IllustCardState extends State<IllustCard> {
           return PictureListPage(
             iStores: iStores!,
             store: store,
-            lightingStore: _lightingStore,
+            lightingStore: widget.allowDetailLoadMore ? _lightingStore : null,
             heroString: tag,
           );
         },
@@ -186,6 +188,8 @@ class _IllustCardState extends State<IllustCard> {
             child: PixivImage(
               store.illusts!.imageUrls.squareMedium,
               fit: BoxFit.fitWidth,
+              fade: false,
+              autoResizeMemoryCache: true,
             ),
           )
         : NullHero(
@@ -193,6 +197,8 @@ class _IllustCardState extends State<IllustCard> {
             child: PixivImage(
               url,
               fit: BoxFit.fitWidth,
+              fade: false,
+              autoResizeMemoryCache: true,
               cacheHeaderData: PixEzCacheHeaderData(key: tag, quality: quality),
             ),
           );
@@ -334,7 +340,7 @@ class _IllustCardState extends State<IllustCard> {
             return PictureListPage(
               heroString: heroTag,
               store: store,
-              lightingStore: _lightingStore,
+              lightingStore: widget.allowDetailLoadMore ? _lightingStore : null,
               iStores: iStores!,
             );
           }

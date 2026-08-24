@@ -71,6 +71,9 @@ class _IllustRowPageState extends State<IllustRowPage>
   late IllustAboutStore _aboutStore;
   late ScrollController _scrollController;
   late EasyRefreshController _refreshController;
+  final IllustRecommendationStoreCache _recommendationStoreCache =
+      IllustRecommendationStoreCache();
+  bool _aboutLoadRequested = false;
   bool tempView = false;
   @override
   void initState() {
@@ -88,20 +91,24 @@ class _IllustRowPageState extends State<IllustRowPage>
   @override
   void didUpdateWidget(covariant IllustRowPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.store != widget.store) {
+    if (oldWidget.id != widget.id || oldWidget.store != widget.store) {
       _illustStore = widget.store ?? IllustStore(widget.id, null);
       _illustStore.fetch();
       _aboutStore = IllustAboutStore(widget.id, _refreshController);
+      _aboutLoadRequested = false;
+      _recommendationStoreCache.clear();
       LPrinter.d("state change");
     }
   }
 
-  void _loadAbout() {
-    if (mounted &&
-        _scrollController.hasClients &&
-        _aboutStore.illusts.isEmpty &&
-        !_aboutStore.fetching)
-      _aboutStore.next();
+  Future<bool> _loadAbout() {
+    if (!mounted || _aboutLoadRequested) return Future.value(false);
+    _aboutLoadRequested = true;
+    return _aboutStore.next();
+  }
+
+  Future<bool> _loadMoreAbout() {
+    return _aboutLoadRequested ? _aboutStore.next() : _loadAbout();
   }
 
   Future<void> _autoBookmarkAfterSave(Illusts illust) async {
@@ -335,9 +342,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                         color: Theme.of(context).cardColor,
                         child: EasyRefresh(
                           controller: _refreshController,
-                          onLoad: () {
-                            _aboutStore.next();
-                          },
+                          onLoad: _loadMoreAbout,
                           child: CustomScrollView(
                             controller: _scrollController,
                             slivers: [
@@ -351,7 +356,14 @@ class _IllustRowPageState extends State<IllustRowPage>
                                   illusts: data,
                                   userStore: userStore,
                                   illustStore: _illustStore,
-                                  loadAbout: () {
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: IllustRecommendationLoadTrigger(
+                                  key: ValueKey(
+                                    'illust-recommendation-trigger-${widget.id}',
+                                  ),
+                                  onApproach: () {
                                     _loadAbout();
                                   },
                                 ),
@@ -387,11 +399,10 @@ class _IllustRowPageState extends State<IllustRowPage>
   }
 
   SliverGrid _buildRecom() {
+    _recommendationStoreCache.sync(_aboutStore.illusts);
+    final list = _recommendationStoreCache.stores;
     return SliverGrid(
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-        var list = _aboutStore.illusts
-            .map((element) => IllustStore(element.id, element))
-            .toList();
         return InkWell(
           onTap: () {
             HapticUtil.selectionClick();
@@ -415,7 +426,7 @@ class _IllustRowPageState extends State<IllustRowPage>
             enableMemoryCache: false,
           ),
         );
-      }, childCount: _aboutStore.illusts.length),
+      }, childCount: list.length),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
       ),
@@ -494,11 +505,13 @@ class _IllustRowPageState extends State<IllustRowPage>
               child: PixivImage(
                 url,
                 fade: false,
+                autoResizeMemoryCache: true,
                 width: MediaQuery.of(context).size.width,
                 placeWidget: (url != data.imageUrls.medium)
                     ? PixivImage(
                         data.imageUrls.medium,
                         width: MediaQuery.of(context).size.width,
+                        autoResizeMemoryCache: true,
                         placeWidget: placeWidget,
                         fade: false,
                       )
@@ -543,9 +556,11 @@ class _IllustRowPageState extends State<IllustRowPage>
         return NullHero(
           child: PixivImage(
             url,
+            autoResizeMemoryCache: true,
             placeWidget: PixivImage(
               illust.metaPages[index].imageUrls!.medium,
               width: MediaQuery.of(context).size.width,
+              autoResizeMemoryCache: true,
               fade: false,
             ),
             width: MediaQuery.of(context).size.width,
@@ -556,6 +571,7 @@ class _IllustRowPageState extends State<IllustRowPage>
       return PixivImage(
         url,
         fade: false,
+        autoResizeMemoryCache: true,
         width: MediaQuery.of(context).size.width,
         placeWidget: Container(
           height: height,
@@ -573,9 +589,11 @@ class _IllustRowPageState extends State<IllustRowPage>
               ? NullHero(
                   child: PixivImage(
                     illust.illustDetailImageUrl(index),
+                    autoResizeMemoryCache: true,
                     placeWidget: PixivImage(
                       illust.metaPages[index].imageUrls!.medium,
                       fade: false,
+                      autoResizeMemoryCache: true,
                     ),
                     fade: false,
                   ),
@@ -585,12 +603,14 @@ class _IllustRowPageState extends State<IllustRowPage>
                   child: PixivImage(
                     illust.metaPages[index].imageUrls!.medium,
                     fade: false,
+                    autoResizeMemoryCache: true,
                   ),
                   tag: widget.heroString,
                 ))
         : PixivImage(
             illust.illustDetailImageUrl(index),
             fade: false,
+            autoResizeMemoryCache: true,
             placeWidget: Container(
               height: 150,
               child: Center(
@@ -700,9 +720,6 @@ class _IllustRowPageState extends State<IllustRowPage>
       userStore = UserStore(illust.user.id, null, illust.user);
     return Observer(
       builder: (_) {
-        Future.delayed(Duration(seconds: 2), () {
-          _loadAbout();
-        });
         return Row(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,

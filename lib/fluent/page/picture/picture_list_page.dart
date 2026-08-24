@@ -26,13 +26,13 @@ class PictureListPage extends StatefulWidget {
   final String? heroString;
   final LightingStore? lightingStore;
 
-  const PictureListPage(
-      {Key? key,
+  const PictureListPage({
+    Key? key,
       required this.lightingStore,
       required this.store,
       required this.iStores,
-      this.heroString})
-      : super(key: key);
+    this.heroString,
+  }) : super(key: key);
 
   @override
   _PictureListPageState createState() => _PictureListPageState();
@@ -69,7 +69,8 @@ class _PictureListPageState extends State<PictureListPage> {
         screenWidth = constraints.maxWidth / 2;
         return Stack(
           children: [
-            Observer(builder: (_) {
+            Observer(
+              builder: (_) {
               return PageView.builder(
                 controller: _pageController,
                 physics: NeverScrollableScrollPhysics(),
@@ -80,16 +81,19 @@ class _PictureListPageState extends State<PictureListPage> {
                     );
                   }
                   final f = _iStores[index];
-                  String? tag = nowPosition == index ? widget.heroString : null;
+                    String? tag = nowPosition == index
+                        ? widget.heroString
+                        : null;
                   return IllustLightingPage(
                     id: f.id,
                     heroString: tag,
                     store: f,
                   );
                 },
-                itemCount: _iStores.length + 1,
+                  itemCount: _iStores.length + (_lightingStore == null ? 0 : 1),
               );
-            }),
+              },
+            ),
             Container(
               margin: EdgeInsets.all(24),
               child: GestureDetector(
@@ -103,9 +107,11 @@ class _PictureListPageState extends State<PictureListPage> {
                       result++;
                     else
                       result--;
-                    _pageController.animateToPage(result,
+                    _pageController.animateToPage(
+                      result,
                         duration: Duration(milliseconds: 200),
-                        curve: Curves.easeInOut);
+                      curve: Curves.easeInOut,
+                    );
                     if (result >= _iStores.length) result = _iStores.length - 1;
                     if (result < 0) result = 0;
                     setState(() {
@@ -114,7 +120,7 @@ class _PictureListPageState extends State<PictureListPage> {
                   }
                 },
               ),
-            )
+            ),
           ],
         );
       },
@@ -170,21 +176,21 @@ class _PictureListNextPageState extends State<PictureListNextPage> {
         header: PageHeader(),
         content: Container(
             child: Center(
-          child: Column(children: [
+            child: Column(
+              children: [
             Text("Load Failed"),
             HyperlinkButton(
                 onPressed: () {
                   _maybeFetch(false);
                 },
-                child: Text("Retry"))
-          ]),
-        )),
-      );
-    }
-    return ScaffoldPage(
-      content: Center(
-        child: ProgressRing(),
+                  child: Text("Retry"),
+                ),
+              ],
+            ),
+          ),
       ),
     );
+  }
+    return ScaffoldPage(content: Center(child: ProgressRing()));
   }
 }
