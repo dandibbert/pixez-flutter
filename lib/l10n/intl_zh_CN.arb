@@ -331,6 +331,26 @@
   "no_result": "0 结果",
   "pre": "上一页",
   "next": "下一页",
+  "search_result_mode": "搜索结果浏览方式",
+  "search_result_mode_infinite": "无限瀑布流",
+  "search_result_mode_paged": "分页跳转",
+  "search_result_page": "第 {page} 页",
+  "@search_result_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
+  "jump_to_page": "跳转页码",
+  "page_number_hint": "输入大于 0 的页码",
+  "search_page_unavailable": "该页不存在或没有搜索结果。",
+  "history_actions": "搜索历史操作",
+  "jump_to_saved_page": "跳转到记录的第 {page} 页",
+  "@jump_to_saved_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
+  "history_item_actions": "作品浏览历史操作",
+  "jump_to_source_search_page": "跳转到来源搜索的第 {page} 页",
+  "@jump_to_source_search_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
   "submit": "提交",
   "thanks_for_your_feedback": "感谢反馈",
   "input": "输入",
@@ -352,5 +372,6 @@
   "network_mode_standard": "标准连接",
   "network_mode_standard_message": "大多数网络环境推荐使用。",
   "ignore_current_version_update": "忽略当前版本更新",
-  "haptic_feedback": "触感反馈"
+  "haptic_feedback": "触感反馈",
+  "fit_width": "按宽度铺满"
 }

@@ -16,7 +16,9 @@ import 'package:pixez/fluent/page/soup/soup_page.dart';
 import 'package:pixez/fluent/page/user/users_page.dart';
 import 'package:pixez/page/saucenao/sauce_store.dart';
 import 'package:pixez/page/search/suggest/suggestion_store.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/trend_tags_store.dart';
+import 'package:pixez/store/search_result_mode.dart';
 
 part 'item.dart';
 
@@ -167,16 +169,24 @@ class _PixEzSearchBoxState extends State<StatefulWidget> {
               text: tagsPersistItem.data.translatedName,
               style: FluentTheme.of(context).typography.body,
             ),
+            if (tagsPersistItem.data.lastPage > 1)
+              TextSpan(
+                text:
+                    ' · ${I18n.of(context).search_result_page(tagsPersistItem.data.lastPage)}',
+                style: FluentTheme.of(context).typography.caption,
+              ),
           ],
         );
         return Tooltip(
           richMessage: text,
+          child: GestureDetector(
+            onLongPress: () => _showHistoryActions(tagsPersistItem.data),
           child: ListTile(
             leading: Icon(FluentIcons.history),
             title: Text.rich(text, overflow: TextOverflow.ellipsis),
             trailing: tagsPersistItem.data.id != null
                 ? Tooltip(
-                    message: 'Remove History',
+                      message: I18n.of(context).delete,
                     child: PixEzButton(
                       child: Icon(FluentIcons.delete),
                       noPadding: true,
@@ -188,6 +198,7 @@ class _PixEzSearchBoxState extends State<StatefulWidget> {
                   )
                 : null,
             onPressed: () => _onAutoSuggestBoxSelected(item),
+          ),
           ),
         );
       case _TrendTagsItemValue trendTagsItemValue:
@@ -417,6 +428,61 @@ class _PixEzSearchBoxState extends State<StatefulWidget> {
     }
   }
 
+  void _showHistoryActions(TagsPersist history) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: Text(I18n.of(context).history_actions),
+        actions: [
+          Button(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              tagHistoryStore.delete(history.id!);
+              _updateSuggestList(context);
+            },
+            child: Text(I18n.of(context).delete),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _openSavedHistory(history);
+            },
+            child: Text(I18n.of(context).jump_to_saved_page(history.lastPage)),
+          ),
+          Button(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(I18n.of(context).cancel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openSavedHistory(TagsPersist history) {
+    final decoded = IllustSearchQuery.tryDecode(history.queryJson);
+    final query =
+        (decoded ??
+                IllustSearchQuery(
+                  word: history.name,
+                  translatedName: history.translatedName,
+                ))
+            .copyWith(page: history.lastPage, mode: SearchResultMode.paged);
+    final restoredQuery = query.copyWith(
+      word: history.name,
+      translatedName: history.translatedName,
+    );
+    Leader.push(
+      context,
+      ResultPage(
+        word: history.name,
+        translatedName: history.translatedName,
+        initialQuery: restoredQuery,
+      ),
+      icon: const Icon(FluentIcons.search),
+      title: Text('${I18n.of(context).search}: ${history.name}'),
+    );
+  }
+
   void _search() {
     var text = _controller.text.trim();
     if (text.isEmpty && _selectedTags.isEmpty) return;
@@ -464,14 +530,17 @@ class _PixEzSearchBoxState extends State<StatefulWidget> {
         setState(() => _loading = true);
         // 如果搜索框为空则展示历史记录
         await tagHistoryStore.fetch();
-        if (tagHistoryStore.tags.isEmpty) {
+        final histories = tagHistoryStore.tags
+            .where((tag) => tag.type == null || tag.type == 0)
+            .toList(growable: false);
+        if (histories.isEmpty) {
           setState(() => _loading = false);
           return;
         }
         _items.clear();
 
         _items.add(_NextPixEzSearchBoxItem.cleanHistory(context));
-        tagHistoryStore.tags.forEach(
+        histories.forEach(
           (tag) =>
               _items.add(_NextPixEzSearchBoxItem.tagsPersist(context, tag)),
         );

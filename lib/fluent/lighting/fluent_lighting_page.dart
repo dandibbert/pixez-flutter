@@ -40,9 +40,7 @@ class WaterFallLoading extends StatefulWidget {
 class _WaterFallLoadingState extends State<WaterFallLoading> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Center(child: ProgressRing()),
-    );
+    return Container(child: Center(child: ProgressRing()));
   }
 }
 
@@ -52,15 +50,19 @@ class LightingList extends StatefulWidget {
   final bool? isNested;
   final ScrollController? scrollController;
   final String? portal;
+  final ValueChanged<int>? onPageChanged;
+  final bool Function(Illusts)? filter;
 
-  const LightingList(
-      {Key? key,
+  const LightingList({
+    Key? key,
       required this.source,
       this.header,
       this.isNested,
       this.scrollController,
-      this.portal})
-      : super(key: key);
+    this.portal,
+    this.onPageChanged,
+    this.filter,
+  }) : super(key: key);
 
   @override
   _LightingListState createState() => _LightingListState();
@@ -71,17 +73,24 @@ class _LightingListState extends State<LightingList> {
   late bool _isNested;
   late ScrollController _scrollController;
 
+  bool get _isPaged => widget.source is ApiPagedSource;
+
   @override
   void didUpdateWidget(LightingList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.source != widget.source) {
-      _store.source = widget.source;
-      _fetch();
+      _configureLoadMoreListener();
+      _fetch(source: widget.source);
     }
   }
 
-  _fetch() async {
-    await _store.fetch(force: true);
+  _fetch({LightSource? source}) async {
+    final success = source == null
+        ? await _store.fetch(force: true)
+        : await _store.update(source, force: true);
+    if (success && _isPaged) {
+      widget.onPageChanged?.call(_store.currentPage);
+    }
     if (!_isNested && _store.errorMessage == null && !_store.iStores.isEmpty) {
       _scrollController.position.jumpTo(0.0);
     }
@@ -96,17 +105,25 @@ class _LightingListState extends State<LightingList> {
     _isNested = widget.isNested ?? false;
     _scrollController = widget.scrollController ?? ScrollController();
     _refreshController = EasyRefreshController(
-        controlFinishLoad: true, controlFinishRefresh: true);
-    _store = LightingStore(
-      widget.source,
+      controlFinishLoad: true,
+      controlFinishRefresh: true,
     );
+    _store = LightingStore(widget.source);
     _store.easyRefreshController = _refreshController;
     super.initState();
-    _store.fetch();
+    _store.fetch().then((success) {
+      if (success && mounted && _isPaged) {
+        widget.onPageChanged?.call(_store.currentPage);
+      }
+    });
+    _configureLoadMoreListener();
+  }
 
-    // Load More Detecter
-    _disableListener =
-        initializeScrollController(_scrollController, _store.fetchNext);
+  void _configureLoadMoreListener() {
+    _disableListener?.call();
+    _disableListener = _isPaged
+        ? null
+        : initializeScrollController(_scrollController, _store.fetchNext);
   }
 
   @override
@@ -125,16 +142,130 @@ class _LightingListState extends State<LightingList> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: Observer(builder: (_) {
-        return Container(child: _buildContent(context));
-      }),
+      child: Observer(
+        builder: (_) {
+          final content = Container(child: _buildContent(context));
+          if (!_isPaged) return content;
+          return Column(
+            children: [
+              Expanded(child: content),
+              _buildPaginationBar(context),
+            ],
+          );
+        },
+      ),
     );
+  }
+
+  Widget _buildPaginationBar(BuildContext context) {
+    final loading = _store.refreshing;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Button(
+            onPressed: loading || _store.currentPage <= 1
+                ? null
+                : () => _loadPage(_store.currentPage - 1),
+            child: Row(
+              children: [
+                const Icon(FluentIcons.chevron_left),
+                const SizedBox(width: 6),
+                Text(I18n.of(context).pre),
+              ],
+            ),
+          ),
+          Button(
+            onPressed: loading ? null : _showPageDialog,
+            child: Text(
+              I18n.of(context).search_result_page(_store.currentPage),
+            ),
+          ),
+          Button(
+            onPressed: loading || _store.nextUrl == null
+                ? null
+                : () => _loadPage(_store.currentPage + 1),
+            child: Row(
+              children: [
+                Text(I18n.of(context).next),
+                const SizedBox(width: 6),
+                const Icon(FluentIcons.chevron_right),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showPageDialog() async {
+    final controller = TextEditingController(
+      text: _store.currentPage.toString(),
+    );
+    final page = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: Text(I18n.of(context).jump_to_page),
+        content: TextBox(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          placeholder: I18n.of(context).page_number_hint,
+          onSubmitted: (value) {
+            final parsed = int.tryParse(value);
+            if (parsed != null && parsed > 0) {
+              Navigator.of(dialogContext).pop(parsed);
+            }
+          },
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(I18n.of(context).cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = int.tryParse(controller.text);
+              if (parsed != null && parsed > 0) {
+                Navigator.of(dialogContext).pop(parsed);
+              }
+            },
+            child: Text(I18n.of(context).ok),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (page != null) await _loadPage(page);
+  }
+
+  Future<void> _loadPage(int page) async {
+    if (page == _store.currentPage) return;
+    final success = await _store.fetchPage(page, force: true);
+    if (!mounted) return;
+    if (!success) {
+      displayInfoBar(
+        context,
+        builder: (context, close) =>
+            InfoBar(title: Text(I18n.of(context).search_page_unavailable)),
+      );
+      return;
+    }
+    widget.onPageChanged?.call(page);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
   }
 
   late EasyRefreshController _refreshController;
 
   Widget _buildWithoutHeader(context) {
-    _store.iStores.removeWhere((element) => element.illusts!.hateByUser());
+    _store.iStores.removeWhere((element) {
+      final illust = element.illusts!;
+      return illust.hateByUser() ||
+          (widget.filter != null && !widget.filter!(illust));
+    });
     return NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification notification) {
           if (widget.isNested == true) {
@@ -153,11 +284,13 @@ class _LightingListState extends State<LightingList> {
           header: PixezDefault.header(context),
           scrollController: _scrollController,
           onRefresh: () {
+          if (_isPaged) {
+            _store.fetchPage(_store.currentPage, force: true);
+          } else {
             _store.fetch(force: true);
+          }
           },
-          onLoad: () {
-            _store.fetchNext();
-          },
+        onLoad: _isPaged ? null : _store.fetchNext,
           childBuilder: (context, physics) => WaterfallFlow.builder(
             physics: physics,
             controller: widget.isNested ?? false ? null : _scrollController,
@@ -168,7 +301,8 @@ class _LightingListState extends State<LightingList> {
             },
             gridDelegate: _buildGridDelegate(),
           ),
-        ));
+      ),
+    );
   }
 
   bool needToBan(Illusts illust) {
@@ -205,26 +339,32 @@ class _LightingListState extends State<LightingList> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          Container(
-            height: 50,
-          ),
+          Container(height: 50),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child:
-                Text(':(', style: FluentTheme.of(context).typography.subtitle),
+            child: Text(
+              ':(',
+              style: FluentTheme.of(context).typography.subtitle,
+            ),
           ),
           Button(
               onPressed: () {
+              if (_isPaged) {
+                _store.fetchPage(_store.currentPage, force: true);
+              } else {
                 _store.fetch(force: true);
+              }
               },
-              child: Text(I18n.of(context).retry)),
+            child: Text(I18n.of(context).retry),
+          ),
           Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 (_store.errorMessage?.contains("400") == true
                     ? '${I18n.of(context).error_400_hint}\n ${_store.errorMessage}'
                     : '${_store.errorMessage}'),
-              ))
+            ),
+          ),
         ],
       ),
     );
@@ -246,23 +386,23 @@ class _LightingListState extends State<LightingList> {
         scrollController: _scrollController,
         header: PixezDefault.header(context),
         onRefresh: () {
+          if (_isPaged) {
+            _store.fetchPage(_store.currentPage, force: true);
+          } else {
           _store.fetch(force: true);
+          }
         },
-        onLoad: () {
-          _store.fetchNext();
-        },
+        onLoad: _isPaged ? null : _store.fetchNext,
         childBuilder: ((context, physics) {
           return CustomScrollView(
             physics: physics,
             controller: widget.isNested ?? false ? null : _scrollController,
             slivers: [
-              SliverToBoxAdapter(
-                child: Container(child: widget.header),
-              ),
+              SliverToBoxAdapter(child: Container(child: widget.header)),
               SliverWaterfallFlow(
                 gridDelegate: _buildGridDelegate(),
                 delegate: _buildSliverChildBuilderDelegate(context),
-              )
+              ),
             ],
           );
         }),
@@ -271,13 +411,19 @@ class _LightingListState extends State<LightingList> {
   }
 
   SliverChildBuilderDelegate _buildSliverChildBuilderDelegate(
-      BuildContext context) {
-    _store.iStores.removeWhere((element) => element.illusts!.hateByUser());
+    BuildContext context,
+  ) {
+    _store.iStores.removeWhere((element) {
+      final illust = element.illusts!;
+      return illust.hateByUser() ||
+          (widget.filter != null && !widget.filter!(illust));
+    });
     return SliverChildBuilderDelegate((BuildContext context, int index) {
       return IllustCard(
         store: _store.iStores[index],
         lightingStore: _store,
         iStores: _store.iStores,
+        allowDetailLoadMore: !_isPaged,
       );
     }, childCount: _store.iStores.length);
   }
@@ -314,6 +460,7 @@ class _LightingListState extends State<LightingList> {
       store: _store.iStores[index],
       lightingStore: _store,
       iStores: _store.iStores,
+      allowDetailLoadMore: !_isPaged,
     );
   }
 }

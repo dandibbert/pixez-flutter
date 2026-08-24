@@ -15,6 +15,7 @@
  */
 
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -32,6 +33,21 @@ class TagHistoryStore = _TagHistoryStoreBase with _$TagHistoryStore;
 abstract class _TagHistoryStoreBase with Store {
   TagsPersistProvider tagsPersistProvider = TagsPersistProvider();
   ObservableList<TagsPersist> tags = ObservableList();
+  Future<void> _historyOperations = Future.value();
+
+  Future<T> _enqueue<T>(Future<T> Function() operation) {
+    final completer = Completer<T>();
+    _historyOperations = _historyOperations
+        .catchError((_) {})
+        .then((_) async {
+          try {
+            completer.complete(await operation());
+          } catch (error, stackTrace) {
+            completer.completeError(error, stackTrace);
+          }
+        });
+    return completer.future;
+  }
 
   @action
   fetch() async {
@@ -42,30 +58,35 @@ abstract class _TagHistoryStoreBase with Store {
   }
 
   @action
-  insert(TagsPersist tagsPersist) async {
-    await tagsPersistProvider.open();
-    for (int i = 0; i < tags.length; i++) {
-      if (tags[i].name == tagsPersist.name && tags[i].type == Constants.type) {
-        await tagsPersistProvider.delete(tags[i].id!);
-      }
-    }
-    tagsPersist.type = Constants.type;
-    await tagsPersistProvider.insert(tagsPersist);
-    await fetch();
+  Future<TagsPersist> insert(
+    TagsPersist tagsPersist, {
+    int? historyType,
+  }) {
+    return _enqueue(() async {
+      await tagsPersistProvider.open();
+      tagsPersist.type = historyType ?? Constants.type;
+      await tagsPersistProvider.replaceByNameAndType(tagsPersist);
+      await fetch();
+      return tagsPersist;
+    });
   }
 
   @action
-  delete(int id) async {
-    await tagsPersistProvider.open();
-    await tagsPersistProvider.delete(id);
-    await fetch();
+  Future<void> delete(int id) {
+    return _enqueue(() async {
+      await tagsPersistProvider.open();
+      await tagsPersistProvider.delete(id);
+      await fetch();
+    });
   }
 
   @action
-  deleteAll() async {
-    await tagsPersistProvider.open();
-    await tagsPersistProvider.deleteAll(type: Constants.type);
-    await fetch();
+  Future<void> deleteAll() {
+    return _enqueue(() async {
+      await tagsPersistProvider.open();
+      await tagsPersistProvider.deleteAll(type: Constants.type);
+      await fetch();
+    });
   }
 
   final EXPORT_TYPE = "history_tags";

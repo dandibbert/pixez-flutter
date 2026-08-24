@@ -17,6 +17,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result_illust_list.dart';
 import 'package:pixez/utils/haptic_util.dart';
 
@@ -33,8 +34,10 @@ class _BookTagPageState extends State<BookTagPage>
 
   @override
   void initState() {
-    _tabController =
-        TabController(length: bookTagStore.bookTagList.length, vsync: this);
+    _tabController = TabController(
+      length: bookTagStore.bookTagList.length,
+      vsync: this,
+    );
     super.initState();
   }
 
@@ -46,7 +49,8 @@ class _BookTagPageState extends State<BookTagPage>
   @override
   Widget build(BuildContext context) {
     if (edit)
-      return Observer(builder: (context) {
+      return Observer(
+        builder: (context) {
         return Container(
           child: Column(
             children: [
@@ -60,15 +64,18 @@ class _BookTagPageState extends State<BookTagPage>
                         setState(() {
                           edit = false;
                         });
-                      })
+                      },
+                    ),
                 ],
               ),
-              Expanded(child: _buildTagChip())
+                Expanded(child: _buildTagChip()),
             ],
           ),
         );
-      });
-    return Observer(builder: (_) {
+        },
+      );
+    return Observer(
+      builder: (_) {
       if (_tabController.length != bookTagStore.bookTagList.length) {
         var index = (_tabController.index >= bookTagStore.bookTagList.length)
             ? bookTagStore.bookTagList.length - 1
@@ -77,7 +84,8 @@ class _BookTagPageState extends State<BookTagPage>
         _tabController = TabController(
             initialIndex: index,
             length: bookTagStore.bookTagList.length,
-            vsync: this);
+            vsync: this,
+          );
       }
       return Scaffold(
         appBar: AppBar(
@@ -89,31 +97,31 @@ class _BookTagPageState extends State<BookTagPage>
             isScrollable: true,
             controller: _tabController,
             indicatorSize: TabBarIndicatorSize.label,
-            tabs: [
-              for (var i in bookTagStore.bookTagList)
-                Tab(
-                  text: i,
-                )
-            ],
+              tabs: [for (var i in bookTagStore.bookTagList) Tab(text: i)],
           ),
           actions: [
             IconButton(
-                icon: Icon(
-                  Icons.undo,
-                ),
+                icon: Icon(Icons.undo),
                 onPressed: () {
                   setState(() {
                     edit = true;
                   });
-                }),
+                },
+              ),
           ],
         ),
-        body: TabBarView(controller: _tabController, children: [
+          body: TabBarView(
+            controller: _tabController,
+            children: [
           for (var j in bookTagStore.bookTagList)
             ResultIllustList(
+                  initialQuery: IllustSearchQuery(
               word: j,
-            )
-        ]),
+                    mode: userSetting.searchResultMode,
+                  ),
+                ),
+            ],
+          ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
             Navigator.of(context).pop();
@@ -127,15 +135,17 @@ class _BookTagPageState extends State<BookTagPage>
                 ListTile(
                   title: Text(j),
                   onTap: () {
-                    _tabController
-                        .animateTo(bookTagStore.bookTagList.indexOf(j));
+                      _tabController.animateTo(
+                        bookTagStore.bookTagList.indexOf(j),
+                      );
                   },
-                )
+                  ),
             ],
           ),
         ),
       );
-    });
+      },
+    );
   }
 
   Widget _buildTagChip() {
@@ -154,10 +164,7 @@ class _BookTagPageState extends State<BookTagPage>
               await _deleteConfirm(_items[index]);
               return null;
             },
-            background: Container(
-              color: Colors.red,
-              child: Icon(Icons.delete),
-            ),
+            background: Container(color: Colors.red, child: Icon(Icons.delete)),
             child: ListTile(
               key: Key('$index'),
               title: Text('${_items[index]}'),
@@ -188,15 +195,18 @@ class _BookTagPageState extends State<BookTagPage>
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: Text(I18n.of(context).cancel)),
+              child: Text(I18n.of(context).cancel),
+            ),
               TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
                     bookTagStore.unBookTag(i);
                   },
-                  child: Text(I18n.of(context).ok)),
+              child: Text(I18n.of(context).ok),
+            ),
             ],
           );
-        });
+      },
+    );
   }
 }

@@ -24,9 +24,7 @@ part 'tags.g.dart';
 class AutoWords {
   List<Tags> tags;
 
-  AutoWords({
-    required this.tags,
-  });
+  AutoWords({required this.tags});
 
   factory AutoWords.fromJson(Map<String, dynamic> json) =>
       _$AutoWordsFromJson(json);
@@ -39,10 +37,7 @@ class Tags {
   String name;
   String? translated_name;
 
-  Tags({
-    required this.name,
-    this.translated_name,
-  });
+  Tags({required this.name, this.translated_name});
 
   factory Tags.fromJson(Map<String, dynamic> json) => _$TagsFromJson(json);
 
@@ -57,8 +52,19 @@ class TagsPersist {
   @JsonKey(name: 'translated_name')
   String translatedName;
   int? type = 0;
+  @JsonKey(name: 'last_page')
+  int lastPage;
+  @JsonKey(name: 'query_json')
+  String? queryJson;
 
-  TagsPersist({this.id, required this.name, required this.translatedName});
+  TagsPersist({
+    this.id,
+    required this.name,
+    required this.translatedName,
+    this.type,
+    this.lastPage = 1,
+    this.queryJson,
+  });
 
   factory TagsPersist.fromJson(Map<String, dynamic> json) =>
       _$TagsPersistFromJson(json);
@@ -71,38 +77,59 @@ final String columnId = '_id';
 final String columnName = 'name';
 final String columnTranslatedName = 'translated_name';
 final String columnType = 'type';
+final String columnLastPage = 'last_page';
+final String columnQueryJson = 'query_json';
 
 class TagsPersistProvider {
   late Database db;
 
-  Future open() async {
-    String databasesPath = (await getDatabasesPath());
-    String path = join(databasesPath, '${tableTag}.db');
-    db = await openDatabase(path, version: 2,
+  Future open({String? databasePath}) async {
+    final path =
+        databasePath ?? join(await getDatabasesPath(), '${tableTag}.db');
+    db = await openDatabase(
+      path,
+      version: 3,
         onCreate: (Database db, int version) async {
       await db.execute('''
 create table $tableTag ( 
   $columnId integer primary key autoincrement, 
   $columnName text not null,
   $columnTranslatedName text not null,
-  $columnType integer)
+  $columnType integer,
+  $columnLastPage integer not null default 1,
+  $columnQueryJson text)
 ''');
-    }, onUpgrade: (db, oldVer, newVer) async {
+      },
+      onUpgrade: (db, oldVer, newVer) async {
       var batch = db.batch();
-      if (oldVer == 1) {
+        if (oldVer < 2) {
         _updateTableCompanyV1toV2(batch);
       }
+        if (oldVer < 3) {
+          _updateTableV2toV3(batch);
+        }
       await batch.commit();
-    });
+      },
+    );
   }
 
   void _updateTableCompanyV1toV2(Batch batch) {
     batch.execute('ALTER TABLE $tableTag ADD $columnType integer');
   }
 
+  void _updateTableV2toV3(Batch batch) {
+    batch.execute(
+      'ALTER TABLE $tableTag ADD $columnLastPage integer not null default 1',
+    );
+    batch.execute('ALTER TABLE $tableTag ADD $columnQueryJson text');
+  }
+
   Future<TagsPersist> insert(TagsPersist tag) async {
-    tag.id = await db.insert(tableTag, tag.toJson(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    tag.id = await db.insert(
+      tableTag,
+      tag.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
     return tag;
   }
 
@@ -111,17 +138,53 @@ create table $tableTag (
       for (var tag in tags) {
         final map = tag.toJson();
         map.remove(columnId);
-        await txn.insert(tableTag, map,
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          tableTag,
+          map,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
+      }
+
+  Future<TagsPersist> replaceByNameAndType(TagsPersist tag) async {
+    await db.transaction((txn) async {
+      if ((tag.type ?? 0) == 0) {
+        await txn.delete(
+          tableTag,
+          where: '$columnName = ? AND ($columnType = 0 OR $columnType IS NULL)',
+          whereArgs: [tag.name],
+        );
+      } else {
+        await txn.delete(
+          tableTag,
+          where: '$columnName = ? AND $columnType = ?',
+          whereArgs: [tag.name, tag.type],
+        );
+      }
+      tag.id = await txn.insert(
+        tableTag,
+        tag.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+    return tag;
   }
 
   Future<TagsPersist?> getTodo(int id) async {
-    List<Map<String, dynamic>> maps = await db.query(tableTag,
-        columns: [columnId, columnName, columnTranslatedName, columnType],
+    List<Map<String, dynamic>> maps = await db.query(
+      tableTag,
+      columns: [
+        columnId,
+        columnName,
+        columnTranslatedName,
+        columnType,
+        columnLastPage,
+        columnQueryJson,
+      ],
         where: '$columnId = ?',
-        whereArgs: [id]);
+      whereArgs: [id],
+    );
     if (maps.length > 0) {
       return TagsPersist.fromJson(maps.first);
     }
@@ -130,9 +193,18 @@ create table $tableTag (
 
   Future<List<TagsPersist>> getAllAccount() async {
     List<TagsPersist> result = [];
-    List<Map<String, dynamic>> maps = await db.query(tableTag,
-        columns: [columnId, columnName, columnTranslatedName, columnType],
-        orderBy: "$columnId DESC");
+    List<Map<String, dynamic>> maps = await db.query(
+      tableTag,
+      columns: [
+        columnId,
+        columnName,
+        columnTranslatedName,
+        columnType,
+        columnLastPage,
+        columnQueryJson,
+      ],
+      orderBy: "$columnId DESC",
+    );
 
     if (maps.length > 0) {
       maps.forEach((f) {
@@ -147,13 +219,26 @@ create table $tableTag (
   }
 
   Future<int> deleteAll({int type = 0}) async {
-    return await db
-        .delete(tableTag, where: '$columnType = ?', whereArgs: [type]);
+    if (type == 0) {
+      return await db.delete(
+        tableTag,
+        where: '$columnType = 0 OR $columnType IS NULL',
+      );
+    }
+    return await db.delete(
+      tableTag,
+      where: '$columnType = ?',
+      whereArgs: [type],
+    );
   }
 
   Future<int> update(TagsPersist todo) async {
-    return await db.update(tableTag, todo.toJson(),
-        where: '$columnId = ?', whereArgs: [todo.id]);
+    return await db.update(
+      tableTag,
+      todo.toJson(),
+      where: '$columnId = ?',
+      whereArgs: [todo.id],
+    );
   }
 
   Future close() async => db.close();

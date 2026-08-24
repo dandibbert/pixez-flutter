@@ -14,6 +14,8 @@
  *
  */
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:mobx/mobx.dart';
@@ -31,9 +33,15 @@ class LightingStore = _LightingStoreBase with _$LightingStore;
 
 typedef Future<Response> FutureGet();
 typedef Future<Response> FutureRefreshGet(bool force);
+typedef Future<Response> FuturePageGet(int page, bool force);
 
 abstract class LightSource {
   String? glanceKey;
+
+  LightSource({this.searchQueryJson, this.searchPage});
+
+  final String? searchQueryJson;
+  final int? searchPage;
 }
 
 class ApiSource extends LightSource {
@@ -41,7 +49,11 @@ class ApiSource extends LightSource {
 
   String? g;
 
-  ApiSource({required this.futureGet}) : super();
+  ApiSource({
+    required this.futureGet,
+    String? searchQueryJson,
+    int? searchPage,
+  }) : super(searchQueryJson: searchQueryJson, searchPage: searchPage);
 
   Future<Response> fetch() {
     return futureGet();
@@ -51,13 +63,33 @@ class ApiSource extends LightSource {
 class ApiForceSource extends LightSource {
   FutureRefreshGet futureGet;
 
-  ApiForceSource({required this.futureGet, String? glanceKey = null})
-    : super() {
+  ApiForceSource({
+    required this.futureGet,
+    String? glanceKey = null,
+    String? searchQueryJson,
+    int? searchPage,
+  }) : super(searchQueryJson: searchQueryJson, searchPage: searchPage) {
     this.glanceKey = glanceKey;
   }
 
   Future<Response> fetch(bool force) {
     return futureGet(force);
+  }
+}
+
+class ApiPagedSource extends LightSource {
+  ApiPagedSource({
+    required this.futureGet,
+    this.initialPage = 1,
+    String? searchQueryJson,
+    int? searchPage,
+  }) : super(searchQueryJson: searchQueryJson, searchPage: searchPage);
+
+  final FuturePageGet futureGet;
+  final int initialPage;
+
+  Future<Response> fetch(int page, bool force) {
+    return futureGet(page < 1 ? 1 : page, force);
   }
 }
 
@@ -71,6 +103,13 @@ abstract class _LightingStoreBase with Store {
   ObservableList<IllustStore> iStores = ObservableList();
   @observable
   bool refreshing = false;
+  @observable
+  int currentPage = 1;
+
+  int _sourceRevision = 0;
+  Completer<bool>? _pendingSourceCompleter;
+  bool _pendingSourceForce = false;
+  int? _lastSearchPage;
 
   GlanceIllustPersistProvider glanceIllustPersistProvider =
       GlanceIllustPersistProvider();
@@ -88,7 +127,31 @@ abstract class _LightingStoreBase with Store {
   @observable
   String? errorMessage;
 
-  _LightingStoreBase(this.source);
+  _LightingStoreBase(this.source) {
+    _lastSearchPage = source.searchPage;
+    if (source is ApiPagedSource) {
+      currentPage = (source as ApiPagedSource).initialPage;
+    }
+  }
+
+  void _releaseLockAndRunPending() {
+    refreshing = false;
+    _lock = false;
+    final completer = _pendingSourceCompleter;
+    if (completer == null) return;
+    final force = _pendingSourceForce;
+    _pendingSourceCompleter = null;
+    _pendingSourceForce = false;
+    unawaited(
+      Future<void>(() async {
+        try {
+          completer.complete(await fetch(force: force));
+        } catch (error, stackTrace) {
+          completer.completeError(error, stackTrace);
+        }
+      }),
+    );
+  }
 
   bool okForUser(Illusts illust) {
     // if (userSetting.hIsNotAllow)
@@ -117,24 +180,46 @@ abstract class _LightingStoreBase with Store {
   Future<bool> fetch({String? url, bool force = false}) async {
     if (_lock) return false;
     _lock = true;
+    final requestRevision = _sourceRevision;
+    final requestSource = source;
     nextUrl = null;
     errorMessage = null;
     refreshing = true;
     try {
       Response? result = null;
-      if (source is ApiSource) {
-        result = await (source as ApiSource).fetch();
-      } else if (source is ApiForceSource) {
-        result = await (source as ApiForceSource).fetch(force);
+      int? fetchedPage;
+      if (requestSource is ApiSource) {
+        result = await requestSource.fetch();
+      } else if (requestSource is ApiForceSource) {
+        result = await requestSource.fetch(force);
+      } else if (requestSource is ApiPagedSource) {
+        fetchedPage = requestSource.initialPage;
+        result = await requestSource.fetch(fetchedPage, force);
       }
 
+      if (requestRevision != _sourceRevision) return false;
       Recommend recommend = Recommend.fromJson(result!.data);
+      if (fetchedPage != null && fetchedPage > 1 && recommend.illusts.isEmpty) {
+        errorMessage = 'Page $fetchedPage has no results';
+        easyRefreshController?.finishRefresh(IndicatorResult.noMore);
+        return false;
+      }
       //https://app-api.pixiv.net/v1/user/illusts?filter=for_android&user_id=${user_id}&type=illust&offset=30
       nextUrl = recommend.nextUrl;
       iStores.clear();
-      iStores.addAll(recommend.illusts.map((e) => IllustStore(e.id, e)));
-      String? glanceKey = source.glanceKey;
-      refreshing = false;
+      final sourcePage = fetchedPage ?? requestSource.searchPage;
+      iStores.addAll(
+        recommend.illusts.map(
+          (illust) => IllustStore(illust.id, illust)
+            ..setSearchOrigin(
+              queryJson: requestSource.searchQueryJson,
+              page: sourcePage,
+            ),
+        ),
+      );
+      _lastSearchPage = sourcePage;
+      if (fetchedPage != null) currentPage = fetchedPage;
+      String? glanceKey = requestSource.glanceKey;
       if (glanceKey != null && glanceKey.isNotEmpty) {
         await glanceIllustPersistProvider.open();
         await glanceIllustPersistProvider.insertAll(
@@ -149,37 +234,99 @@ abstract class _LightingStoreBase with Store {
       easyRefreshController?.finishRefresh(IndicatorResult.success);
       return true;
     } catch (e) {
-      refreshing = false;
       errorMessage = e.toString();
       easyRefreshController?.finishRefresh(IndicatorResult.fail);
       return false;
     } finally {
-      _lock = false;
+      _releaseLockAndRunPending();
+    }
+  }
+
+  /// 按页重新请求并替换当前结果。失败或空页不会改变现有页码和作品列表。
+  @action
+  Future<bool> fetchPage(int page, {bool force = false}) async {
+    if (_lock || source is! ApiPagedSource || page < 1) return false;
+    _lock = true;
+    final requestRevision = _sourceRevision;
+    final requestSource = source as ApiPagedSource;
+    refreshing = true;
+    try {
+      final result = await requestSource.fetch(page, force);
+      if (requestRevision != _sourceRevision) return false;
+      final recommend = Recommend.fromJson(result.data);
+      if (recommend.illusts.isEmpty) {
+        easyRefreshController?.finishRefresh(IndicatorResult.noMore);
+        return false;
+      }
+      nextUrl = recommend.nextUrl;
+      final stores = recommend.illusts
+          .map(
+            (illust) => IllustStore(illust.id, illust)
+              ..setSearchOrigin(
+                queryJson: requestSource.searchQueryJson,
+                page: page,
+              ),
+          )
+          .toList(growable: false);
+      iStores
+        ..clear()
+        ..addAll(stores);
+      currentPage = page;
+      _lastSearchPage = page;
+      errorMessage = null;
+      easyRefreshController?.finishRefresh(IndicatorResult.success);
+      return true;
+    } catch (_) {
+      easyRefreshController?.finishRefresh(IndicatorResult.fail);
+      return false;
+    } finally {
+      _releaseLockAndRunPending();
     }
   }
 
   @action
-  update(LightSource futureGet) async {
+  Future<bool> update(LightSource futureGet, {bool force = false}) {
     source = futureGet;
-    await fetch();
+    _lastSearchPage = futureGet.searchPage;
+    _sourceRevision++;
+    if (!_lock) return fetch(force: force);
+
+    _pendingSourceCompleter?.complete(false);
+    final completer = Completer<bool>();
+    _pendingSourceCompleter = completer;
+    _pendingSourceForce = force;
+    return completer.future;
   }
 
   @action
   Future<bool> fetchNext() async {
     if (_lock) return false;
     _lock = true;
+    final requestRevision = _sourceRevision;
+    final requestSource = source;
     errorMessage = null;
     try {
       if (nextUrl != null && nextUrl!.isNotEmpty) {
         Response result = await apiClient.getNext(nextUrl!);
+        if (requestRevision != _sourceRevision) return false;
         Recommend recommend = Recommend.fromJson(result.data);
         nextUrl = recommend.nextUrl;
-        var map = recommend.illusts.map((e) => IllustStore(e.id, e));
+        final sourcePage = requestSource.searchQueryJson == null
+            ? null
+            : (_lastSearchPage ?? requestSource.searchPage ?? 1) + 1;
+        var map = recommend.illusts.map(
+          (illust) => IllustStore(illust.id, illust)
+            ..setSearchOrigin(
+              queryJson: requestSource.searchQueryJson,
+              page: sourcePage,
+            ),
+        );
         if (portal == "new") {
           var iterable = iStores.map((element) => element.id);
           map = map.where((element) => !iterable.contains(element.id));
         }
         iStores.addAll(map);
+        _lastSearchPage = sourcePage;
         easyRefreshController?.finishLoad(IndicatorResult.success);
       } else {
         easyRefreshController?.finishLoad(IndicatorResult.noMore);
@@ -189,7 +336,7 @@ abstract class _LightingStoreBase with Store {
       easyRefreshController?.finishLoad(IndicatorResult.fail);
       return false;
     } finally {
-      _lock = false;
+      _releaseLockAndRunPending();
     }
   }
 }

@@ -32,6 +32,7 @@ import 'package:pixez/fluent/page/hello/setting/setting_cross_adapter_page.dart'
 import 'package:pixez/fluent/page/network/network_page.dart';
 import 'package:pixez/fluent/page/platform/platform_page.dart';
 import 'package:pixez/store/welcome_page_type.dart';
+import 'package:pixez/store/search_result_mode.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingQualityPage extends StatefulWidget {
@@ -253,6 +254,26 @@ class _SettingQualityPageState extends State<SettingQualityPage>
             ),
           ),
           ListTile(
+            leading: const Icon(FluentIcons.search),
+            title: Text(I18n.of(context).search_result_mode),
+            trailing: ComboBox<SearchResultMode>(
+              value: userSetting.searchResultMode,
+              items: [
+                ComboBoxItem(
+                  value: SearchResultMode.infinite,
+                  child: Text(I18n.of(context).search_result_mode_infinite),
+                ),
+                ComboBoxItem(
+                  value: SearchResultMode.paged,
+                  child: Text(I18n.of(context).search_result_mode_paged),
+                ),
+              ],
+              onChanged: (mode) {
+                if (mode != null) userSetting.setSearchResultMode(mode);
+              },
+            ),
+          ),
+          ListTile(
             leading: const Icon(FluentIcons.map_layers),
             title: Text(I18n.of(context).layout_mode),
             trailing: Observer(
@@ -424,7 +445,8 @@ class _SettingQualityPageState extends State<SettingQualityPage>
             ListTile(
               title: Text(I18n.of(context).ignore_current_version_update),
               trailing: ToggleSwitch(
-                checked: Updater.result == Result.yes &&
+                checked:
+                    Updater.result == Result.yes &&
                     Updater.latestVersion != null &&
                     userSetting.ignoreUpdateVersion == Updater.latestVersion,
                 onChanged: (value) async {

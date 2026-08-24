@@ -24,10 +24,13 @@ import 'package:pixez/fluent/component/context_menu.dart';
 import 'package:pixez/fluent/component/pixez_button.dart';
 import 'package:pixez/fluent/component/pixiv_image.dart';
 import 'package:pixez/fluent/page/picture/illust_lighting_page.dart';
+import 'package:pixez/fluent/page/search/result_page.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/models/illust_persist.dart';
 import 'package:pixez/page/history/history_store.dart';
+import 'package:pixez/page/history/illust_history_origin.dart';
 import 'package:pixez/page/picture/illust_store.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 
 class HistoryPage extends HookConsumerWidget {
   const HistoryPage({super.key});
@@ -132,6 +135,8 @@ class _HistoryItem extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final history = reIllust[index];
+    final sourceQuery = restoreIllustHistoryOrigin(history);
     return ContextMenu(
       child: PixEzButton(
         child: PixivImage(reIllust[index].pictureUrl),
@@ -143,6 +148,16 @@ class _HistoryItem extends HookConsumerWidget {
           leading: Icon(WindowsIcons.open_in_new_window),
           onPressed: () => _navigateTo(context),
         ),
+        if (sourceQuery != null)
+          MenuFlyoutItem(
+            text: Text(
+              I18n.of(context).jump_to_source_search_page(
+                sourceQuery.normalizedPage,
+              ),
+            ),
+            leading: Icon(FluentIcons.search),
+            onPressed: () => _navigateToSourceSearch(context, sourceQuery),
+          ),
         MenuFlyoutItem(
           text: Text(I18n.of(context).delete),
           leading: Icon(FluentIcons.delete),
@@ -152,12 +167,32 @@ class _HistoryItem extends HookConsumerWidget {
     );
   }
 
+  void _navigateToSourceSearch(
+    BuildContext context,
+    IllustSearchQuery sourceQuery,
+  ) {
+    Leader.push(
+      context,
+      ResultPage(
+        word: sourceQuery.word,
+        translatedName: sourceQuery.translatedName,
+        initialQuery: sourceQuery,
+      ),
+      icon: Icon(FluentIcons.search),
+      title: Text('${I18n.of(context).search}: ${sourceQuery.word}'),
+    );
+  }
+
   void _navigateTo(BuildContext context) {
     Leader.push(
       context,
       IllustLightingPage(
         id: reIllust[index].illustId,
-        store: IllustStore(reIllust[index].illustId, null),
+        store: IllustStore(reIllust[index].illustId, null)
+          ..setSearchOrigin(
+            queryJson: reIllust[index].sourceQueryJson,
+            page: reIllust[index].sourcePage,
+          ),
       ),
       icon: Icon(FluentIcons.picture),
       title: Text(I18n.of(context).illust_id + ': ${reIllust[index].illustId}'),

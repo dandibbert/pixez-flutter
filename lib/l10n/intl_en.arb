@@ -331,6 +331,26 @@
   "no_result": "0 result",
   "pre": "Pre",
   "next": "Next",
+  "search_result_mode": "Search result browsing",
+  "search_result_mode_infinite": "Infinite waterfall",
+  "search_result_mode_paged": "Paged navigation",
+  "search_result_page": "Page {page}",
+  "@search_result_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
+  "jump_to_page": "Jump to page",
+  "page_number_hint": "Enter a positive page number",
+  "search_page_unavailable": "This page is unavailable or has no results.",
+  "history_actions": "Search history actions",
+  "jump_to_saved_page": "Open saved page {page}",
+  "@jump_to_saved_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
+  "history_item_actions": "Artwork history actions",
+  "jump_to_source_search_page": "Open source search page {page}",
+  "@jump_to_source_search_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
   "submit": "Submit",
   "thanks_for_your_feedback": "Thanks for your feedback",
   "input": "Input",

@@ -17,18 +17,27 @@
 import 'dart:async';
 
 import 'package:bot_toast/bot_toast.dart';
+import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show showDateRangePicker;
 import 'package:pixez/i18n.dart';
 import 'package:pixez/fluent/lighting/fluent_lighting_page.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result_illust_store.dart';
+import 'package:pixez/store/search_result_mode.dart';
 
 class ResultIllustList extends StatefulWidget {
-  final String word;
+  final IllustSearchQuery initialQuery;
+  final ValueChanged<IllustSearchQuery>? onQueryChanged;
 
-  const ResultIllustList({Key? key, required this.word}) : super(key: key);
+  const ResultIllustList({
+    Key? key,
+    required this.initialQuery,
+    this.onQueryChanged,
+  }) : super(key: key);
 
   @override
   _ResultIllustListState createState() => _ResultIllustListState();
@@ -36,16 +45,26 @@ class ResultIllustList extends StatefulWidget {
 
 class _ResultIllustListState extends State<ResultIllustList> {
   late ResultIllustStore resultIllustStore;
-  late ApiForceSource futureGet;
+  late LightSource futureGet;
+  late IllustSearchQuery _query;
   late ScrollController _scrollController;
   late StreamSubscription<String> listen;
 
   @override
   void initState() {
-    _scrollController = ScrollController();
-    futureGet = ApiForceSource(
-        futureGet: (e) => apiClient.getSearchIllust(widget.word));
     super.initState();
+    _query = widget.initialQuery;
+    searchTarget = _query.searchTarget;
+    selectSort = _query.sort;
+    _starValue = _query.starValue;
+    if (_query.startDate != null && _query.endDate != null) {
+      _dateTimeRange = DateTimeRange(
+        start: _query.startDate!,
+        end: _query.endDate!,
+      );
+    }
+    _scrollController = ScrollController();
+    _changeQueryParams(page: _query.normalizedPage, source: _query.source);
     listen = topStore.topStream.listen((event) {
       if (event == "401") {
         _scrollController.position.jumpTo(0);
@@ -78,12 +97,12 @@ class _ResultIllustListState extends State<ResultIllustList> {
     "date_asc",
     "popular_desc",
     "popular_male_desc",
-    "popular_female_desc"
+    "popular_female_desc",
   ];
   static List<String> search_target = [
     "partial_match_for_tags",
     "exact_match_for_tags",
-    "title_and_caption"
+    "title_and_caption",
   ];
   String searchTarget = search_target[0];
   String selectSort = "date_desc";
@@ -101,20 +120,30 @@ class _ResultIllustListState extends State<ResultIllustList> {
                 icon: Icon(FluentIcons.date_time),
                 onPressed: () {
                   _buildShowDateRange(context);
-                }),
+              },
+            ),
             _buildStar(),
             IconButton(
                 icon: Icon(FluentIcons.filter),
                 onPressed: () {
                   _buildShowBottomSheet(context);
                   // _showMaterialBottom();
-                }),
+              },
+            ),
           ],
         ),
       ),
       content: LightingList(
         source: futureGet,
         scrollController: _scrollController,
+        filter: (illust) {
+          return switch (_query.ugoiraFilter) {
+            UgoiraFilter.all => true,
+            UgoiraFilter.onlyUgoira => illust.type == 'ugoira',
+            UgoiraFilter.noUgoira => illust.type != 'ugoira',
+          };
+        },
+        onPageChanged: _onPageChanged,
       ),
     );
   }
@@ -122,40 +151,91 @@ class _ResultIllustListState extends State<ResultIllustList> {
   DateTimeRange? _dateTimeRange;
 
   Future _buildShowDateRange(BuildContext context) async {
-    throw Exception('Not Impliment');
-    // DateTimeRange? dateTimeRange = await showDateRangePicker(
-    //     context: context,
-    //     initialDateRange: _dateTimeRange,
-    //     firstDate: DateTime.fromMillisecondsSinceEpoch(
-    //         DateTime.now().millisecondsSinceEpoch -
-    //             (24 * 60 * 60 * 365 * 1000 * 8)),
-    //     lastDate: DateTime.now());
-    // if (dateTimeRange != null) {
-    //   _dateTimeRange = dateTimeRange;
-    //   setState(() {
-    //     _changeQueryParams();
-    //   });
-    // }
+    final dateTimeRange = await showDateRangePicker(
+      context: context,
+      initialDateRange: _dateTimeRange,
+      firstDate: DateTime(2007, 8),
+      lastDate: DateTime.now(),
+    );
+    if (dateTimeRange == null || !mounted) return;
+    _dateTimeRange = dateTimeRange;
+    setState(_changeQueryParams);
   }
 
-  _changeQueryParams() {
-    if (_starValue == 0)
-      futureGet = ApiForceSource(
-          futureGet: (bool e) => apiClient.getSearchIllust(widget.word,
-              search_target: searchTarget,
+  void _changeQueryParams({
+    int page = 1,
+    IllustSearchSource source = IllustSearchSource.normal,
+  }) {
+    _query = _query.copyWith(
+      searchTarget: searchTarget,
               sort: selectSort,
-              start_date: _dateTimeRange?.start,
-              end_date: _dateTimeRange?.end,
-              bookmark_num: null));
-    else
-      futureGet = ApiForceSource(
-          futureGet: (bool e) => apiClient.getSearchIllust(
-              '${widget.word} ${_starValue}users入り',
-              search_target: searchTarget,
-              sort: selectSort,
-              start_date: _dateTimeRange?.start,
-              end_date: _dateTimeRange?.end,
-              bookmark_num: null));
+      startDate: _dateTimeRange?.start,
+      endDate: _dateTimeRange?.end,
+      bookmarkRange: _query.bookmarkRange,
+      starValue: _starValue,
+      page: source == IllustSearchSource.normal ? page : 1,
+      source: source,
+    );
+    futureGet = _buildSource(_query);
+    widget.onQueryChanged?.call(_query);
+  }
+
+  LightSource _buildSource(IllustSearchQuery query) {
+    if (query.source == IllustSearchSource.popularPreview) {
+      if (query.mode == SearchResultMode.paged) {
+        return ApiPagedSource(
+          searchQueryJson: query.copyWith(page: 1).encode(),
+          searchPage: 1,
+          futureGet: (page, _) {
+            if (page != 1) {
+              return Future.error(StateError('Popular preview has one page'));
+            }
+            return apiClient.getPopularPreview(query.word);
+          },
+        );
+      }
+      return ApiForceSource(
+        futureGet: (_) => apiClient.getPopularPreview(query.word),
+        searchQueryJson: query.copyWith(page: 1).encode(),
+        searchPage: 1,
+      );
+    }
+    Future<Response> fetchPage(int page, bool force) {
+      final pageQuery = query.copyWith(page: page);
+      return apiClient.getSearchIllust(
+        pageQuery.requestWord,
+        search_target: pageQuery.searchTarget,
+        sort: pageQuery.sort,
+        start_date: pageQuery.startDate,
+        end_date: pageQuery.endDate,
+        bookmark_num: pageQuery.bookmarkRange,
+        search_ai_type: pageQuery.searchAIType,
+        offset: pageQuery.offset,
+        force: force,
+      );
+    }
+
+    if (query.mode == SearchResultMode.paged) {
+      return ApiPagedSource(
+        initialPage: query.normalizedPage,
+        futureGet: fetchPage,
+        searchQueryJson: query.encode(),
+        searchPage: query.normalizedPage,
+      );
+    }
+    return ApiForceSource(
+      futureGet: (force) => fetchPage(1, force),
+      searchQueryJson: query.copyWith(page: 1).encode(),
+      searchPage: 1,
+    );
+  }
+
+  void _onPageChanged(int page) {
+    if (_query.page == page) return;
+    setState(() {
+      _query = _query.copyWith(page: page);
+    });
+    widget.onQueryChanged?.call(_query);
   }
 
   void _buildShowBottomSheet(BuildContext context) {
@@ -163,7 +243,8 @@ class _ResultIllustListState extends State<ResultIllustList> {
       context: context,
       builder: (context) => ContentDialog(
         title: Text(I18n.of(context).filter),
-        content: StatefulBuilder(builder: (_, setS) {
+        content: StatefulBuilder(
+          builder: (_, setS) {
           return SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) => Container(
@@ -180,12 +261,15 @@ class _ResultIllustListState extends State<ResultIllustList> {
                           value: search_target.indexOf(searchTarget),
                           items: [
                             ComboBoxItem(
-                              child:
-                                  Text(I18n.of(context).partial_match_for_tag),
+                                child: Text(
+                                  I18n.of(context).partial_match_for_tag,
+                                ),
                               value: 0,
                             ),
                             ComboBoxItem(
-                              child: Text(I18n.of(context).exact_match_for_tag),
+                                child: Text(
+                                  I18n.of(context).exact_match_for_tag,
+                                ),
                               value: 1,
                             ),
                             ComboBoxItem(
@@ -225,7 +309,9 @@ class _ResultIllustListState extends State<ResultIllustList> {
                               value: 3,
                             ),
                             ComboBoxItem(
-                              child: Text(I18n.of(context).popular_female_desc),
+                                child: Text(
+                                  I18n.of(context).popular_female_desc,
+                                ),
                               value: 4,
                             ),
                           ],
@@ -234,9 +320,9 @@ class _ResultIllustListState extends State<ResultIllustList> {
                               if (accountStore.now!.isPremium == 0) {
                                 BotToast.showText(text: 'not premium');
                                 setState(() {
-                                  futureGet = ApiForceSource(
-                                      futureGet: (bool e) => apiClient
-                                          .getPopularPreview(widget.word));
+                                    _changeQueryParams(
+                                      source: IllustSearchSource.popularPreview,
+                                    );
                                 });
                                 Navigator.of(context).pop();
                                 return;
@@ -249,15 +335,14 @@ class _ResultIllustListState extends State<ResultIllustList> {
                         ),
                       ),
                     ),
-                    Container(
-                      height: 16,
-                    )
+                      Container(height: 16),
                   ],
                 ),
               ),
             ),
           );
-        }),
+          },
+        ),
         actions: [
           FilledButton(
             onPressed: () {
@@ -309,6 +394,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
               },
             );
           }
-        }).toList());
+      }).toList(),
+    );
   }
 }

@@ -18,6 +18,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/tags.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result/painter/search_result_painter_page.dart';
 import 'package:pixez/page/search/result_illust_list.dart';
 import 'package:pixez/utils/haptic_util.dart';
@@ -25,20 +26,51 @@ import 'package:pixez/utils/haptic_util.dart';
 class ResultPage extends StatefulWidget {
   final String word;
   final String translatedName;
+  final IllustSearchQuery? initialQuery;
 
-  const ResultPage({Key? key, required this.word, this.translatedName = ''})
-      : super(key: key);
+  const ResultPage({
+    Key? key,
+    required this.word,
+    this.translatedName = '',
+    this.initialQuery,
+  }) : super(key: key);
 
   @override
   _ResultPageState createState() => _ResultPageState();
 }
 
 class _ResultPageState extends State<ResultPage> {
+  late IllustSearchQuery _query;
+
   @override
   void initState() {
     super.initState();
-    tagHistoryStore.insert(
-        TagsPersist(name: widget.word, translatedName: widget.translatedName));
+    _query =
+        widget.initialQuery ??
+        IllustSearchQuery(
+          word: widget.word,
+          translatedName: widget.translatedName,
+          mode: userSetting.searchResultMode,
+        );
+    _recordQuery(_query);
+  }
+
+  void _recordQuery(IllustSearchQuery query) async {
+    _query = query;
+    try {
+      await tagHistoryStore.insert(
+        TagsPersist(
+          name: query.word,
+          translatedName: query.translatedName,
+          type: 0,
+          lastPage: query.normalizedPage,
+          queryJson: query.encode(),
+        ),
+        historyType: 0,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Failed to save search history: $error\n$stackTrace');
+    }
   }
 
   int index = 0;
@@ -60,20 +92,21 @@ class _ResultPageState extends State<ResultPage> {
                 index = i;
               },
               tabs: [
-                Tab(
-                  text: I18n.of(context).illust,
+              Tab(text: I18n.of(context).illust),
+              Tab(text: I18n.of(context).painter),
+            ],
                 ),
-                Tab(
-                  text: I18n.of(context).painter,
                 ),
-              ]),
+        body: TabBarView(
+          children: [
+            ResultIllustList(
+              initialQuery: _query,
+              restoreQuery: widget.initialQuery != null,
+              onQueryChanged: _recordQuery,
         ),
-        body: TabBarView(children: [
-          ResultIllustList(word: widget.word),
-          SearchResultPainterPage(
-            word: widget.word,
+            SearchResultPainterPage(word: _query.word),
+          ],
           ),
-        ]),
       ),
     );
   }

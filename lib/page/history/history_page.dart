@@ -17,15 +17,20 @@
 import 'dart:math';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart' show Card, EdgeInsets;
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/models/illust_persist.dart';
+import 'package:pixez/page/history/illust_history_origin.dart';
 import 'package:pixez/page/history/history_store.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/page/picture/illust_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/page/search/result_page.dart';
+
+enum _HistoryAction { delete, openSourceSearch }
 
 class HistoryPage extends HookConsumerWidget {
   const HistoryPage({super.key});
@@ -50,54 +55,91 @@ class HistoryPage extends HookConsumerWidget {
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: rowCount),
             itemBuilder: (context, index) {
+              final history = reIllust[index];
               return GestureDetector(
                   onTap: () {
                     HapticUtil.selectionClick();
                     Navigator.of(context, rootNavigator: true).push(
                         MaterialPageRoute(builder: (BuildContext context) {
                       return IllustLightingPage(
-                          id: reIllust[index].illustId,
-                          store: IllustStore(reIllust[index].illustId, null));
+                          id: history.illustId,
+                          store: IllustStore(history.illustId, null)
+                            ..setSearchOrigin(
+                              queryJson: history.sourceQueryJson,
+                              page: history.sourcePage,
+                            ));
                     }));
                   },
-                  onLongPress: () async {
+                  onLongPress: () {
                     HapticUtil.heavy();
-                    final result = await showDialog(
-                        context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            title: Text("${I18n.of(context).delete}?"),
-                            actions: <Widget>[
-                              TextButton(
-                                child: Text(I18n.of(context).cancel),
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                              TextButton(
-                                child: Text(I18n.of(context).ok),
-                                onPressed: () {
-                                  Navigator.of(context).pop("OK");
-                                },
-                              ),
-                            ],
-                          );
-                        });
-                    if (result == "OK") {
-                      ref
-                          .read(historyProvider.notifier)
-                          .delete(reIllust[index].illustId);
-                    }
+                    _showHistoryActions(context, ref, history);
                   },
+                  onSecondaryTap: () =>
+                      _showHistoryActions(context, ref, history),
                   child: Card(
                       margin: EdgeInsets.all(8),
-                      child: PixivImage(reIllust[index].pictureUrl)));
+                      child: PixivImage(history.pictureUrl)));
             });
       });
     }
     return Center(
       child: Container(),
     );
+  }
+
+  Future<void> _showHistoryActions(
+    BuildContext context,
+    WidgetRef ref,
+    IllustPersist history,
+  ) async {
+    final sourceQuery = restoreIllustHistoryOrigin(history);
+    final action = await showDialog<_HistoryAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(I18n.of(context).history_item_actions),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(I18n.of(context).cancel),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_HistoryAction.delete),
+            child: Text(I18n.of(context).delete),
+          ),
+          if (sourceQuery != null)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext)
+                  .pop(_HistoryAction.openSourceSearch),
+              child: Text(
+                I18n.of(context).jump_to_source_search_page(
+                  sourceQuery.normalizedPage,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (!context.mounted) return;
+    switch (action) {
+      case _HistoryAction.delete:
+        await ref.read(historyProvider.notifier).delete(history.illustId);
+        return;
+      case _HistoryAction.openSourceSearch:
+        if (sourceQuery == null) return;
+        await Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (_) => ResultPage(
+              word: sourceQuery.word,
+              translatedName: sourceQuery.translatedName,
+              initialQuery: sourceQuery,
+            ),
+          ),
+        );
+        return;
+      case null:
+        return;
+    }
   }
 
   @override

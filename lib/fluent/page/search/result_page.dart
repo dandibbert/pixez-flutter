@@ -18,26 +18,58 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/tags.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/fluent/page/search/result/painter/search_result_painter_page.dart';
 import 'package:pixez/fluent/page/search/result_illust_list.dart';
 
 class ResultPage extends StatefulWidget {
   final String word;
   final String translatedName;
+  final IllustSearchQuery? initialQuery;
 
-  const ResultPage({Key? key, required this.word, this.translatedName = ''})
-      : super(key: key);
+  const ResultPage({
+    Key? key,
+    required this.word,
+    this.translatedName = '',
+    this.initialQuery,
+  }) : super(key: key);
 
   @override
   _ResultPageState createState() => _ResultPageState();
 }
 
 class _ResultPageState extends State<ResultPage> {
+  late IllustSearchQuery _query;
+
   @override
   void initState() {
     super.initState();
-    tagHistoryStore.insert(
-        TagsPersist(name: widget.word, translatedName: widget.translatedName));
+    _query =
+        widget.initialQuery ??
+        IllustSearchQuery(
+          word: widget.word,
+          translatedName: widget.translatedName,
+          mode: userSetting.searchResultMode,
+        );
+    _recordQuery(_query);
+  }
+
+  void _recordQuery(IllustSearchQuery query) async {
+    _query = query;
+    try {
+      await tagHistoryStore.insert(
+        TagsPersist(
+          name: query.word,
+          translatedName: query.translatedName,
+          type: 0,
+          lastPage: query.normalizedPage,
+          queryJson: query.encode(),
+        ),
+        historyType: 0,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Failed to save search history: $error\n$stackTrace');
+    }
   }
 
   int index = 0;
@@ -52,12 +84,15 @@ class _ResultPageState extends State<ResultPage> {
         items: [
           PaneItem(
             icon: Icon(FluentIcons.picture),
-            body: ResultIllustList(word: widget.word),
+            body: ResultIllustList(
+              initialQuery: _query,
+              onQueryChanged: _recordQuery,
+            ),
             title: Text(I18n.of(context).illust),
           ),
           PaneItem(
             icon: Icon(FluentIcons.format_painter),
-            body: SearchResultPainterPage(word: widget.word),
+            body: SearchResultPainterPage(word: _query.word),
             title: Text(I18n.of(context).painter),
           ),
         ],

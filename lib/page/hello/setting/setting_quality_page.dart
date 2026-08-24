@@ -34,6 +34,7 @@ import 'package:pixez/page/network/network_page.dart';
 import 'package:pixez/page/platform/platform_page.dart';
 import 'package:pixez/store/welcome_page_type.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/store/search_result_mode.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class SettingQualityPage extends StatefulWidget {
@@ -205,6 +206,22 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                         .toList(),
                     onChange: (index) {
                       userSetting.setMaterialWelcomePageIndex(index);
+                    },
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.manage_search),
+                  title: Text(I18n.of(context).search_result_mode),
+                  trailing: SettingSelectMenu(
+                    index: userSetting.searchResultMode.index,
+                    items: [
+                      I18n.of(context).search_result_mode_infinite,
+                      I18n.of(context).search_result_mode_paged,
+                    ],
+                    onChange: (index) {
+                      userSetting.setSearchResultMode(
+                        SearchResultMode.values[index],
+                      );
                     },
                   ),
                 ),
@@ -386,9 +403,11 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                 ),
                 if (!Constants.isGooglePlay && !Platform.isIOS)
                   SwitchListTile(
-                    value: Updater.result == Result.yes &&
+                    value:
+                        Updater.result == Result.yes &&
                         Updater.latestVersion != null &&
-                        userSetting.ignoreUpdateVersion == Updater.latestVersion,
+                        userSetting.ignoreUpdateVersion ==
+                            Updater.latestVersion,
                     title: Text(I18n.of(context).ignore_current_version_update),
                     onChanged: (value) async {
                       HapticUtil.light();

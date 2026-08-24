@@ -33,6 +33,10 @@ class IllustPersist {
   String? userName;
   @JsonKey(name: "title")
   String? title;
+  @JsonKey(name: 'source_query_json')
+  String? sourceQueryJson;
+  @JsonKey(name: 'source_page')
+  int? sourcePage;
   int time;
 
   IllustPersist(
@@ -42,7 +46,9 @@ class IllustPersist {
       required this.pictureUrl,
       required this.time,
       required this.title,
-      required this.userName});
+      required this.userName,
+      this.sourceQueryJson,
+      this.sourcePage});
 
   factory IllustPersist.fromJson(Map<String, dynamic> json) =>
       _$IllustPersistFromJson(json);
@@ -58,6 +64,8 @@ final String cpicture_url = "picture_url";
 final String ctitle = "title";
 final String cuser_name = "user_name";
 final String ctime = "time";
+final String csource_query_json = 'source_query_json';
+final String csource_page = 'source_page';
 
 class IllustPersistProvider {
   late Database db;
@@ -71,6 +79,8 @@ create table $tableIllustPersist (
   $cpicture_url text not null,
   $ctitle text,
   $cuser_name text,
+  $csource_query_json text,
+  $csource_page integer,
     $ctime integer not null
   )
 ''');
@@ -85,12 +95,21 @@ create table $tableIllustPersist (
     ''');
   }
 
-  Future open() async {
-    String databasesPath = (await getDatabasesPath());
-    String path = join(databasesPath, 'illustpersist.db');
+  void _updateTableV2ToV3(Batch batch) {
+    batch.execute(
+      'ALTER TABLE $tableIllustPersist ADD $csource_query_json TEXT',
+    );
+    batch.execute(
+      'ALTER TABLE $tableIllustPersist ADD $csource_page INTEGER',
+    );
+  }
+
+  Future open({String? databasePath}) async {
+    String path = databasePath ??
+        join(await getDatabasesPath(), 'illustpersist.db');
     db = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (Database db, int version) async {
         var batch = db.batch();
         _createTableV2(batch);
@@ -101,6 +120,9 @@ create table $tableIllustPersist (
         if (oldVersion < 2) {
           _updateTableV1ToV2(batch);
         }
+        if (oldVersion < 3) {
+          _updateTableV2ToV3(batch);
+        }
         await batch.commit();
       },
     );
@@ -110,6 +132,8 @@ create table $tableIllustPersist (
     final result = await getAccount(todo.illustId);
     if (result != null) {
       todo.id = result.id;
+      todo.sourceQueryJson ??= result.sourceQueryJson;
+      todo.sourcePage ??= result.sourcePage;
     }
     todo.id = await db.insert(tableIllustPersist, todo.toJson(),
         conflictAlgorithm: ConflictAlgorithm.replace);
@@ -118,7 +142,15 @@ create table $tableIllustPersist (
 
   Future<IllustPersist?> getAccount(int illust_id) async {
     List<Map<String, dynamic>> maps = await db.query(tableIllustPersist,
-        columns: [cid, cillust_id, cuser_id, cpicture_url, ctime],
+        columns: [
+          cid,
+          cillust_id,
+          cuser_id,
+          cpicture_url,
+          ctime,
+          csource_query_json,
+          csource_page,
+        ],
         where: '$cillust_id = ?',
         whereArgs: [illust_id]);
     if (maps.length > 0) {
@@ -137,7 +169,9 @@ create table $tableIllustPersist (
           cpicture_url,
           ctime,
           cuser_name,
-          ctitle
+          ctitle,
+          csource_query_json,
+          csource_page,
         ],
         where: '$ctitle LIKE ? or $cuser_name LIKE ?',
         whereArgs: ["%${word}%", "%${word}%"],
@@ -161,7 +195,9 @@ create table $tableIllustPersist (
           cpicture_url,
           ctime,
           cuser_name,
-          ctitle
+          ctitle,
+          csource_query_json,
+          csource_page,
         ],
         orderBy: ctime);
 

@@ -33,6 +33,7 @@ import 'package:pixez/network/oauth_client.dart';
 import 'package:pixez/page/about/languages.dart';
 import 'package:pixez/secure_plugin.dart';
 import 'package:pixez/store/welcome_page_type.dart';
+import 'package:pixez/store/search_result_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'user_setting.g.dart';
@@ -100,9 +101,12 @@ abstract class _UserSetting with Store {
   static const String DRAG_START_X_KEY = "drag_start_x";
   static const String AUTO_TAG_WHEN_STAR_KEY = "auto_tag_when_star";
   static const String HAPTIC_FEEDBACK_KEY = "haptic_feedback";
+  static const String SEARCH_RESULT_MODE_KEY = "search_result_mode";
 
   @observable
   double dragStartX = 0;
+  @observable
+  SearchResultMode searchResultMode = SearchResultMode.infinite;
   @observable
   bool illustDetailSaveSkipLongPress = false;
   @observable
@@ -588,6 +592,9 @@ abstract class _UserSetting with Store {
     ignoreUpdateVersion = prefs.getString(IGNORE_UPDATE_VERSION_KEY);
     illustDetailSaveSkipLongPress =
         prefs.getBool(ILLUST_DETAIL_SAVE_SKIP_LONG_PRESS_KEY) ?? false;
+    searchResultMode = SearchResultMode.fromCode(
+      prefs.getString(SEARCH_RESULT_MODE_KEY),
+    );
     if (Platform.isAndroid) {
       try {
         await SecurePlugin.configSecureWindow(nsfwMask);
@@ -611,6 +618,12 @@ abstract class _UserSetting with Store {
         return 1;
     }
     return num;
+  }
+
+  @action
+  Future<void> setSearchResultMode(SearchResultMode value) async {
+    await prefs.setString(SEARCH_RESULT_MODE_KEY, value.code);
+    searchResultMode = value;
   }
 
   @action

@@ -47,12 +47,19 @@ abstract class _IllustStoreBase with Store {
   bool captionFetching = false;
   @observable
   IllustSeriesDetailResponse? illustSeriesDetailResponse;
+  String? sourceQueryJson;
+  int? sourcePage;
 
   void dispose() {}
 
   _IllustStoreBase(this.id, this.illusts) {
     isBookmark = illusts?.isBookmarked ?? false;
     state = illusts?.isBookmarked ?? isBookmark ? 2 : 0;
+  }
+
+  void setSearchOrigin({String? queryJson, int? page}) {
+    sourceQueryJson = queryJson;
+    sourcePage = page;
   }
 
   @action
@@ -96,7 +103,11 @@ abstract class _IllustStoreBase with Store {
     }
     if (illusts != null) {
       try {
-        History.insertIllust(illusts!);
+        await History.insertIllust(
+          illusts!,
+          sourceQueryJson: sourceQueryJson,
+          sourcePage: sourcePage,
+        );
       } catch (e) {}
     }
     if (illusts?.series != null && illustSeriesDetailResponse == null) {

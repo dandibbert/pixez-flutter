@@ -329,6 +329,26 @@
   "no_result": "0 結果",
   "pre": "上一頁",
   "next": "下一頁",
+  "search_result_mode": "搜尋結果瀏覽方式",
+  "search_result_mode_infinite": "無限瀑布流",
+  "search_result_mode_paged": "分頁跳轉",
+  "search_result_page": "第 {page} 頁",
+  "@search_result_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
+  "jump_to_page": "跳轉頁碼",
+  "page_number_hint": "輸入大於 0 的頁碼",
+  "search_page_unavailable": "該頁不存在或沒有搜尋結果。",
+  "history_actions": "搜尋歷史操作",
+  "jump_to_saved_page": "跳轉到記錄的第 {page} 頁",
+  "@jump_to_saved_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
+  "history_item_actions": "作品瀏覽歷史操作",
+  "jump_to_source_search_page": "跳轉到來源搜尋的第 {page} 頁",
+  "@jump_to_source_search_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
   "submit": "提交",
   "thanks_for_your_feedback": "感謝回饋",
   "input": "輸入",
@@ -352,5 +372,6 @@
   "network_mode_standard": "標準連線",
   "network_mode_standard_message": "建議大多數網路環境使用。",
   "ignore_current_version_update": "忽略当前版本更新",
-  "haptic_feedback": "觸感回饋"
+  "haptic_feedback": "觸感回饋",
+  "fit_width": "按寬度鋪滿"
 }

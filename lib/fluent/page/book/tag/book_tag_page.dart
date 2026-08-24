@@ -20,6 +20,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/fluent/page/search/result_illust_list.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 
 class BookTagPage extends StatefulWidget {
   @override
@@ -33,7 +34,8 @@ class _BookTagPageState extends State<BookTagPage>
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (_) {
+    return Observer(
+      builder: (_) {
       return NavigationView(
         pane: NavigationPane(
           selected: _index,
@@ -44,9 +46,14 @@ class _BookTagPageState extends State<BookTagPage>
             for (var i in bookTagStore.bookTagList)
               PaneItem(
                 icon: Icon(FluentIcons.tag),
-                body: ResultIllustList(word: i),
+                  body: ResultIllustList(
+                    initialQuery: IllustSearchQuery(
+                      word: i,
+                      mode: userSetting.searchResultMode,
+                    ),
+                  ),
                 title: Text(i),
-              )
+                ),
           ],
           footerItems: [
             PaneItemAction(
@@ -57,7 +64,8 @@ class _BookTagPageState extends State<BookTagPage>
           displayMode: PaneDisplayMode.top,
         ),
       );
-    });
+      },
+    );
   }
 
   void _showEditDialog(BuildContext context) {

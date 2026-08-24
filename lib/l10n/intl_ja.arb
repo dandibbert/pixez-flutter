@@ -329,6 +329,11 @@
   "no_result": "0 result",
   "pre": "Pre",
   "next": "Next",
+  "history_item_actions": "作品閲覧履歴の操作",
+  "jump_to_source_search_page": "検索元の {page} ページを開く",
+  "@jump_to_source_search_page": {
+    "placeholders": {"page": {"type": "int"}}
+  },
   "submit": "Submit",
   "thanks_for_your_feedback": "Thanks for your feedback",
   "input": "Input",

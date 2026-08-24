@@ -26,6 +26,8 @@ import 'package:pixez/models/tags.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/page/saucenao/sauce_nao_modal.dart';
 import 'package:pixez/page/search/result_page.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
+import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/page/search/search_bar.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/page/search/trend_tags_store.dart';
@@ -46,12 +48,6 @@ class _SearchPageState extends State<SearchPage>
   late AnimationController _animationController;
   late Animation<double> animation;
   late StreamSubscription<String> _topSubscription;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _animationController.forward();
-  }
 
   @override
   void initState() {
@@ -462,14 +458,21 @@ class _SearchPageState extends State<SearchPage>
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: Text('${I18n.of(context).delete}?'),
+              title: Text(I18n.of(context).history_actions),
               actions: [
                 TextButton(
                   onPressed: () {
                     tagHistoryStore.delete(f.id!);
                     Navigator.of(context).pop();
                   },
-                  child: Text(I18n.of(context).ok),
+                  child: Text(I18n.of(context).delete),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _openSavedHistory(context, f);
+                  },
+                  child: Text(I18n.of(context).jump_to_saved_page(f.lastPage)),
                 ),
                 TextButton(
                   onPressed: () {
@@ -484,7 +487,12 @@ class _SearchPageState extends State<SearchPage>
       },
       child: ActionChip(
         padding: EdgeInsets.all(0.0),
-        label: Text(f.name, style: TextStyle(fontSize: 12.0)),
+        label: Text(
+          f.lastPage > 1
+              ? '${f.name} · ${I18n.of(context).search_result_page(f.lastPage)}'
+              : f.name,
+          style: TextStyle(fontSize: 12.0),
+        ),
         onPressed: () {
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
@@ -493,6 +501,30 @@ class _SearchPageState extends State<SearchPage>
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _openSavedHistory(BuildContext context, TagsPersist history) {
+    final decoded = IllustSearchQuery.tryDecode(history.queryJson);
+    final query =
+        (decoded ??
+                IllustSearchQuery(
+                  word: history.name,
+                  translatedName: history.translatedName,
+                ))
+            .copyWith(page: history.lastPage, mode: SearchResultMode.paged);
+    final restoredQuery = query.copyWith(
+      word: history.name,
+      translatedName: history.translatedName,
+    );
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (context) => ResultPage(
+          word: history.name,
+          translatedName: history.translatedName,
+          initialQuery: restoredQuery,
+        ),
       ),
     );
   }

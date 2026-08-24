@@ -18,25 +18,30 @@ import 'dart:async';
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/lighting/lighting_page.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
+import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result_illust_store.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
-
-enum UgoiraFilter {
-  all,
-  onlyUgoira,
-  noUgoira,
-}
+import 'package:pixez/store/search_result_mode.dart';
 
 class ResultIllustList extends StatefulWidget {
-  final String word;
+  final IllustSearchQuery initialQuery;
+  final bool restoreQuery;
+  final ValueChanged<IllustSearchQuery>? onQueryChanged;
 
-  const ResultIllustList({Key? key, required this.word}) : super(key: key);
+  const ResultIllustList({
+    Key? key,
+    required this.initialQuery,
+    this.restoreQuery = false,
+    this.onQueryChanged,
+  }) : super(key: key);
 
   @override
   _ResultIllustListState createState() => _ResultIllustListState();
@@ -44,7 +49,8 @@ class ResultIllustList extends StatefulWidget {
 
 class _ResultIllustListState extends State<ResultIllustList> {
   late ResultIllustStore resultIllustStore;
-  late ApiForceSource futureGet;
+  late LightSource futureGet;
+  late IllustSearchQuery _query;
   late ScrollController _scrollController;
   late StreamSubscription<String> listen;
   final sort = [
@@ -52,12 +58,12 @@ class _ResultIllustListState extends State<ResultIllustList> {
     "date_asc",
     "popular_desc",
     "popular_male_desc",
-    "popular_female_desc"
+    "popular_female_desc",
   ];
   static List<String> search_target = [
     "partial_match_for_tags",
     "exact_match_for_tags",
-    "title_and_caption"
+    "title_and_caption",
   ];
   String searchTarget = search_target[0];
   String selectSort = "date_desc";
@@ -97,9 +103,22 @@ class _ResultIllustListState extends State<ResultIllustList> {
 
   @override
   void initState() {
+    super.initState();
+    _query = widget.initialQuery;
+    searchTarget = _query.searchTarget;
+    selectSort = _query.sort;
+    searchAIType = _query.searchAIType;
+    ugoiraFilter = _query.ugoiraFilter;
+    _bookmarkNumList = List<int>.from(_query.bookmarkRange);
+    _starValue = _query.starValue;
+    if (_query.startDate != null && _query.endDate != null) {
+      _dateTimeRange = DateTimeRange(
+        start: _query.startDate!,
+        end: _query.endDate!,
+      );
+    }
     _scrollController = ScrollController();
     checkInit();
-    super.initState();
     listen = topStore.topStream.listen((event) {
       if (event == "401") {
         _scrollController.position.jumpTo(0);
@@ -117,7 +136,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
         'illust_search_result_record_remember_current_selection';
     recordRememberCurrentSelection =
         Prefer.getBool(recordRememberCurrentSelectionKey) ?? false;
-    if (recordRememberCurrentSelection) {
+    if (recordRememberCurrentSelection && !widget.restoreQuery) {
       if (mounted) {
         setState(() {
           searchTarget = Prefer.getString(searchTargetKey) ?? search_target[0];
@@ -128,8 +147,12 @@ class _ResultIllustListState extends State<ResultIllustList> {
         });
       }
     }
+    if (!mounted) return;
     setState(() {
-      _changeQueryParams();
+      _changeQueryParams(
+        page: widget.restoreQuery ? _query.normalizedPage : 1,
+        source: widget.restoreQuery ? _query.source : IllustSearchSource.normal,
+      );
       inited = true;
     });
   }
@@ -162,19 +185,18 @@ class _ResultIllustListState extends State<ResultIllustList> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => SearchSuggestionPage(
-                              preword: widget.word,
-                            )));
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            SearchSuggestionPage(preword: _query.word),
+                      ),
+                    );
                   },
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Padding(
                       padding: EdgeInsets.only(left: 16.0),
-                      child: Text(
-                        widget.word,
-                        textAlign: TextAlign.center,
-                      ),
+                      child: Text(_query.word, textAlign: TextAlign.center),
                     ),
                   ),
                 ),
@@ -182,8 +204,11 @@ class _ResultIllustListState extends State<ResultIllustList> {
               Align(
                 alignment: Alignment.centerRight,
                 child: Padding(
-                  padding:
-                      const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 8.0),
+                  padding: const EdgeInsets.only(
+                    top: 8.0,
+                    bottom: 8.0,
+                    right: 8.0,
+                  ),
                   child: Row(
                     children: [
                       InkWell(
@@ -193,7 +218,8 @@ class _ResultIllustListState extends State<ResultIllustList> {
                           ),
                           onTap: () {
                             _buildShowDateRange(context);
-                          }),
+                        },
+                      ),
                       if (accountStore.now?.isPremium == 1)
                         Padding(
                           padding: const EdgeInsets.all(4.0),
@@ -210,11 +236,12 @@ class _ResultIllustListState extends State<ResultIllustList> {
                           ),
                           onTap: () {
                             _buildShowBottomSheet(context);
-                          }),
+                        },
+                      ),
                     ],
                   ),
                 ),
-              )
+              ),
             ],
           ),
           Expanded(
@@ -230,7 +257,9 @@ class _ResultIllustListState extends State<ResultIllustList> {
                           UgoiraFilter.noUgoira => illust.type != 'ugoira',
                         };
                       },
-                    ))
+                    onPageChanged: _onPageChanged,
+                  ),
+          ),
         ],
       ),
     );
@@ -243,7 +272,8 @@ class _ResultIllustListState extends State<ResultIllustList> {
         context: context,
         initialDateRange: _dateTimeRange,
         firstDate: DateTime(2007, 8),
-        lastDate: DateTime.now());
+      lastDate: DateTime.now(),
+    );
     if (dateTimeRange != null) {
       _dateTimeRange = dateTimeRange;
       setState(() {
@@ -252,26 +282,86 @@ class _ResultIllustListState extends State<ResultIllustList> {
     }
   }
 
-  _changeQueryParams() {
-    if (_starValue == 0)
-      futureGet = ApiForceSource(
-          futureGet: (bool e) => apiClient.getSearchIllust(widget.word,
-              search_target: searchTarget,
+  void _changeQueryParams({
+    int page = 1,
+    IllustSearchSource source = IllustSearchSource.normal,
+  }) {
+    _query = IllustSearchQuery(
+      word: _query.word,
+      translatedName: _query.translatedName,
+      searchTarget: searchTarget,
               sort: selectSort,
-              start_date: _dateTimeRange?.start,
-              end_date: _dateTimeRange?.end,
-              bookmark_num: _bookmarkNumList,
-              search_ai_type: searchAIType));
-    else
-      futureGet = ApiForceSource(
-          futureGet: (bool e) => apiClient.getSearchIllust(
-              '${widget.word} ${_starValue}users入り',
-              search_target: searchTarget,
-              sort: selectSort,
-              start_date: _dateTimeRange?.start,
-              end_date: _dateTimeRange?.end,
-              bookmark_num: _bookmarkNumList,
-              search_ai_type: searchAIType));
+      startDate: _dateTimeRange?.start,
+      endDate: _dateTimeRange?.end,
+      bookmarkRange: List<int>.unmodifiable(_bookmarkNumList),
+      searchAIType: searchAIType,
+      ugoiraFilter: ugoiraFilter,
+      starValue: _starValue,
+      page: source == IllustSearchSource.normal ? page : 1,
+      mode: _query.mode,
+      source: source,
+    );
+    futureGet = _buildSource(_query);
+    widget.onQueryChanged?.call(_query);
+  }
+
+  LightSource _buildSource(IllustSearchQuery query) {
+    if (query.source == IllustSearchSource.popularPreview) {
+      if (query.mode == SearchResultMode.paged) {
+        return ApiPagedSource(
+          searchQueryJson: query.copyWith(page: 1).encode(),
+          searchPage: 1,
+          futureGet: (page, _) {
+            if (page != 1) {
+              return Future.error(StateError('Popular preview has one page'));
+            }
+            return apiClient.getPopularPreview(query.word);
+          },
+        );
+      }
+      return ApiForceSource(
+        futureGet: (_) => apiClient.getPopularPreview(query.word),
+        searchQueryJson: query.copyWith(page: 1).encode(),
+        searchPage: 1,
+      );
+    }
+
+    Future<Response> fetchPage(int page, bool force) {
+      final pageQuery = query.copyWith(page: page);
+      return apiClient.getSearchIllust(
+        pageQuery.requestWord,
+        search_target: pageQuery.searchTarget,
+        sort: pageQuery.sort,
+        start_date: pageQuery.startDate,
+        end_date: pageQuery.endDate,
+        bookmark_num: pageQuery.bookmarkRange,
+        search_ai_type: pageQuery.searchAIType,
+        offset: pageQuery.offset,
+        force: force,
+      );
+    }
+
+    if (query.mode == SearchResultMode.paged) {
+      return ApiPagedSource(
+        initialPage: query.normalizedPage,
+        futureGet: fetchPage,
+        searchQueryJson: query.encode(),
+        searchPage: query.normalizedPage,
+      );
+    }
+    return ApiForceSource(
+      futureGet: (force) => fetchPage(1, force),
+      searchQueryJson: query.copyWith(page: 1).encode(),
+      searchPage: 1,
+    );
+  }
+
+  void _onPageChanged(int page) {
+    if (_query.page == page) return;
+    setState(() {
+      _query = _query.copyWith(page: page);
+    });
+    widget.onQueryChanged?.call(_query);
   }
 
   void _buildShowBottomSheet(BuildContext context) {
@@ -282,9 +372,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
         ugoiraFilter: ugoiraFilter,
         onPremium: () {
           setState(() {
-            futureGet = ApiForceSource(
-                futureGet: (bool e) =>
-                    apiClient.getPopularPreview(widget.word));
+          _changeQueryParams(source: IllustSearchSource.popularPreview);
           });
         },
         onApply: () {
@@ -292,12 +380,14 @@ class _ResultIllustListState extends State<ResultIllustList> {
             _changeQueryParams();
           });
         },
-        onSateChange: (
-            {required bool recordRememberCurrentSelection,
+      onSateChange:
+          ({
+            required bool recordRememberCurrentSelection,
             required int searchAIType,
             required String searchTarget,
             required String selectSort,
-            required UgoiraFilter ugoiraFilter}) {
+            required UgoiraFilter ugoiraFilter,
+          }) {
           setState(() {
             this.searchAIType = searchAIType;
             this.searchTarget = searchTarget;
@@ -309,16 +399,19 @@ class _ResultIllustListState extends State<ResultIllustList> {
           if (recordRememberCurrentSelection) {
             record();
           }
-        });
+          },
+    );
     // showDialog(context: context, builder: (context) => resultIllustSortWidget);
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(8.0))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
+      ),
         builder: (context) {
           return resultIllustSortWidget;
-        });
+      },
+    );
   }
 
   int _starValue = 0;
@@ -326,11 +419,10 @@ class _ResultIllustListState extends State<ResultIllustList> {
   Widget _buildPremiumStar() {
     return PopupMenuButton<List<int>>(
       initialValue: _bookmarkNumList,
-      child: Icon(
-        Icons.format_list_numbered,
-      ),
+      child: Icon(Icons.format_list_numbered),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16.0))),
+        borderRadius: BorderRadius.all(Radius.circular(16.0)),
+      ),
       itemBuilder: (context) {
         return premiumStarNum.map((List<int> value) {
           if (value.isEmpty) {
@@ -371,11 +463,10 @@ class _ResultIllustListState extends State<ResultIllustList> {
   Widget _buildStar() {
     return PopupMenuButton(
       initialValue: _starValue,
-      child: Icon(
-        Icons.sort,
-      ),
+      child: Icon(Icons.sort),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16.0))),
+        borderRadius: BorderRadius.all(Radius.circular(16.0)),
+      ),
       itemBuilder: (context) {
         return starNum.map((int value) {
           if (value > 0) {
@@ -414,21 +505,24 @@ class ResultIllustSortWidget extends StatefulWidget {
   final UgoiraFilter ugoiraFilter;
   final Function onPremium;
   final Function onApply;
-  final Function(
-      {required String searchTarget,
+  final Function({
+    required String searchTarget,
       required String selectSort,
       required int searchAIType,
       required UgoiraFilter ugoiraFilter,
-      required bool recordRememberCurrentSelection}) onSateChange;
-  const ResultIllustSortWidget(
-      {super.key,
+    required bool recordRememberCurrentSelection,
+  })
+  onSateChange;
+  const ResultIllustSortWidget({
+    super.key,
       required this.searchAIType,
       required this.selectSort,
       required this.searchTarget,
       required this.ugoiraFilter,
       required this.onPremium,
       required this.onApply,
-      required this.onSateChange});
+    required this.onSateChange,
+  });
 
   @override
   State<ResultIllustSortWidget> createState() => _ResultIllustSortWidgetState();
@@ -444,12 +538,12 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
     "date_asc",
     "popular_desc",
     "popular_male_desc",
-    "popular_female_desc"
+    "popular_female_desc",
   ];
   static List<String> search_target = [
     "partial_match_for_tags",
     "exact_match_for_tags",
-    "title_and_caption"
+    "title_and_caption",
   ];
   bool recordRememberCurrentSelection = false;
   final rememberKey = 'illust_search_result_record_remember_current_selection';
@@ -481,7 +575,7 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
       if (accountStore.now != null && accountStore.now!.isPremium == 1) ...{
         3: I18n.of(context).popular_male_desc,
         4: I18n.of(context).popular_female_desc,
-      }
+      },
     };
     final ugoiraFilterMap = {
       UgoiraFilter.all: I18n.of(context).all,
@@ -501,10 +595,13 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                   children: <Widget>[
                     TextButton(
                         onPressed: () {},
-                        child: Text(I18n.of(context).filter,
+                    child: Text(
+                      I18n.of(context).filter,
                             style: TextStyle(
-                                color:
-                                    Theme.of(context).colorScheme.secondary))),
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                  ),
                     TextButton(
                         onPressed: () {
                           widget.onSateChange(
@@ -513,14 +610,18 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                               searchAIType: searchAIType,
                               ugoiraFilter: ugoiraFilter,
                               recordRememberCurrentSelection:
-                                  recordRememberCurrentSelection);
+                            recordRememberCurrentSelection,
+                      );
                           widget.onApply();
                           Navigator.of(context).pop();
                         },
-                        child: Text(I18n.of(context).apply,
+                    child: Text(
+                      I18n.of(context).apply,
                             style: TextStyle(
-                                color:
-                                    Theme.of(context).colorScheme.secondary))),
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                  ),
                   ],
                 ),
                 Container(
@@ -528,8 +629,7 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      for (final (index, data)
-                          in searchTargetMap.entries.indexed)
+                    for (final (index, data) in searchTargetMap.entries.indexed)
                         _buildTargetItem(index, data, context),
                     ],
                   ),
@@ -561,9 +661,9 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                               padding: EdgeInsets.symmetric(vertical: 8.0),
                               decoration: ugoiraFilter == entry.key
                                   ? BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .secondaryContainer,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondaryContainer,
                                       borderRadius: BorderRadius.circular(8.0),
                                     )
                                   : null,
@@ -597,17 +697,19 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                   },
                   title: Text(I18n.of(context).remember_current_selections),
                 ),
-                Container(
-                  height: 16,
-                )
+              Container(height: 16),
               ],
             ),
-          )),
+        ),
+      ),
     );
   }
 
   Widget _buildSortItem(
-      int index, BuildContext context, MapEntry<int, String> data) {
+    int index,
+    BuildContext context,
+    MapEntry<int, String> data,
+  ) {
     return GestureDetector(
       onTap: () {
         if (accountStore.now != null && index == 2) {
@@ -632,15 +734,22 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                 borderRadius: BorderRadius.circular(8.0),
               )
             : null,
-        padding:
-            const EdgeInsets.only(top: 10.0, bottom: 10.0, left: 8, right: 8),
+        padding: const EdgeInsets.only(
+          top: 10.0,
+          bottom: 10.0,
+          left: 8,
+          right: 8,
+        ),
         alignment: Alignment.centerLeft,
       ),
     );
   }
 
   Widget _buildTargetItem(
-      int index, MapEntry<int, String> data, BuildContext context) {
+    int index,
+    MapEntry<int, String> data,
+    BuildContext context,
+  ) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -657,11 +766,14 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
                 borderRadius: BorderRadius.circular(8.0),
               )
             : null,
-        padding:
-            const EdgeInsets.only(top: 10.0, bottom: 10.0, left: 8, right: 8),
+        padding: const EdgeInsets.only(
+          top: 10.0,
+          bottom: 10.0,
+          left: 8,
+          right: 8,
+        ),
         alignment: Alignment.centerLeft,
       ),
     );
   }
 }
-

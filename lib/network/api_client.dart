@@ -443,6 +443,8 @@ class ApiClient {
     DateTime? end_date,
     List<int>? bookmark_num,
     int? search_ai_type,
+    int? offset,
+    bool force = false,
   }) async {
     final bookmark_num_min = bookmark_num?.elementAtOrNull(0);
     final bookmark_num_max = bookmark_num?.elementAtOrNull(1);
@@ -459,7 +461,11 @@ class ApiClient {
         "bookmark_num_min": bookmark_num_min,
         "bookmark_num_max": bookmark_num_max,
         "word": word,
+        "offset": offset,
       }),
+      options: options
+          .copyWith(policy: force ? CachePolicy.refresh : null)
+          .toOptions(),
     );
   }
 

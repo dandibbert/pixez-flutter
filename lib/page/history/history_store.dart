@@ -41,7 +41,11 @@ class History extends Notifier<HistoryState> {
     state = state.copyWith(data: result);
   }
 
-  Future<void> insert(Illusts illust) async {
+  Future<void> insert(
+    Illusts illust, {
+    String? sourceQueryJson,
+    int? sourcePage,
+  }) async {
     await illustPersistProvider.open();
     var illustPersist = IllustPersist(
       illustId: illust.id,
@@ -50,12 +54,18 @@ class History extends Notifier<HistoryState> {
       time: DateTime.now().millisecondsSinceEpoch,
       title: illust.title,
       userName: illust.user.name,
+      sourceQueryJson: sourceQueryJson,
+      sourcePage: sourcePage,
     );
     await illustPersistProvider.insert(illustPersist);
     await fetch();
   }
 
-  static Future<void> insertIllust(Illusts illust) async {
+  static Future<void> insertIllust(
+    Illusts illust, {
+    String? sourceQueryJson,
+    int? sourcePage,
+  }) async {
     final illustPersistProvider = IllustPersistProvider();
     await illustPersistProvider.open();
     var illustPersist = IllustPersist(
@@ -65,6 +75,8 @@ class History extends Notifier<HistoryState> {
       time: DateTime.now().millisecondsSinceEpoch,
       title: illust.title,
       userName: illust.user.name,
+      sourceQueryJson: sourceQueryJson,
+      sourcePage: sourcePage,
     );
     await illustPersistProvider.insert(illustPersist);
   }
@@ -96,6 +108,8 @@ class History extends Notifier<HistoryState> {
         time: illustMap['time'],
         title: illustMap['title'],
         userName: illustMap['user_name'],
+        sourceQueryJson: illustMap['source_query_json'],
+        sourcePage: (illustMap['source_page'] as num?)?.toInt(),
       );
       illustPersistProvider.insert(illustPersist);
     });
