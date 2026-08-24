@@ -37,7 +37,8 @@ dependencies:
   flutter_mobx: ^2.2.1+1
   in_app_purchase: ^3.3.0
   flutter_widget_from_html: ^0.17.2
-  device_info_plus: ^13.2.0
+  device_info_plus:
+    path: plugins/device_info_plus
   flutter_displaymode: ^0.7.0
   receive_sharing_intent: ^1.9.0 
   cached_network_image: ^3.4.1
