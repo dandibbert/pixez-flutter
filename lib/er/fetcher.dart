@@ -99,7 +99,7 @@ class Fetcher {
     await taskPersistProvider.open();
     await taskPersistProvider.getAllAccount();
     LPrinter.d("Fetcher start");
-    receivePort.listen((message) {
+    receivePort.listen((message) async {
       try {
         IsoContactBean isoContactBean = message;
         switch (isoContactBean.state) {
@@ -130,12 +130,17 @@ class Fetcher {
             }
             fetcher.jobMaps.removeWhere((key, value) => key == taskBean.url);
             nextJob();
-            _complete(
-              taskBean.url!,
-              taskBean.savePath!,
-              taskBean.fileName!,
-              taskBean.illusts!,
-            );
+            try {
+              await _complete(
+                taskBean.url!,
+                taskBean.savePath!,
+                taskBean.fileName!,
+                taskBean.illusts!,
+              );
+            } catch (error) {
+              LPrinter.d(error);
+              await _errorD(taskBean.url!);
+            }
             break;
           case IsoTaskState.ERROR:
             TaskBean taskBean = isoContactBean.data;

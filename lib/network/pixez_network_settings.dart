@@ -10,11 +10,22 @@ class PixezNetworkSettings {
   static const accountHost = 'accounts.pixiv.net';
   static const imageHost = 'i.pximg.net';
   static const imageStaticHost = 's.pximg.net';
+  static const apiTimeoutSettings = r.TimeoutSettings(
+    timeout: Duration(seconds: 45),
+    connectTimeout: Duration(seconds: 15),
+  );
+  static const imageTimeoutSettings = r.TimeoutSettings(
+    timeout: Duration(seconds: 90),
+    connectTimeout: Duration(seconds: 15),
+  );
 
   static r.ClientSettings? forHost(String host, NetworkMode mode) {
-    if (mode == NetworkMode.standard) return null;
+    if (mode == NetworkMode.standard) {
+      return const r.ClientSettings(timeoutSettings: apiTimeoutSettings);
+    }
     if (mode == NetworkMode.ech) {
       return r.ClientSettings(
+        timeoutSettings: apiTimeoutSettings,
         enableEch: true,
         requireEch: true,
         tlsSettings: r.TlsSettings(
@@ -35,13 +46,17 @@ class PixezNetworkSettings {
   }
 
   static r.ClientSettings? forImages(String? host, NetworkMode mode) {
-    if (mode == NetworkMode.standard) return null;
-    if (host != imageHost) return null;
-    return compatible();
+    if (mode == NetworkMode.standard || host != imageHost) {
+      return const r.ClientSettings(timeoutSettings: imageTimeoutSettings);
+    }
+    return compatible(timeoutSettings: imageTimeoutSettings);
   }
 
-  static r.ClientSettings compatible() {
+  static r.ClientSettings compatible({
+    r.TimeoutSettings timeoutSettings = apiTimeoutSettings,
+  }) {
     return r.ClientSettings(
+      timeoutSettings: timeoutSettings,
       tlsSettings: r.TlsSettings(verifyCertificates: false, sni: false),
       dnsSettings: r.DnsSettings.dynamic(
         resolver: (host) async {

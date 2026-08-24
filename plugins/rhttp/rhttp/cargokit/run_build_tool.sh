@@ -56,9 +56,9 @@ fi
 # itself is not meant to have any path dependencies.
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  PACKAGE_HASH=$(ls -lTR "$BUILD_TOOL_PKG_DIR" | shasum)
+  PACKAGE_HASH=$(LC_ALL=C ls -lTR "$BUILD_TOOL_PKG_DIR" | LC_ALL=C shasum)
 else
-  PACKAGE_HASH=$(ls -lR --full-time "$BUILD_TOOL_PKG_DIR" | shasum)
+  PACKAGE_HASH=$(LC_ALL=C ls -lR --full-time "$BUILD_TOOL_PKG_DIR" | LC_ALL=C shasum)
 fi
 
 PACKAGE_HASH_FILE=".package_hash"
