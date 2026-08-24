@@ -9,8 +9,13 @@ class MainFlutterWindow: NSWindow, FlutterStreamHandler {
             let creationRequest = PHAssetCreationRequest.forAsset()
             let placeholder = creationRequest.placeholderForCreatedAsset
             creationRequest.addResource(with: .photo, data: imageData, options: nil)
-            let albumChangeRequest = PHAssetCollectionChangeRequest(for: PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .smartAlbumUserLibrary, options: nil).firstObject!)
-            albumChangeRequest?.addAssets([placeholder!] as NSFastEnumeration)
+            guard let album = PHAssetCollection.fetchAssetCollections(
+                with: .smartAlbum,
+                subtype: .smartAlbumUserLibrary,
+                options: nil
+            ).firstObject, let placeholder else { return }
+            let albumChangeRequest = PHAssetCollectionChangeRequest(for: album)
+            albumChangeRequest?.addAssets([placeholder] as NSFastEnumeration)
         } completionHandler: { success, error in
             if success {
                 print("Image saved to Photos library")
@@ -41,6 +46,7 @@ class MainFlutterWindow: NSWindow, FlutterStreamHandler {
         let windowFrame = self.frame
         self.contentViewController = flutterViewController
         self.setFrame(windowFrame, display: true)
+        self.title = "PixEz"
         let batteryChannel = FlutterMethodChannel(
             name: "com.perol.dev/custom_tab",
             binaryMessenger: flutterViewController.engine.binaryMessenger)
@@ -66,13 +72,17 @@ class MainFlutterWindow: NSWindow, FlutterStreamHandler {
     }
 
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        let appDelegate = NSApplication.shared.delegate as! AppDelegate
+        guard let appDelegate = NSApplication.shared.delegate as? AppDelegate else {
+            return FlutterError(code: "invalid_app_delegate", message: nil, details: nil)
+        }
         appDelegate.eventSink = events
         return nil
     }
 
     func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        let appDelegate = NSApplication.shared.delegate as! AppDelegate
+        guard let appDelegate = NSApplication.shared.delegate as? AppDelegate else {
+            return FlutterError(code: "invalid_app_delegate", message: nil, details: nil)
+        }
         appDelegate.eventSink = nil
         return nil
     }

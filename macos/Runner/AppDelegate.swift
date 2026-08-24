@@ -8,6 +8,10 @@ class AppDelegate: FlutterAppDelegate {
         return true
     }
 
+    override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        return true
+    }
+
     override func application(_ application: NSApplication, open urls: [URL]) {
         print(urls)
         for i in urls {

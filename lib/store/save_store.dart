@@ -335,20 +335,26 @@ abstract class _SaveStoreBase with Store {
           fileName = "sanity/$overFileName";
         }
 
-        if (userSetting.isClearOldFormatFile)
-          DocumentPlugin.save(
-            uint8list,
-            fileName,
-            clearOld: userSetting.isClearOldFormatFile,
-          );
-        else
-          DocumentPlugin.save(uint8list, fileName);
+        final success = userSetting.isClearOldFormatFile
+            ? await DocumentPlugin.save(
+                uint8list,
+                fileName,
+                clearOld: userSetting.isClearOldFormatFile,
+              )
+            : await DocumentPlugin.save(uint8list, fileName);
+        if (success != true) {
+          throw StateError('Failed to save image to the gallery.');
+        }
       } catch (e) {
         print(e);
+        rethrow;
       }
       return;
     } else {
-      DocumentPlugin.save(uint8list, fileName);
+      final success = await DocumentPlugin.save(uint8list, fileName);
+      if (success != true) {
+        throw StateError('Failed to save image to the gallery.');
+      }
     }
   }
 
@@ -366,7 +372,7 @@ abstract class _SaveStoreBase with Store {
     Illusts illusts,
     String fileName,
   ) async {
-    saveToGalleryWithUser(
+    await saveToGalleryWithUser(
       uint8list,
       illusts.user.name,
       illusts.user.id,
@@ -421,7 +427,6 @@ abstract class _SaveStoreBase with Store {
     final result = await JSEvalPlugin.eval(illust, func, index, memType);
     return result ?? "";
   }
-
 
   Future<String> _handleFileName(
     Illusts illust,
