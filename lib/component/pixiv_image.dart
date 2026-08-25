@@ -14,14 +14,13 @@
  *
  */
 
-import 'dart:math';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_compatibility_layer/dio_compatibility_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager_dio/flutter_cache_manager_dio.dart';
 
+import 'package:pixez/component/pixiv_image_status.dart';
 import 'package:pixez/er/hoster.dart';
 import 'package:pixez/er/illust_cacher.dart';
 import 'package:pixez/er/pixiv_image_source.dart';
@@ -210,36 +209,35 @@ class _PixivImageState extends State<PixivImage> {
             ? const Duration(milliseconds: 120)
             : Duration.zero;
         return CachedNetworkImage(
-          placeholder: (context, url) {
-            final size = min(
-              min(widget.width ?? 60, widget.height ?? 60),
-              60.0,
-            );
-            return widget.placeWidget ??
-                Container(
+          progressIndicatorBuilder: widget.placeWidget == null
+              ? (context, url, progress) => PixivImageLoadingPlaceholder(
+                  width: widget.width,
                   height: widget.height,
-                  child: Center(
-                    child: SizedBox(
-                      width: size,
-                      height: size,
-                      child: const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: CircularProgressIndicator(),
+                  progress: progress.progress,
+                )
+              : null,
+          placeholder: widget.placeWidget == null
+              ? null
+              : (context, url) => SizedBox(
+                  width: widget.width,
+                  height: widget.height,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      PixivImageLoadingPlaceholder(
+                        width: widget.width,
+                        height: widget.height,
                       ),
-                    ),
+                      widget.placeWidget!,
+                    ],
                   ),
-                );
-          },
-          errorWidget: (context, url, _) => Container(
+                ),
+          errorWidget: (context, url, _) => PixivImageErrorPlaceholder(
+            width: widget.width,
             height: widget.height,
-            child: Center(
-              child: TextButton(
-                onPressed: () {
-                  setState(() {});
-                },
-                child: Text(":("),
-              ),
-            ),
+            onRetry: () {
+              setState(() {});
+            },
           ),
           fadeInDuration: fadeDuration,
           fadeOutDuration: fadeDuration,
