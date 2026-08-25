@@ -28,6 +28,7 @@ import WidgetKit
             
         })
         DocumentPlugin.bind(engineBridge)
+        InstalledFontsPlugin.bind(engineBridge)
         DeepLinkPlugin.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "DeepLinkPlugin")!)
         bindAppWidgetChannel(engineBridge)
     }

@@ -419,15 +419,17 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           fontSize: userSetting.novelFontsize,
           lineHeight: userSetting.novelLineHeight,
           fontFamily: userSetting.novelFontFamily,
+          fontFilePath: userSetting.novelFontFile,
           onFontSizeChanged: (value) {
             userSetting.setNovelFontsizeWithoutSave(value);
           },
           onLineHeightChanged: (value) {
             userSetting.setNovelLineHeight(value, persist: false);
           },
-          onFontFamilyChanged: (value) {
+          onFontFamilyChanged: (choice) {
             userSetting.setNovelFontFamily(
-              NovelFontFamily.normalize(value),
+              choice.family,
+              filePath: choice.filePath,
             );
           },
         );

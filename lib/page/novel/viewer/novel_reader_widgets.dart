@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
+import 'package:pixez/page/novel/viewer/novel_font_picker.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 
@@ -7,9 +9,7 @@ const Key novelReaderHeaderKey = Key('novelReaderHeader');
 const Key novelReaderArticleKey = Key('novelReaderArticle');
 const Key novelReaderPageNavKey = Key('novelReaderPageNav');
 const Key novelReaderSettingsKey = Key('novelReaderSettings');
-const Key novelFontFamilySerifKey = Key('novelFontFamilySerif');
-const Key novelFontFamilySansKey = Key('novelFontFamilySans');
-const Key novelFontFamilySystemKey = Key('novelFontFamilySystem');
+const Key novelFontPickerButtonKey = Key('novelFontPickerButton');
 const Key novelFontSizeSliderKey = Key('novelFontSizeSlider');
 const Key novelLineHeightSliderKey = Key('novelLineHeightSlider');
 const Key novelReaderPreviewKey = Key('novelReaderPreview');
@@ -423,9 +423,12 @@ class NovelReaderSettingsSheet extends StatefulWidget {
   final double fontSize;
   final double lineHeight;
   final String fontFamily;
+  final String? fontFilePath;
+  final List<String>? fontFamilies;
+  final Future<NovelImportedFont?> Function()? importFont;
   final ValueChanged<double> onFontSizeChanged;
   final ValueChanged<double> onLineHeightChanged;
-  final ValueChanged<String> onFontFamilyChanged;
+  final ValueChanged<NovelFontChoice> onFontFamilyChanged;
 
   const NovelReaderSettingsSheet({
     super.key,
@@ -435,6 +438,9 @@ class NovelReaderSettingsSheet extends StatefulWidget {
     required this.onFontSizeChanged,
     required this.onLineHeightChanged,
     required this.onFontFamilyChanged,
+    this.fontFilePath,
+    this.fontFamilies,
+    this.importFont,
   });
 
   @override
@@ -446,20 +452,49 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
   late double _fontSize;
   late double _lineHeight;
   late String _fontFamily;
+  String? _fontFilePath;
 
   @override
   void initState() {
     super.initState();
     _fontSize = widget.fontSize;
     _lineHeight = widget.lineHeight;
-    _fontFamily = NovelFontFamily.normalize(widget.fontFamily);
+    _fontFamily = widget.fontFamily;
+    _fontFilePath = widget.fontFilePath;
   }
 
-  void _setFamily(String family) {
+  void _setFamily(NovelFontChoice choice) {
     setState(() {
-      _fontFamily = family;
+      _fontFamily = choice.family;
+      _fontFilePath = choice.filePath;
     });
-    widget.onFontFamilyChanged(family);
+    widget.onFontFamilyChanged(choice);
+  }
+
+  String _fontLabel() {
+    if (NovelReaderStyle.isDefaultFamily(_fontFamily)) {
+      return I18n.of(context).novel_font_default;
+    }
+    return NovelCustomFont.displayName(_fontFamily);
+  }
+
+  Future<void> _openFontPicker() async {
+    final choice = await Navigator.of(context, rootNavigator: true)
+        .push<NovelFontChoice>(
+          MaterialPageRoute(
+            builder: (context) {
+              return NovelFontPickerPage(
+                selectedFamily: _fontFamily,
+                selectedFilePath: _fontFilePath,
+                families: widget.fontFamilies,
+                importFont: widget.importFont,
+              );
+            },
+          ),
+        );
+    if (choice != null) {
+      _setFamily(choice);
+    }
   }
 
   @override
@@ -487,28 +522,13 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  key: novelFontFamilySerifKey,
-                  label: Text(i18n.novel_font_serif),
-                  selected: _fontFamily == NovelFontFamily.serif,
-                  onSelected: (_) => _setFamily(NovelFontFamily.serif),
-                ),
-                ChoiceChip(
-                  key: novelFontFamilySansKey,
-                  label: Text(i18n.novel_font_sans),
-                  selected: _fontFamily == NovelFontFamily.sans,
-                  onSelected: (_) => _setFamily(NovelFontFamily.sans),
-                ),
-                ChoiceChip(
-                  key: novelFontFamilySystemKey,
-                  label: Text(i18n.system),
-                  selected: _fontFamily == NovelFontFamily.system,
-                  onSelected: (_) => _setFamily(NovelFontFamily.system),
-                ),
-              ],
+            ListTile(
+              key: novelFontPickerButtonKey,
+              contentPadding: EdgeInsets.zero,
+              title: Text(_fontLabel()),
+              subtitle: Text(I18n.of(context).novel_font_search),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _openFontPicker,
             ),
             const SizedBox(height: 8),
             Row(

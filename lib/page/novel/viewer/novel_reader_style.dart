@@ -2,26 +2,12 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 
-class NovelFontFamily {
-  static const String serif = 'serif';
-  static const String sans = 'sans';
-  static const String system = 'system';
-
-  static const List<String> values = <String>[serif, sans, system];
-
-  static String normalize(String? value) {
-    switch (value) {
-      case sans:
-      case system:
-      case serif:
-        return value!;
-      default:
-        return serif;
-    }
-  }
-}
-
 class NovelReaderStyle {
+  static const String defaultFamily = '';
+  static const String serifAlias = 'serif';
+  static const String sansAlias = 'sans';
+  static const String systemAlias = 'system';
+
   static const double defaultFontSize = 16.0;
   static const double minFontSize = 12.0;
   static const double maxFontSize = 32.0;
@@ -82,6 +68,14 @@ class NovelReaderStyle {
     return 'sans-serif';
   }
 
+  static bool isDefaultFamily(String? family) {
+    return family == null ||
+        family.isEmpty ||
+        family == defaultFamily ||
+        family == systemAlias ||
+        family == serifAlias;
+  }
+
   static double clampFontSize(double value) {
     return value.clamp(minFontSize, maxFontSize).toDouble();
   }
@@ -98,26 +92,30 @@ class NovelReaderStyle {
   }) {
     final size = clampFontSize(fontSize);
     final height = clampLineHeight(lineHeight);
-    switch (NovelFontFamily.normalize(fontFamily)) {
-      case NovelFontFamily.sans:
-        return TextStyle(
-          color: color,
-          fontSize: size,
-          height: height,
-          fontFamily: sansFamily,
-          fontFamilyFallback: sansFallbacks,
-        );
-      case NovelFontFamily.system:
-        return TextStyle(color: color, fontSize: size, height: height);
-      case NovelFontFamily.serif:
-      default:
-        return TextStyle(
-          color: color,
-          fontSize: size,
-          height: height,
-          fontFamily: serifFamily,
-          fontFamilyFallback: serifFallbacks,
-        );
+    if (fontFamily == sansAlias) {
+      return TextStyle(
+        color: color,
+        fontSize: size,
+        height: height,
+        fontFamily: sansFamily,
+        fontFamilyFallback: sansFallbacks,
+      );
     }
+    if (isDefaultFamily(fontFamily)) {
+      return TextStyle(
+        color: color,
+        fontSize: size,
+        height: height,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallbacks,
+      );
+    }
+    return TextStyle(
+      color: color,
+      fontSize: size,
+      height: height,
+      fontFamily: fontFamily,
+      fontFamilyFallback: serifFallbacks,
+    );
   }
 }

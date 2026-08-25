@@ -31,6 +31,7 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/network/network_mode.dart';
 import 'package:pixez/network/oauth_client.dart';
 import 'package:pixez/page/about/languages.dart';
+import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
 import 'package:pixez/secure_plugin.dart';
 import 'package:pixez/store/welcome_page_type.dart';
 import 'package:pixez/store/search_result_mode.dart';
@@ -70,6 +71,7 @@ abstract class _UserSetting with Store {
   static const String SAVE_MODE_KEY = "save_mode";
   static const String NOVEL_FONT_SIZE_KEY = "novel_font_size";
   static const String NOVEL_FONT_FAMILY_KEY = "novel_font_family";
+  static const String NOVEL_FONT_FILE_KEY = "novel_font_file";
   static const String NOVEL_LINE_HEIGHT_KEY = "novel_line_height";
   static const String IS_RETURN_AGAIN_TO_EXIT_KEY = "return_again_to_exit";
   static const String IS_CLEAR_OLD_FORMAT_FILE_KEY = "is_clear_old_format_file";
@@ -177,7 +179,8 @@ abstract class _UserSetting with Store {
   bool get needsCompatibleDnsFetch => networkMode == NetworkMode.compat;
   @observable
   double novelFontsize = 16.0;
-  String novelFontFamily = 'serif';
+  String novelFontFamily = '';
+  String? novelFontFile;
   double novelLineHeight = 1.8;
   @observable
   dynamic locale = Locale('en', 'US'); //stupid mobx generator
@@ -402,9 +405,17 @@ abstract class _UserSetting with Store {
     _syncNovelTextStyle();
   }
 
-  Future<void> setNovelFontFamily(String family) async {
+  @action
+  Future<void> setNovelFontFamily(String family, {String? filePath}) async {
     novelFontFamily = family;
+    novelFontFile = filePath;
     await prefs.setString(NOVEL_FONT_FAMILY_KEY, family);
+    if (filePath == null || filePath.isEmpty) {
+      await prefs.remove(NOVEL_FONT_FILE_KEY);
+    } else {
+      await prefs.setString(NOVEL_FONT_FILE_KEY, filePath);
+      await NovelCustomFont.ensureLoaded(family, filePath);
+    }
     _syncNovelTextStyle();
   }
 
@@ -595,9 +606,11 @@ abstract class _UserSetting with Store {
     saveAfterStar = prefs.getBool(SAVE_AFTER_STAR) ?? false;
     starAfterSave = prefs.getBool(STAR_AFTER_SAVE) ?? false;
     novelFontsize = prefs.getDouble(NOVEL_FONT_SIZE_KEY) ?? 16.0;
-    novelFontFamily = prefs.getString(NOVEL_FONT_FAMILY_KEY) ?? 'serif';
+    novelFontFamily = prefs.getString(NOVEL_FONT_FAMILY_KEY) ?? '';
+    novelFontFile = prefs.getString(NOVEL_FONT_FILE_KEY);
     novelLineHeight = prefs.getDouble(NOVEL_LINE_HEIGHT_KEY) ?? 1.8;
     _syncNovelTextStyle();
+    await NovelCustomFont.ensureLoaded(novelFontFamily, novelFontFile);
     saveMode =
         prefs.getInt(SAVE_MODE_KEY) ??
         (isHelplessWay == null ? 0 : (isHelplessWay! ? 2 : 1));

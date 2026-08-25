@@ -39,6 +39,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import com.perol.pixez.plugin.CustomTab
 import com.perol.pixez.plugin.DeepLinkPlugin
+import com.perol.pixez.plugin.InstalledFontsPlugin
 import com.perol.pixez.plugin.JsEvalPlugin
 import com.perol.pixez.plugin.OpenSettinger
 import com.perol.pixez.plugin.Safer
@@ -95,6 +96,7 @@ class MainActivity : FlutterActivity() {
         JsEvalPlugin(this).bindChannel(flutterEngine)
         SecurePlugin(this).bindChannel(flutterEngine)
         SupporterPlugin().bindChannel(this, flutterEngine)
+        InstalledFontsPlugin.bindChannel(flutterEngine)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL

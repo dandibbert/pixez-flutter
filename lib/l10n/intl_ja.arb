@@ -367,5 +367,10 @@
   "novel_font_sans": "ゴシック体",
   "novel_line_height": "行間",
   "reader_page": "ページ",
-  "reader_series": "シリーズ"
+  "reader_series": "シリーズ",
+  "novel_font_default": "デフォルト",
+  "novel_font_import": "フォントファイルを読み込む",
+  "novel_font_search": "インストール済みフォントを検索",
+  "novel_font_import_failed": "フォントファイルを読み込めませんでした",
+  "novel_font_imported": "読み込み済み"
 }
