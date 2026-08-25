@@ -16,28 +16,33 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/constants.dart';
+import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/hello/android_hello_page.dart';
 import 'package:pixez/page/hello/hello_page.dart';
 import 'package:pixez/page/hello/setting/setting_page.dart';
 import 'package:pixez/page/novel/new/novel_new_page.dart';
+import 'package:pixez/page/novel/novel_entry.dart';
+import 'package:pixez/page/novel/novel_home_page.dart';
 import 'package:pixez/page/novel/rank/novel_rank_page.dart';
-import 'package:pixez/page/novel/novel_shell_theme.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/novel/recom/novel_recom_page.dart';
 import 'package:pixez/page/novel/search/novel_search_page.dart';
 
 void openNovelRail(BuildContext context) {
-  final route = MaterialPageRoute(builder: (_) => const NovelRail());
-  final navigator = Navigator.of(context, rootNavigator: true);
-  // Replacing the whole app on desktop/macOS leaves PopScope as the root
-  // route and can spin the navigator. Push keeps HelloPage underneath.
-  if (Platform.isAndroid) {
-    navigator.pushReplacement(route);
-  } else {
-    navigator.push(route);
+  if (!usesCompactNovelHome()) {
+    Navigator.of(context, rootNavigator: true).pushReplacement(
+      MaterialPageRoute(builder: (_) => const NovelRail()),
+    );
+    return;
   }
+  Leader.push(
+    context,
+    const NovelHomePage(),
+    icon: const Icon(Icons.book),
+    title: Text(I18n.of(context).novel),
+  );
 }
 
 class NovelRail extends StatefulWidget {
@@ -50,22 +55,29 @@ class NovelRail extends StatefulWidget {
 class _NovelRailState extends State<NovelRail> {
   int selectedIndex = 0;
   DateTime? _preTime;
-  late final List<Widget> _pageList;
   late PageController _pageController;
 
   @override
   void initState() {
-    _pageList = [
-      NovelRecomPage(),
-      NovelRankPage(),
-      NovelNewPage(),
-      NovelSearchPage(),
-      SettingPage(),
-    ];
     _pageController = PageController();
     Constants.type = 1;
     fetcher.context = context;
     super.initState();
+  }
+
+  Widget _pageAt(int index) {
+    switch (index) {
+      case 0:
+        return const NovelRecomPage();
+      case 1:
+        return NovelRankPage();
+      case 2:
+        return NovelNewPage();
+      case 3:
+        return NovelSearchPage();
+      default:
+        return const SettingPage();
+    }
   }
 
   @override
@@ -145,16 +157,17 @@ class _NovelRailState extends State<NovelRail> {
                 if (wide) ..._buildRail(context),
                 Expanded(
                   child: PageView.builder(
-                    itemCount: _pageList.length,
+                    itemCount: 5,
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
+                    allowImplicitScrolling: false,
                     onPageChanged: (index) {
                       setState(() {
                         selectedIndex = index;
                       });
                     },
                     itemBuilder: (context, index) {
-                      return _pageList[index];
+                      return _pageAt(index);
                     },
                   ),
                 ),
@@ -164,10 +177,7 @@ class _NovelRailState extends State<NovelRail> {
         );
       },
     );
-    return Theme(
-      data: applyNovelShellTheme(Theme.of(context)),
-      child: content,
-    );
+    return content;
   }
 
   List<Widget> _buildRail(BuildContext context) {

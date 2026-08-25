@@ -30,6 +30,10 @@ import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 
 class NovelRecomPage extends StatefulWidget {
+  final bool showHeader;
+
+  const NovelRecomPage({super.key, this.showHeader = true});
+
   @override
   _NovelRecomPageState createState() => _NovelRecomPageState();
 }
@@ -46,6 +50,11 @@ class _NovelRecomPageState extends State<NovelRecomPage>
     _store = NovelLightingStore(
         () => apiClient.getNovelRecommended(), _easyRefreshController);
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _store.fetch();
+      }
+    });
   }
 
   @override
@@ -83,18 +92,19 @@ class _NovelRecomPageState extends State<NovelRecomPage>
       onRefresh: () => _store.fetch(),
       onLoad: () => _store.next(),
       controller: _easyRefreshController,
-      refreshOnStart: true,
+      refreshOnStart: false,
       child: Observer(
         builder: (context) {
           return CustomScrollView(
             slivers: [
-              SliverAppBar(
-                elevation: 0.0,
-                titleSpacing: 0.0,
-                automaticallyImplyLeading: false,
-                backgroundColor: Colors.transparent,
-                title: _buildFirstRow(context),
-              ),
+              if (widget.showHeader)
+                SliverAppBar(
+                  elevation: 0.0,
+                  titleSpacing: 0.0,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: Colors.transparent,
+                  title: _buildFirstRow(context),
+                ),
               if (_store.novels.isNotEmpty) _buildSliverList(),
             ],
           );
