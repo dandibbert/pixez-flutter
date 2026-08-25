@@ -25,6 +25,7 @@ import 'package:pixez/models/novel_recom_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
 import 'package:pixez/page/novel/component/novel_lighting_store.dart';
+import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 
@@ -77,41 +78,43 @@ class _NovelRecomPageState extends State<NovelRecomPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return EasyRefresh.builder(
+    return EasyRefresh(
       header: PixezDefault.header(context),
       onRefresh: () => _store.fetch(),
       onLoad: () => _store.next(),
       controller: _easyRefreshController,
-      callRefreshOverOffset: 10,
       refreshOnStart: true,
-      childBuilder: (context, physics) => Observer(builder: (context) {
-        return CustomScrollView(
-          physics: physics,
-          slivers: [
-            SliverAppBar(
-              elevation: 0.0,
-              titleSpacing: 0.0,
-              automaticallyImplyLeading: false,
-              backgroundColor: Colors.transparent,
-              title: _buildFirstRow(context),
-            ),
-            if (_store.novels.isNotEmpty) _buildSliverList(),
-          ],
-        );
-      }),
+      child: Observer(
+        builder: (context) {
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                elevation: 0.0,
+                titleSpacing: 0.0,
+                automaticallyImplyLeading: false,
+                backgroundColor: Colors.transparent,
+                title: _buildFirstRow(context),
+              ),
+              if (_store.novels.isNotEmpty) _buildSliverList(),
+            ],
+          );
+        },
+      ),
     );
   }
 
   SliverList _buildSliverList() {
-    _store.novels.removeWhere((element) => element.novel?.hateByUser() == true);
+    final novels = _store.novels
+        .where((element) => element.novel?.hateByUser() != true)
+        .toList();
     return SliverList(
         delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-      Novel novel = _store.novels[index].novel!;
-      return _buildItem(context, novel, index);
-    }, childCount: _store.novels.length));
+      Novel novel = novels[index].novel!;
+      return _buildItem(context, novel, novels[index]);
+    }, childCount: novels.length));
   }
 
-  Widget _buildItem(BuildContext context, Novel novel, int index) {
+  Widget _buildItem(BuildContext context, Novel novel, NovelStore store) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: InkWell(
@@ -120,7 +123,7 @@ class _NovelRecomPageState extends State<NovelRecomPage>
           Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
               builder: (BuildContext context) => NovelViewerPage(
                     id: novel.id,
-                    novelStore: _store.novels[index],
+                    novelStore: store,
                   )));
         },
         child: Card(

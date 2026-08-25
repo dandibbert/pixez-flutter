@@ -9,9 +9,14 @@ struct InstalledFontsPlugin {
         )
         channel.setMethodCallHandler { call, result in
             if call.method == "listFamilies" {
-                result(UIFont.familyNames.sorted {
-                    $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
-                })
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let families = UIFont.familyNames.sorted {
+                        $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+                    }
+                    DispatchQueue.main.async {
+                        result(families)
+                    }
+                }
             } else {
                 result(FlutterMethodNotImplemented)
             }

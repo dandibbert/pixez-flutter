@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:pixez/models/novel_web_response.dart';
+import 'package:pixez/page/novel/novel_shell_theme.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 
@@ -133,5 +135,12 @@ void main() {
       isTrue,
     );
     expect(blocks.map((block) => block.text).join(), huge);
+  });
+
+  test('novel shell theme does not use generic CSS font families', () {
+    expect(novelShellFontFamily(), isNot(equals('serif')));
+    expect(novelShellFontFamily(), isNot(equals('sans-serif')));
+    final themed = applyNovelShellTheme(ThemeData(useMaterial3: true));
+    expect(themed.textTheme.bodyMedium?.fontFamily, isNot(equals('serif')));
   });
 }

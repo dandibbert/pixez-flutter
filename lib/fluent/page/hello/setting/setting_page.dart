@@ -252,12 +252,7 @@ class _SettingPageState extends State<SettingPage> {
               leading: Icon(FluentIcons.plain_text),
               title: Text(I18n.of(context).novel),
               trailing: Icon(FluentIcons.chevron_right),
-              onPressed: () => Leader.push(
-                context,
-                NovelRail(),
-                title: Text(I18n.of(context).novel),
-                icon: Icon(FluentIcons.plain_text),
-              ),
+              onPressed: () => openNovelRail(context),
             ),
             ListTile(
               leading: Icon(FluentIcons.message),
