@@ -14,6 +14,8 @@
  *
  */
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:mobx/mobx.dart';
@@ -31,6 +33,11 @@ abstract class _NovelLightingStoreBase with Store {
   final ApiClient _client = apiClient;
   final EasyRefreshController controller;
 
+  /// Shorter than the client timeout so a request that never reaches the
+  /// network (a stalled interceptor queue) still surfaces instead of leaving
+  /// the refresh indicator spinning forever.
+  Duration timeout = const Duration(seconds: 30);
+
   _NovelLightingStoreBase(this.source, this.controller);
 
   String? nextUrl;
@@ -43,7 +50,12 @@ abstract class _NovelLightingStoreBase with Store {
     nextUrl = null;
     errorMessage = null;
     try {
-      Response response = await source();
+      Response response = await source().timeout(
+        timeout,
+        onTimeout: () => throw TimeoutException(
+          'Pixiv did not answer in ${timeout.inSeconds}s',
+        ),
+      );
       NovelRecomResponse novelRecomResponse =
           NovelRecomResponse.fromJson(response.data);
       nextUrl = novelRecomResponse.nextUrl;
@@ -64,7 +76,12 @@ abstract class _NovelLightingStoreBase with Store {
   Future<void> next() async {
     if (nextUrl != null && nextUrl!.isNotEmpty) {
       try {
-        Response response = await _client.getNext(nextUrl!);
+        Response response = await _client.getNext(nextUrl!).timeout(
+              timeout,
+              onTimeout: () => throw TimeoutException(
+                'Pixiv did not answer in ${timeout.inSeconds}s',
+              ),
+            );
         NovelRecomResponse novelRecomResponse =
             NovelRecomResponse.fromJson(response.data);
         nextUrl = novelRecomResponse.nextUrl;

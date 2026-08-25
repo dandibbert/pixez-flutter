@@ -96,10 +96,35 @@ class _NovelRecomPageState extends State<NovelRecomPage>
               backgroundColor: Colors.transparent,
               title: _buildFirstRow(context),
             ),
-            if (_store.novels.isNotEmpty) _buildSliverList(),
-          ],
-        );
-      }),
+              if (_store.novels.isNotEmpty) _buildSliverList(),
+              if (_store.novels.isEmpty && _store.errorMessage != null)
+                _buildSliverError(context),
+            ],
+          );
+        }),
+    );
+  }
+
+  SliverFillRemaining _buildSliverError(BuildContext context) {
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(':(', style: Theme.of(context).textTheme.headlineMedium),
+          ),
+          TextButton(
+            onPressed: () => _easyRefreshController.callRefresh(),
+            child: Text(I18n.of(context).retry),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text('${_store.errorMessage}', textAlign: TextAlign.center),
+          ),
+        ],
+      ),
     );
   }
 
