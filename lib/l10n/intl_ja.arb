@@ -332,7 +332,11 @@
   "history_item_actions": "作品閲覧履歴の操作",
   "jump_to_source_search_page": "検索元の {page} ページを開く",
   "@jump_to_source_search_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "submit": "Submit",
   "thanks_for_your_feedback": "Thanks for your feedback",
@@ -356,5 +360,12 @@
   "network_mode_standard": "Standard connection",
   "network_mode_standard_message": "Recommended for most networks.",
   "ignore_current_version_update": "Ignore current version update",
-  "haptic_feedback": "触覚フィードバック"
+  "haptic_feedback": "触覚フィードバック",
+  "novel_details": "小説の詳細",
+  "novel_font": "フォント",
+  "novel_font_serif": "明朝体",
+  "novel_font_sans": "ゴシック体",
+  "novel_line_height": "行間",
+  "reader_page": "ページ",
+  "reader_series": "シリーズ"
 }

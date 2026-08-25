@@ -336,7 +336,11 @@
   "search_result_mode_paged": "Paged navigation",
   "search_result_page": "Page {page}",
   "@search_result_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "jump_to_page": "Jump to page",
   "page_number_hint": "Enter a positive page number",
@@ -344,12 +348,20 @@
   "history_actions": "Search history actions",
   "jump_to_saved_page": "Open saved page {page}",
   "@jump_to_saved_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "history_item_actions": "Artwork history actions",
   "jump_to_source_search_page": "Open source search page {page}",
   "@jump_to_source_search_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "submit": "Submit",
   "thanks_for_your_feedback": "Thanks for your feedback",
@@ -371,5 +383,12 @@
   "network_mode_standard": "Standard connection",
   "network_mode_standard_message": "Recommended for most networks.",
   "ignore_current_version_update": "Ignore current version update",
-  "haptic_feedback": "Haptic feedback"
+  "haptic_feedback": "Haptic feedback",
+  "novel_details": "Novel details",
+  "novel_font": "Font",
+  "novel_font_serif": "Serif",
+  "novel_font_sans": "Sans",
+  "novel_line_height": "Line spacing",
+  "reader_page": "Page",
+  "reader_series": "Series"
 }

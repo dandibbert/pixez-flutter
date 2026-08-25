@@ -69,6 +69,8 @@ abstract class _UserSetting with Store {
   static const String THEME_MODE_KEY = "theme_mode";
   static const String SAVE_MODE_KEY = "save_mode";
   static const String NOVEL_FONT_SIZE_KEY = "novel_font_size";
+  static const String NOVEL_FONT_FAMILY_KEY = "novel_font_family";
+  static const String NOVEL_LINE_HEIGHT_KEY = "novel_line_height";
   static const String IS_RETURN_AGAIN_TO_EXIT_KEY = "return_again_to_exit";
   static const String IS_CLEAR_OLD_FORMAT_FILE_KEY = "is_clear_old_format_file";
   static const String IS_FOLLOW_AFTER_STAR = "is_follow_after_star";
@@ -175,6 +177,8 @@ abstract class _UserSetting with Store {
   bool get needsCompatibleDnsFetch => networkMode == NetworkMode.compat;
   @observable
   double novelFontsize = 16.0;
+  String novelFontFamily = 'serif';
+  double novelLineHeight = 1.8;
   @observable
   dynamic locale = Locale('en', 'US'); //stupid mobx generator
   @observable
@@ -378,17 +382,38 @@ abstract class _UserSetting with Store {
     maxRunningTask = value;
   }
 
+  void _syncNovelTextStyle() {
+    novelTextStyle = novelTextStyle.copyWith(
+      fontSize: novelFontsize,
+      height: novelLineHeight,
+    );
+  }
+
   @action
   setNovelFontsizeWithoutSave(double v) async {
     novelFontsize = v;
-    novelTextStyle = novelTextStyle.copyWith(fontSize: novelFontsize);
+    _syncNovelTextStyle();
   }
 
   @action
   setNovelFontsize(double v) async {
     await prefs.setDouble(NOVEL_FONT_SIZE_KEY, v);
     novelFontsize = v;
-    novelTextStyle = novelTextStyle.copyWith(fontSize: novelFontsize);
+    _syncNovelTextStyle();
+  }
+
+  Future<void> setNovelFontFamily(String family) async {
+    novelFontFamily = family;
+    await prefs.setString(NOVEL_FONT_FAMILY_KEY, family);
+    _syncNovelTextStyle();
+  }
+
+  Future<void> setNovelLineHeight(double value, {bool persist = true}) async {
+    novelLineHeight = value;
+    if (persist) {
+      await prefs.setDouble(NOVEL_LINE_HEIGHT_KEY, value);
+    }
+    _syncNovelTextStyle();
   }
 
   @action
@@ -570,7 +595,9 @@ abstract class _UserSetting with Store {
     saveAfterStar = prefs.getBool(SAVE_AFTER_STAR) ?? false;
     starAfterSave = prefs.getBool(STAR_AFTER_SAVE) ?? false;
     novelFontsize = prefs.getDouble(NOVEL_FONT_SIZE_KEY) ?? 16.0;
-    novelTextStyle = novelTextStyle.copyWith(fontSize: novelFontsize);
+    novelFontFamily = prefs.getString(NOVEL_FONT_FAMILY_KEY) ?? 'serif';
+    novelLineHeight = prefs.getDouble(NOVEL_LINE_HEIGHT_KEY) ?? 1.8;
+    _syncNovelTextStyle();
     saveMode =
         prefs.getInt(SAVE_MODE_KEY) ??
         (isHelplessWay == null ? 0 : (isHelplessWay! ? 2 : 1));

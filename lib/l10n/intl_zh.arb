@@ -336,7 +336,11 @@
   "search_result_mode_paged": "分页跳转",
   "search_result_page": "第 {page} 页",
   "@search_result_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "jump_to_page": "跳转页码",
   "page_number_hint": "输入大于 0 的页码",
@@ -344,12 +348,20 @@
   "history_actions": "搜索历史操作",
   "jump_to_saved_page": "跳转到记录的第 {page} 页",
   "@jump_to_saved_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "history_item_actions": "作品浏览历史操作",
   "jump_to_source_search_page": "跳转到来源搜索的第 {page} 页",
   "@jump_to_source_search_page": {
-    "placeholders": {"page": {"type": "int"}}
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
   },
   "submit": "提交",
   "thanks_for_your_feedback": "感谢反馈",
@@ -372,5 +384,12 @@
   "network_mode_standard_message": "大多数网络环境推荐使用。",
   "ignore_current_version_update": "忽略当前版本更新",
   "haptic_feedback": "触感反馈",
-  "fit_width": "按宽度铺满"
+  "fit_width": "按宽度铺满",
+  "novel_details": "小说详情",
+  "novel_font": "字体",
+  "novel_font_serif": "衬线体",
+  "novel_font_sans": "黑体",
+  "novel_line_height": "行距",
+  "reader_page": "页",
+  "reader_series": "系列"
 }
