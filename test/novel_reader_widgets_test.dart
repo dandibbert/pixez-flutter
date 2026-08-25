@@ -22,6 +22,8 @@ void main() {
     );
     expect(custom.fontFamily, 'LXGW WenKai');
     expect(custom.height, 1.8);
+    expect(custom.fontFamilyFallback, isNot(contains('serif')));
+    expect(custom.fontFamilyFallback, isNot(contains('sans-serif')));
 
     final imported = NovelReaderStyle.resolve(
       color: const Color(0xFF111111),
@@ -114,6 +116,30 @@ void main() {
     expect(find.byKey(novelReaderHeaderKey), findsOneWidget);
     expect(find.byKey(novelReaderArticleKey), findsOneWidget);
     expect(find.byKey(novelReaderPageNavKey), findsOneWidget);
+  });
+
+  testWidgets('article list only builds visible paragraph blocks', (
+    tester,
+  ) async {
+    var built = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NovelReaderArticle(
+            itemCount: 400,
+            itemBuilder: (context, index) {
+              built++;
+              return Text('paragraph $index');
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('paragraph 0'), findsOneWidget);
+    expect(find.text('paragraph 399'), findsNothing);
+    expect(built, lessThan(80));
+    expect(built, lessThan(400));
   });
 
   testWidgets('font settings keep size and line height controls', (

@@ -103,4 +103,35 @@ void main() {
     expect(state.isNextDisabled, isFalse);
     expect(state.canJumpPrevSeries, isFalse);
   });
+
+  test('splits a long novel body into virtualized paragraph blocks', () {
+    final lines = List<String>.generate(80, (index) => '段落$index の本文です。');
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, lines.join('\n')),
+      NovelSpansData(NovelSpansType.chapter, '章'),
+      NovelSpansData(NovelSpansType.normal, 'あとがき'),
+    ]);
+
+    expect(blocks, hasLength(82));
+    expect(blocks[0].text, '段落0 の本文です。');
+    expect(blocks[80].type, NovelSpansType.chapter);
+    expect(blocks.last.text, 'あとがき');
+    expect(
+      blocks.every((block) => block.text.length <= novelReaderBlockMaxChars),
+      isTrue,
+    );
+  });
+
+  test('chunks a single huge line so layout stays bounded', () {
+    final huge = 'あ' * 5000;
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, huge),
+    ]);
+    expect(blocks.length, greaterThan(3));
+    expect(
+      blocks.every((block) => block.text.length <= novelReaderBlockMaxChars),
+      isTrue,
+    );
+    expect(blocks.map((block) => block.text).join(), huge);
+  });
 }

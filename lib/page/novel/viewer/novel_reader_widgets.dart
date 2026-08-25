@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
@@ -246,45 +248,79 @@ class _SeriesChip extends StatelessWidget {
 }
 
 class NovelReaderArticle extends StatelessWidget {
-  final Widget child;
+  final Widget? child;
+  final int? itemCount;
+  final IndexedWidgetBuilder? itemBuilder;
   final ScrollController? controller;
   final EdgeInsetsGeometry padding;
 
   const NovelReaderArticle({
     super.key,
-    required this.child,
+    this.child,
+    this.itemCount,
+    this.itemBuilder,
     this.controller,
     this.padding = const EdgeInsets.fromLTRB(16, 24, 16, 32),
-  });
+  }) : assert(
+         child != null || (itemCount != null && itemBuilder != null),
+         'Provide child or itemBuilder',
+       );
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
-      child: ListView(
-        controller: controller,
-        padding: padding,
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Container(
-                key: novelReaderArticleKey,
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: scheme.surfaceContainerHighest,
-                      width: 8,
-                    ),
-                  ),
-                ),
-                child: child,
-              ),
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontal = math.max(
+      16.0,
+      (width - 720) / 2,
+    );
+    final resolvedPadding = padding.add(
+      EdgeInsets.symmetric(horizontal: math.max(0, horizontal - 16)),
+    );
+    final decoration = BoxDecoration(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border(
+        bottom: BorderSide(
+          color: scheme.surfaceContainerHighest,
+          width: 8,
+        ),
+      ),
+    );
+    final Widget sliver;
+    if (itemBuilder != null && itemCount != null) {
+      sliver = DecoratedSliver(
+        decoration: decoration,
+        sliver: SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              itemBuilder!,
+              childCount: itemCount,
+              addAutomaticKeepAlives: false,
             ),
+          ),
+        ),
+      );
+    } else {
+      sliver = SliverToBoxAdapter(
+        child: Container(
+          key: novelReaderArticleKey,
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
+          decoration: decoration,
+          child: child,
+        ),
+      );
+    }
+    return ColoredBox(
+      key: itemBuilder != null ? novelReaderArticleKey : null,
+      color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+      child: CustomScrollView(
+        controller: controller,
+        slivers: [
+          SliverPadding(
+            padding: resolvedPadding,
+            sliver: sliver,
           ),
         ],
       ),

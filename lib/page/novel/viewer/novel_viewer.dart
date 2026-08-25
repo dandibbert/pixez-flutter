@@ -213,6 +213,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final totalPages = pages.isEmpty ? 1 : pages.length;
     final pageIndex = clampNovelPage(_currentPage, totalPages) - 1;
     final pageSpans = pages.isEmpty ? <NovelSpansData>[] : pages[pageIndex];
+    final blocks = splitNovelReaderBlocks(pageSpans);
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     final navState = resolveNovelPageNavState(
       currentPage: clampNovelPage(_currentPage, totalPages),
@@ -261,32 +262,19 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                   ? () => _openSeriesNovel(navigation!.nextNovel!.id)
                   : null,
             ),
-      article: NovelReaderArticle(
-        controller: _controller,
-        child: SelectionArea(
-          onSelectionChanged: (value) {
-            _selectedText = value?.plainText ?? "";
+      article: SelectionArea(
+        onSelectionChanged: (value) {
+          _selectedText = value?.plainText ?? "";
+        },
+        contextMenuBuilder: (context, editableTextState) {
+          return _buildSelectionMenu(editableTextState, context);
+        },
+        child: NovelReaderArticle(
+          controller: _controller,
+          itemCount: blocks.length,
+          itemBuilder: (context, index) {
+            return _buildReaderBlock(context, blocks[index], style);
           },
-          contextMenuBuilder: (context, editableTextState) {
-            return _buildSelectionMenu(editableTextState, context);
-          },
-          child: Text.rich(
-            TextSpan(
-              style: style,
-              children: [
-                for (final span in pageSpans)
-                  novelSpansGenerator.novelSpansDatatoInlineSpan(
-                    context,
-                    span,
-                    onJumpToPage: _goToPage,
-                    style: style,
-                  ),
-              ],
-            ),
-            textHeightBehavior: const TextHeightBehavior(
-              applyHeightToLastDescent: true,
-            ),
-          ),
         ),
       ),
       pageNav: NovelReaderPageNav(
@@ -296,6 +284,35 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         onPrev: () => _handleNav('prev'),
         onNext: () => _handleNav('next'),
         onPickPage: () => _showJumpDialog(context, totalPages),
+      ),
+    );
+  }
+
+  Widget _buildReaderBlock(
+    BuildContext context,
+    NovelReaderBlock block,
+    TextStyle style,
+  ) {
+    if (block.type == NovelSpansType.normal && block.text.isEmpty) {
+      return SizedBox(height: style.fontSize ?? 16);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text.rich(
+        TextSpan(
+          style: style,
+          children: [
+            novelSpansGenerator.novelSpansDatatoInlineSpan(
+              context,
+              block.span,
+              onJumpToPage: _goToPage,
+              style: style,
+            ),
+          ],
+        ),
+        textHeightBehavior: const TextHeightBehavior(
+          applyHeightToLastDescent: true,
+        ),
       ),
     );
   }

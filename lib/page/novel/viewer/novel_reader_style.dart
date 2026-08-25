@@ -15,32 +15,39 @@ class NovelReaderStyle {
   static const double minLineHeight = 1.2;
   static const double maxLineHeight = 2.4;
 
-  static const List<String> serifFallbacks = <String>[
-    'Hiragino Mincho ProN',
-    'Hiragino Mincho Pro',
-    'YuMincho',
-    'Yu Mincho',
-    'Noto Serif CJK JP',
-    'Noto Serif JP',
-    'Songti SC',
-    'STSong',
-    'Noto Serif',
-    'Georgia',
-    'serif',
-  ];
+  // Keep these short and avoid CSS generic families like "serif".
+  // Flutter on macOS can beachball if it has to match every glyph against a
+  // long list of missing CJK fonts.
+  static List<String> get serifFallbacks {
+    if (Platform.isIOS || Platform.isMacOS) {
+      return const <String>[
+        'Hiragino Mincho ProN',
+        'Hiragino Mincho Pro',
+        'Songti SC',
+        'PingFang SC',
+      ];
+    }
+    if (Platform.isWindows) {
+      return const <String>['Yu Mincho', 'MS Mincho', 'Microsoft YaHei'];
+    }
+    if (Platform.isLinux) {
+      return const <String>['Noto Serif CJK JP', 'Noto Serif', 'DejaVu Serif'];
+    }
+    return const <String>['serif'];
+  }
 
-  static const List<String> sansFallbacks = <String>[
-    'Hiragino Sans',
-    'Hiragino Kaku Gothic ProN',
-    'YuGothic',
-    'Yu Gothic',
-    'Noto Sans CJK JP',
-    'Noto Sans JP',
-    'PingFang SC',
-    'Noto Sans',
-    'Roboto',
-    'sans-serif',
-  ];
+  static List<String> get sansFallbacks {
+    if (Platform.isIOS || Platform.isMacOS) {
+      return const <String>['Hiragino Sans', 'PingFang SC'];
+    }
+    if (Platform.isWindows) {
+      return const <String>['Yu Gothic', 'Microsoft YaHei'];
+    }
+    if (Platform.isLinux) {
+      return const <String>['Noto Sans CJK JP', 'Noto Sans', 'DejaVu Sans'];
+    }
+    return const <String>['sans-serif'];
+  }
 
   static String get serifFamily {
     if (Platform.isIOS || Platform.isMacOS) {
@@ -115,7 +122,7 @@ class NovelReaderStyle {
       fontSize: size,
       height: height,
       fontFamily: fontFamily,
-      fontFamilyFallback: serifFallbacks,
+      fontFamilyFallback: sansFallbacks,
     );
   }
 }
