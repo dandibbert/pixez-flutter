@@ -30,10 +30,6 @@ import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 
 class NovelRecomPage extends StatefulWidget {
-  final bool showHeader;
-
-  const NovelRecomPage({super.key, this.showHeader = true});
-
   @override
   _NovelRecomPageState createState() => _NovelRecomPageState();
 }
@@ -50,11 +46,6 @@ class _NovelRecomPageState extends State<NovelRecomPage>
     _store = NovelLightingStore(
         () => apiClient.getNovelRecommended(), _easyRefreshController);
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _store.fetch();
-      }
-    });
   }
 
   @override
@@ -87,29 +78,28 @@ class _NovelRecomPageState extends State<NovelRecomPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return EasyRefresh(
+    return EasyRefresh.builder(
       header: PixezDefault.header(context),
       onRefresh: () => _store.fetch(),
       onLoad: () => _store.next(),
       controller: _easyRefreshController,
-      refreshOnStart: false,
-      child: Observer(
-        builder: (context) {
-          return CustomScrollView(
-            slivers: [
-              if (widget.showHeader)
-                SliverAppBar(
-                  elevation: 0.0,
-                  titleSpacing: 0.0,
-                  automaticallyImplyLeading: false,
-                  backgroundColor: Colors.transparent,
-                  title: _buildFirstRow(context),
-                ),
-              if (_store.novels.isNotEmpty) _buildSliverList(),
-            ],
-          );
-        },
-      ),
+      callRefreshOverOffset: 10,
+      refreshOnStart: true,
+      childBuilder: (context, physics) => Observer(builder: (context) {
+        return CustomScrollView(
+          physics: physics,
+          slivers: [
+            SliverAppBar(
+              elevation: 0.0,
+              titleSpacing: 0.0,
+              automaticallyImplyLeading: false,
+              backgroundColor: Colors.transparent,
+              title: _buildFirstRow(context),
+            ),
+            if (_store.novels.isNotEmpty) _buildSliverList(),
+          ],
+        );
+      }),
     );
   }
 
