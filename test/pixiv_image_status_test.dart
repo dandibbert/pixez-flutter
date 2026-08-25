@@ -3,6 +3,66 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/component/pixiv_image_status.dart';
 
 void main() {
+  test('the checkerboard refuses to tile an unbounded area', () {
+    expect(shouldPaintCheckerboard(const Size(200, 280), 16), isTrue);
+    expect(shouldPaintCheckerboard(const Size(80, double.infinity), 16), isFalse);
+    expect(shouldPaintCheckerboard(Size.infinite, 16), isFalse);
+    expect(shouldPaintCheckerboard(const Size(200, 280), 0), isFalse);
+  });
+
+  test('an unbounded side resolves to a finite placeholder', () {
+    // A thumbnail in a list row: the width is fixed, the row leaves the
+    // height unbounded because the loaded image would set it.
+    expect(
+      resolvePlaceholderSize(
+        const BoxConstraints(maxWidth: 400),
+        width: 80,
+      ),
+      const Size(80, 80),
+    );
+    // Neither side is known.
+    expect(
+      resolvePlaceholderSize(const BoxConstraints()),
+      const Size(
+        pixivImagePlaceholderFallbackExtent,
+        pixivImagePlaceholderFallbackExtent,
+      ),
+    );
+    // A bounded parent still fills the space it was given.
+    expect(
+      resolvePlaceholderSize(
+        const BoxConstraints(maxWidth: 240, maxHeight: 320),
+      ),
+      const Size(240, 320),
+    );
+  });
+
+  testWidgets('a thumbnail in a list row lays out and paints', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ListView(
+          children: const [
+            Card(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PixivImageLoadingPlaceholder(width: 80),
+                  Expanded(child: Text('title')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getSize(find.byKey(pixivImageLoadingKey)),
+      const Size(80, 80),
+    );
+  });
+
   testWidgets('loading placeholder is a checkerboard with a spinner', (
     tester,
   ) async {
