@@ -21,6 +21,7 @@ import 'package:dio/dio.dart';
 import 'package:dio_compatibility_layer/dio_compatibility_layer.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_cache_manager_dio/flutter_cache_manager_dio.dart';
+import 'package:pixez/component/pixiv_image_status.dart';
 import 'package:pixez/er/hoster.dart';
 import 'package:pixez/er/pixiv_image_source.dart';
 import 'package:pixez/main.dart';
@@ -128,48 +129,45 @@ class _PixivImageState extends State<PixivImage> {
   Widget build(BuildContext context) {
     final size = min(min(width ?? 60, height ?? 60), 60.0);
     return CachedNetworkImage(
-      placeholder: widget.placeWidget == null
-          ? null
-          : (context, url) =>
-                widget.placeWidget ??
-                Container(
-                  height: height,
-                  child: Center(
-                    child: SizedBox(
-                      width: size,
-                      height: size,
-                      child: const Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: const ProgressRing(),
-                      ),
-                    ),
-                  ),
-                ),
       progressIndicatorBuilder: widget.placeWidget == null
-          ? (context, url, progress) => Container(
+          ? (context, url, progress) => PixivImageLoadingPlaceholder(
+              width: width,
               height: height,
-              child: Center(
-                child: SizedBox(
-                  width: size,
-                  height: size,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ProgressRing(value: progress.progress),
-                  ),
-                ),
+              progress: progress.progress,
+              indicator: SizedBox(
+                width: size,
+                height: size,
+                child: ProgressRing(value: progress.progress),
               ),
             )
           : null,
-      errorWidget: (context, url, _) => Container(
+      placeholder: widget.placeWidget == null
+          ? null
+          : (context, url) => SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  PixivImageLoadingPlaceholder(
+                    width: width,
+                    height: height,
+                    indicator: SizedBox(
+                      width: size,
+                      height: size,
+                      child: const ProgressRing(),
+                    ),
+                  ),
+                  widget.placeWidget!,
+                ],
+              ),
+            ),
+      errorWidget: (context, url, _) => PixivImageErrorPlaceholder(
+        width: width,
         height: height,
-        child: Center(
-          child: HyperlinkButton(
-            onPressed: () {
-              setState(() {});
-            },
-            child: Text(":("),
-          ),
-        ),
+        onRetry: () {
+          setState(() {});
+        },
       ),
       fadeOutDuration: widget.fade ? const Duration(milliseconds: 1000) : null,
       // memCacheWidth: width?.toInt(),
