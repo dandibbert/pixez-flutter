@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/models/novel_web_response.dart';
+import 'package:pixez/page/novel/novel_rail_layout.dart';
 import 'package:pixez/page/novel/novel_shell_theme.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
@@ -142,5 +143,16 @@ void main() {
     expect(novelShellFontFamily(), isNot(equals('sans-serif')));
     final theme = ThemeData(useMaterial3: true);
     expect(applyNovelShellTheme(theme), same(theme));
+  });
+
+  test('desktop novel rail does not use a swipeable PageView', () {
+    expect(
+      novelRailUsesSwipeablePages(isAndroid: false, isIOS: false),
+      isFalse,
+    );
+    expect(
+      novelRailUsesSwipeablePages(isAndroid: true, isIOS: false),
+      isTrue,
+    );
   });
 }
