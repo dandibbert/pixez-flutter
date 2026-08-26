@@ -4,6 +4,7 @@
 #include "plugins/document_plugin.h"
 #include "plugins/paths_plugin.h"
 #include "plugins/single_instance_plugin.h"
+#include "plugins/installed_fonts_plugin.h"
 #include "plugins/weiss_plugin.h"
 #include "plugins/win32_plugin.h"
 
@@ -14,6 +15,7 @@ void RegisterPixEzPlugins(flutter::FlutterEngine* engine, HWND hWnd) {
   Document::Initialize(messenger, &codec, hWnd);
   Paths::Initialize(messenger, &codec);
   SingleInstance::Initialize(messenger, &codec);
+  InstalledFonts::Initialize(messenger, &codec);
   Weiss::Initialize(messenger, &codec);
   Win32::Initialize(messenger, &codec);
 }

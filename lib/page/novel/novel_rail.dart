@@ -7,7 +7,7 @@
  *
  *  This program is distributed in the hope that it will be useful, but WITHOUT ANY
  *  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- *  FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+    10| *  FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License along with
  *  this program. If not, see <http://www.gnu.org/licenses/>.
@@ -22,10 +22,17 @@ import 'package:pixez/page/hello/android_hello_page.dart';
 import 'package:pixez/page/hello/hello_page.dart';
 import 'package:pixez/page/hello/setting/setting_page.dart';
 import 'package:pixez/page/novel/new/novel_new_page.dart';
+import 'package:pixez/page/novel/novel_rail_layout.dart';
 import 'package:pixez/page/novel/rank/novel_rank_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/novel/recom/novel_recom_page.dart';
 import 'package:pixez/page/novel/search/novel_search_page.dart';
+
+void openNovelRail(BuildContext context) {
+  Navigator.of(context, rootNavigator: true).pushReplacement(
+    MaterialPageRoute(builder: (context) => NovelRail()),
+  );
+}
 
 class NovelRail extends StatefulWidget {
   @override
@@ -35,18 +42,14 @@ class NovelRail extends StatefulWidget {
 class _NovelRailState extends State<NovelRail> {
   int selectedIndex = 0;
   DateTime? _preTime;
-  final _pageList = [
-    NovelRecomPage(),
-    NovelRankPage(),
-    NovelNewPage(),
-    NovelSearchPage(),
-    SettingPage()
-  ];
-  late PageController _pageController;
+  PageController? _pageController;
+  final Map<int, Widget> _lazyPages = <int, Widget>{};
 
   @override
   void initState() {
-    _pageController = PageController();
+    if (novelRailUsesSwipeablePages()) {
+      _pageController = PageController();
+    }
     Constants.type = 1;
     fetcher.context = context;
     super.initState();
@@ -54,8 +57,55 @@ class _NovelRailState extends State<NovelRail> {
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
+  }
+
+  Widget _pageFor(int index) {
+    return _lazyPages.putIfAbsent(index, () {
+      switch (index) {
+        case 0:
+          return NovelRecomPage();
+        case 1:
+          return NovelRankPage();
+        case 2:
+          return NovelNewPage();
+        case 3:
+          return NovelSearchPage();
+        default:
+          return SettingPage();
+      }
+    });
+  }
+
+  Widget _buildPages() {
+    _pageFor(selectedIndex);
+    if (novelRailUsesSwipeablePages()) {
+      return PageView.builder(
+        itemCount: 5,
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            selectedIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return _pageFor(index);
+        },
+      );
+    }
+    return Stack(
+      children: [
+        for (final entry in _lazyPages.entries)
+          Offstage(
+            offstage: entry.key != selectedIndex,
+            child: TickerMode(
+              enabled: entry.key == selectedIndex,
+              child: entry.value,
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -92,17 +142,7 @@ class _NovelRailState extends State<NovelRail> {
           child: Icon(Icons.picture_in_picture),
         ),
         bottomNavigationBar: _buildNavigationBar(context),
-        body: PageView.builder(
-            itemCount: _pageList.length,
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                this.selectedIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              return _pageList[index];
-            }),
+        body: _buildPages(),
       ),
     );
   }
@@ -133,7 +173,9 @@ class _NovelRailState extends State<NovelRail> {
         setState(() {
           this.selectedIndex = index;
         });
-        if (_pageController.hasClients) _pageController.jumpToPage(index);
+        if (_pageController?.hasClients == true) {
+          _pageController!.jumpToPage(index);
+        }
       },
     );
   }

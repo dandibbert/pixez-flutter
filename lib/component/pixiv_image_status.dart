@@ -4,6 +4,43 @@ import 'package:pixez/src/generated/i18n/app_localizations.dart';
 const Key pixivImageLoadingKey = Key('pixiv-image-loading');
 const Key pixivImageErrorKey = Key('pixiv-image-error');
 
+/// Fallback edge for a placeholder whose parent constrains neither side.
+const double pixivImagePlaceholderFallbackExtent = 120;
+
+/// A placeholder often sits where the loaded image would size itself from its
+/// own aspect ratio: a row inside a list item, where the height is unbounded.
+/// Expanding into that leaves an infinite box that no painter can fill, so
+/// resolve every side to something finite.
+Size resolvePlaceholderSize(
+  BoxConstraints constraints, {
+  double? width,
+  double? height,
+  double fallback = pixivImagePlaceholderFallbackExtent,
+}) {
+  double resolve(double? explicit, double available, double sibling) {
+    if (explicit != null && explicit.isFinite && explicit > 0) return explicit;
+    if (available.isFinite) return available;
+    if (sibling.isFinite && sibling > 0) return sibling;
+    return fallback;
+  }
+
+  final resolvedWidth = resolve(
+    width,
+    constraints.maxWidth,
+    height ?? double.infinity,
+  );
+  return Size(
+    resolvedWidth,
+    resolve(height, constraints.maxHeight, resolvedWidth),
+  );
+}
+
+/// A non-finite side would make the tiling loop never terminate, freezing the
+/// whole app instead of drawing a placeholder.
+bool shouldPaintCheckerboard(Size size, double squareSize) {
+  return !size.isEmpty && size.isFinite && squareSize > 0;
+}
+
 /// A geometric fill that cannot be mistaken for a photograph, including a
 /// black or dark-gray illustration.
 class ImageCheckerboard extends StatelessWidget {
@@ -41,7 +78,7 @@ class CheckerboardPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty || squareSize <= 0) {
+    if (!shouldPaintCheckerboard(size, squareSize)) {
       return;
     }
     final lightPaint = Paint()..color = light;
@@ -97,30 +134,42 @@ class PixivImageLoadingPlaceholder extends StatelessWidget {
     return Semantics(
       key: pixivImageLoadingKey,
       label: AppLocalizations.of(context)?.footer_loading ?? 'Loading...',
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            const ImageCheckerboard(),
-            Center(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.surface.withValues(alpha: 0.92),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: scheme.shadow.withValues(alpha: 0.24),
-                      blurRadius: 8,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = resolvePlaceholderSize(
+            constraints,
+            width: width,
+            height: height,
+          );
+          return SizedBox(
+            width: size.width,
+            height: size.height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const ImageCheckerboard(),
+                Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.surface.withValues(alpha: 0.92),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: scheme.shadow.withValues(alpha: 0.24),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
-                  ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: child,
+                    ),
+                  ),
                 ),
-                child: Padding(padding: const EdgeInsets.all(10), child: child),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -152,14 +201,18 @@ class PixivImageErrorPlaceholder extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onRetry,
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact =
-                    constraints.maxHeight < 96 || constraints.maxWidth < 96;
-                return Stack(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = resolvePlaceholderSize(
+                constraints,
+                width: width,
+                height: height,
+              );
+              final compact = size.height < 96 || size.width < 96;
+              return SizedBox(
+                width: size.width,
+                height: size.height,
+                child: Stack(
                   fit: StackFit.expand,
                   children: [
                     const ImageCheckerboard(),
@@ -203,9 +256,9 @@ class PixivImageErrorPlaceholder extends StatelessWidget {
                       ),
                     ),
                   ],
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

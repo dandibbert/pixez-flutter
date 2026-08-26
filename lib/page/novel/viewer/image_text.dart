@@ -31,6 +31,7 @@ import 'package:pixez/models/novel_web_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/page/novel/viewer/novel_spans.dart';
 
 //这一堆都是专门给小说特殊约定写的
 //🎵 EGOIST - Lovely Icecream Princess Sweetie
@@ -271,7 +272,10 @@ class NovelSpansGenerator {
       return NovelSpansData(NovelSpansType.newPage, "");
     } else if (spanStr.startsWith('[chapter:')) {
       final title = spanStr.replaceAll('[chapter:', '').replaceAll(']', '');
-      return NovelSpansData(NovelSpansType.normal, title);
+      return NovelSpansData(NovelSpansType.chapter, title);
+    } else if (spanStr.startsWith('[jump:')) {
+      final page = spanStr.replaceAll('[jump:', '').replaceAll(']', '');
+      return NovelSpansData(NovelSpansType.jump, page);
     } else if (spanStr.startsWith('[pixivimage:')) {
       final String key = spanStr;
       final flag = '[pixivimage:';
@@ -334,11 +338,32 @@ class NovelSpansGenerator {
 
   InlineSpan novelSpansDatatoInlineSpan(
     BuildContext context,
-    NovelSpansData data,
-  ) {
+    NovelSpansData data, {
+    void Function(int page)? onJumpToPage,
+    TextStyle? style,
+  }) {
     if (data.type == NovelSpansType.newPage) {
-      return WidgetSpan(
-        child: Container(child: Center(child: Text(''))),
+      return const WidgetSpan(child: SizedBox.shrink());
+    } else if (data.type == NovelSpansType.chapter) {
+      return TextSpan(
+        text: data.text,
+        style: (style ?? const TextStyle()).copyWith(
+          fontSize: ((style?.fontSize ?? 16) * 1.35),
+          fontWeight: FontWeight.w700,
+          height: 1.4,
+        ),
+      );
+    } else if (data.type == NovelSpansType.jump) {
+      final page = int.tryParse(data.text);
+      return TextSpan(
+        text: '[jump:${data.text}]',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: (page != null && onJumpToPage != null)
+            ? (TapGestureRecognizer()..onTap = () => onJumpToPage(page))
+            : null,
       );
     } else if (data.type == NovelSpansType.jumpUri) {
       return TextSpan(
@@ -392,22 +417,4 @@ class NovelSpansGenerator {
     }
     return TextSpan(text: data.text);
   }
-}
-
-enum NovelSpansType { normal, newPage, pixivImage, uploadedImage, jumpUri, rb }
-
-class NovelSpansData {
-  final NovelSpansType type;
-  final String text;
-
-  NovelSpansData(this.type, this.text);
-}
-
-class PixivImageSpanData extends NovelSpansData {
-  final int illustId;
-  final int targetIndex;
-  final NovelIllusts illust;
-
-  PixivImageSpanData(this.illustId, this.targetIndex, String text, this.illust)
-    : super(NovelSpansType.pixivImage, text);
 }

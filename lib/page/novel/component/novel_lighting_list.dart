@@ -98,11 +98,13 @@ class _NovelLightingListState extends State<NovelLightingList> {
   }
 
   ListView _buildListBody() {
-    _store.novels.removeWhere((element) => element.novel?.hateByUser() == true);
+    final novels = _store.novels
+        .where((element) => element.novel?.hateByUser() != true)
+        .toList();
     return ListView.builder(
       padding: EdgeInsets.all(0),
       itemBuilder: (context, index) {
-        Novel novel = _store.novels[index].novel!;
+        Novel novel = novels[index].novel!;
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: InkWell(
@@ -110,7 +112,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
               Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
                   builder: (BuildContext context) => NovelViewerPage(
                         id: novel.id,
-                        novelStore: _store.novels[index],
+                        novelStore: novels[index],
                       )));
             },
             child: Card(
@@ -236,7 +238,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
           ),
         );
       },
-      itemCount: _store.novels.length,
+      itemCount: novels.length,
     );
   }
 

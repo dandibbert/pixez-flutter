@@ -27,6 +27,7 @@ import 'package:pixez/models/novel_viewer_persist.dart';
 import 'package:pixez/models/novel_web_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
+import 'package:pixez/page/novel/viewer/novel_spans.dart';
 import 'package:flutter/widgets.dart';
 
 part 'novel_store.g.dart';

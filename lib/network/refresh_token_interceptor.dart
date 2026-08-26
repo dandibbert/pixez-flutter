@@ -23,7 +23,14 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/network/oauth_client.dart';
 
 class RefreshTokenInterceptor extends QueuedInterceptorsWrapper {
+  RefreshTokenInterceptor({Future<String?> Function()? tokenReader})
+      : _tokenReader = tokenReader;
+
+  final Future<String?> Function()? _tokenReader;
+
   Future<String?> getToken() async {
+    final reader = _tokenReader;
+    if (reader != null) return reader();
     String? token = accountStore.now?.accessToken; //可能读的时候没有错的快，导致now为null
     String result;
     if (token != null)
@@ -33,19 +40,36 @@ class RefreshTokenInterceptor extends QueuedInterceptorsWrapper {
       await accountProvider.open();
       final all = await accountProvider.getAllAccount();
       if (all.isEmpty) return null;
-      result = "Bearer " + all[accountStore.index].accessToken;
+      final index = accountStore.index;
+      final account = index >= 0 && index < all.length ? all[index] : all.first;
+      result = "Bearer " + account.accessToken;
     }
     return result;
   }
 
+  /// A queued interceptor only advances its queue when the handler is called.
+  /// If a callback throws asynchronously the handler is never called, so that
+  /// request and every request behind it hang forever with no error. Every
+  /// path below must end in next/resolve/reject.
+  static const Duration _retryTimeout = Duration(seconds: 20);
+
   @override
   Future<void> onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
-    if (!options.path.contains('v1/walkthrough/illusts')) {
-      options.headers[OAuthClient.AUTHORIZATION] = await getToken();
-      if (options.headers[OAuthClient.AUTHORIZATION] == null) {
-        return handler.reject(DioException(requestOptions: options));
+    try {
+      if (!options.path.contains('v1/walkthrough/illusts')) {
+        options.headers[OAuthClient.AUTHORIZATION] = await getToken();
+        if (options.headers[OAuthClient.AUTHORIZATION] == null) {
+          return handler.reject(DioException(requestOptions: options));
+        }
       }
+    } catch (e, stackTrace) {
+      return handler.reject(DioException(
+        requestOptions: options,
+        error: e,
+        stackTrace: stackTrace,
+        message: 'Could not read the access token: $e',
+      ));
     }
     return handler.next(options);
   }
@@ -120,21 +144,28 @@ class RefreshTokenInterceptor extends QueuedInterceptorsWrapper {
         }
       }
       var option = err.requestOptions;
-      final newToken = (await getToken());
-      print("unlock retry ======================== $newToken");
-      option.headers[OAuthClient.AUTHORIZATION] = newToken;
-      var response = await apiClient.httpClient.request(
-        option.path,
-        data: option.data,
-        queryParameters: option.queryParameters,
-        cancelToken: option.cancelToken,
-        options: Options(
-          method: option.method,
-          headers: option.headers,
-          contentType: option.contentType,
-        ),
-      );
-      return handler.resolve(response);
+      try {
+        final newToken = (await getToken());
+        print("unlock retry ======================== $newToken");
+        option.headers[OAuthClient.AUTHORIZATION] = newToken;
+        var response = await apiClient.httpClient
+            .request(
+              option.path,
+              data: option.data,
+              queryParameters: option.queryParameters,
+              cancelToken: option.cancelToken,
+              options: Options(
+                method: option.method,
+                headers: option.headers,
+                contentType: option.contentType,
+              ),
+            )
+            .timeout(_retryTimeout);
+        return handler.resolve(response);
+      } catch (e) {
+        print(e);
+        return handler.reject(err);
+      }
     }
     if (err.message?.contains(
                 "Connection closed before full header was received") ==
@@ -143,17 +174,24 @@ class RefreshTokenInterceptor extends QueuedInterceptorsWrapper {
       print('retry $retryNum =========================');
       retryNum++;
       RequestOptions options = err.requestOptions;
-      var response = await apiClient.httpClient.request(
-        options.path,
-        options: Options(
-          method: options.method,
-          headers: options.headers,
-          contentType: options.contentType,
-        ),
-        data: options.data,
-        queryParameters: options.queryParameters,
-      );
-      return handler.resolve(response);
+      try {
+        var response = await apiClient.httpClient
+            .request(
+              options.path,
+              options: Options(
+                method: options.method,
+                headers: options.headers,
+                contentType: options.contentType,
+              ),
+              data: options.data,
+              queryParameters: options.queryParameters,
+            )
+            .timeout(_retryTimeout);
+        return handler.resolve(response);
+      } catch (e) {
+        print(e);
+        return handler.reject(err);
+      }
     }
     return handler.reject(err);
   }

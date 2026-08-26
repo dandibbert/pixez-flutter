@@ -352,5 +352,17 @@
   "network_mode_standard": "Standardverbindung",
   "network_mode_standard_message": "Für die meisten Netzwerke empfohlen.",
   "ignore_current_version_update": "Aktuelles Update ignorieren",
-  "haptic_feedback": "Haptisches Feedback"
+  "haptic_feedback": "Haptisches Feedback",
+  "novel_details": "Novel details",
+  "novel_font": "Font",
+  "novel_font_serif": "Serif",
+  "novel_font_sans": "Sans",
+  "novel_line_height": "Line spacing",
+  "reader_page": "Page",
+  "reader_series": "Series",
+  "novel_font_default": "Default",
+  "novel_font_import": "Import font file",
+  "novel_font_search": "Search installed fonts",
+  "novel_font_import_failed": "Could not import that font file",
+  "novel_font_imported": "Imported"
 }

@@ -66,6 +66,7 @@ class MainFlutterWindow: NSWindow, FlutterStreamHandler {
         eventChannel.setStreamHandler(self)
 
         DocumentPlugin.bind(controller: flutterViewController)
+        InstalledFontsPlugin.bind(controller: flutterViewController)
 
         RegisterGeneratedPlugins(registry: flutterViewController)
         super.awakeFromNib()

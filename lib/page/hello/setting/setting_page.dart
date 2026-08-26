@@ -259,9 +259,7 @@ class _SettingPageState extends State<SettingPage> {
                     ListTile(
                       leading: Icon(Icons.book),
                       title: Text(I18n.of(context).novel),
-                      onTap: () => Navigator.of(context, rootNavigator: true)
-                          .pushReplacement(MaterialPageRoute(
-                              builder: (context) => NovelRail())),
+                      onTap: () => openNovelRail(context),
                     ),
                     ListTile(
                       leading: Icon(Icons.message),

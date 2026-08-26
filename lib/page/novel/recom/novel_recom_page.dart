@@ -25,6 +25,7 @@ import 'package:pixez/models/novel_recom_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
 import 'package:pixez/page/novel/component/novel_lighting_store.dart';
+import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 
@@ -95,23 +96,50 @@ class _NovelRecomPageState extends State<NovelRecomPage>
               backgroundColor: Colors.transparent,
               title: _buildFirstRow(context),
             ),
-            if (_store.novels.isNotEmpty) _buildSliverList(),
-          ],
-        );
-      }),
+              if (_store.novels.isNotEmpty) _buildSliverList(),
+              if (_store.novels.isEmpty && _store.errorMessage != null)
+                _buildSliverError(context),
+            ],
+          );
+        }),
+    );
+  }
+
+  SliverFillRemaining _buildSliverError(BuildContext context) {
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(':(', style: Theme.of(context).textTheme.headlineMedium),
+          ),
+          TextButton(
+            onPressed: () => _easyRefreshController.callRefresh(),
+            child: Text(I18n.of(context).retry),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text('${_store.errorMessage}', textAlign: TextAlign.center),
+          ),
+        ],
+      ),
     );
   }
 
   SliverList _buildSliverList() {
-    _store.novels.removeWhere((element) => element.novel?.hateByUser() == true);
+    final novels = _store.novels
+        .where((element) => element.novel?.hateByUser() != true)
+        .toList();
     return SliverList(
         delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-      Novel novel = _store.novels[index].novel!;
-      return _buildItem(context, novel, index);
-    }, childCount: _store.novels.length));
+      Novel novel = novels[index].novel!;
+      return _buildItem(context, novel, novels[index]);
+    }, childCount: novels.length));
   }
 
-  Widget _buildItem(BuildContext context, Novel novel, int index) {
+  Widget _buildItem(BuildContext context, Novel novel, NovelStore store) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: InkWell(
@@ -120,7 +148,7 @@ class _NovelRecomPageState extends State<NovelRecomPage>
           Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
               builder: (BuildContext context) => NovelViewerPage(
                     id: novel.id,
-                    novelStore: _store.novels[index],
+                    novelStore: store,
                   )));
         },
         child: Card(
