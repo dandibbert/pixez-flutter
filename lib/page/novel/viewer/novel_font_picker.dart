@@ -177,14 +177,17 @@ class _NovelFontPickerPageState extends State<NovelFontPickerPage> {
                               : '本文プレビュー Preview 预览',
                           style: TextStyle(fontFamily: family, fontSize: 13),
                         ),
-                        onTap: () => _select(
-                          NovelFontChoice(
-                            family,
-                            filePath: family == widget.selectedFamily
-                                ? widget.selectedFilePath
-                                : null,
-                          ),
-                        ),
+                        onTap: () {
+                          InstalledFonts.ensureRegistered(family);
+                          _select(
+                            NovelFontChoice(
+                              family,
+                              filePath: family == widget.selectedFamily
+                                  ? widget.selectedFilePath
+                                  : null,
+                            ),
+                          );
+                        },
                       );
                     },
                   ),

@@ -6,6 +6,53 @@ class InstalledFonts {
   static const MethodChannel _channel = MethodChannel('com.perol.dev/fonts');
 
   static Future<List<String>> Function()? debugLister;
+  static Future<Uint8List?> Function(String family)? debugFamilyLoader;
+  static final Set<String> _registered = <String>{};
+
+  static bool isUserInstalledFontPath(String path) {
+    final lower = path.toLowerCase();
+    if (lower.contains('/system/') || lower.contains('/usr/share')) {
+      return false;
+    }
+    // macOS ships fonts in /Library/Fonts. iOS profile fonts live under
+    // /var/mobile/Library/Fonts and must stay user-installed.
+    if (lower.startsWith('/library/fonts/')) {
+      return false;
+    }
+    return path.trim().isNotEmpty;
+  }
+
+  static Future<void> ensureRegistered(String family) async {
+    final name = family.trim();
+    if (name.isEmpty || _registered.contains(name)) {
+      return;
+    }
+    try {
+      if (debugLister != null && debugFamilyLoader == null) {
+        _registered.add(name);
+        return;
+      }
+      final raw = debugFamilyLoader != null
+          ? await debugFamilyLoader!(name)
+          : await _channel.invokeMethod<Uint8List>('loadFamily', name);
+      if (raw == null || raw.isEmpty) {
+        _registered.add(name);
+        return;
+      }
+      final loader = FontLoader(name);
+      loader.addFont(
+        Future<ByteData>.value(
+          ByteData.view(raw.buffer, raw.offsetInBytes, raw.lengthInBytes),
+        ),
+      );
+      try {
+        await loader.load();
+      } catch (_) {
+        // Flutter only allows a family to be registered once per process.
+      }
+      _registered.add(name);
+    } catch (_) {}
+  }
 
   static Future<List<String>> listFamilies() async {
     final override = debugLister;

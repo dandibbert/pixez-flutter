@@ -4,26 +4,56 @@ import 'package:pixez/main.dart';
 import 'package:pixez/models/tags.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/search/novel_result_list.dart';
+import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/page/painter/painter_list.dart';
 import 'package:pixez/utils/haptic_util.dart';
 
 class NovelResultPage extends StatefulWidget {
   final String word;
   final String? translatedName;
+  final NovelSearchQuery? initialQuery;
 
-  const NovelResultPage({Key? key, required this.word, this.translatedName})
-      : super(key: key);
+  const NovelResultPage({
+    Key? key,
+    required this.word,
+    this.translatedName,
+    this.initialQuery,
+  }) : super(key: key);
 
   @override
   _NovelResultPageState createState() => _NovelResultPageState();
 }
 
 class _NovelResultPageState extends State<NovelResultPage> {
+  late NovelSearchQuery _query;
+
   @override
   void initState() {
     super.initState();
-    tagHistoryStore.insert(TagsPersist(
-        name: widget.word, translatedName: widget.translatedName ?? ""));
+    _query = widget.initialQuery ??
+        NovelSearchQuery(
+          word: widget.word,
+          translatedName: widget.translatedName ?? '',
+        );
+    _recordQuery(_query);
+  }
+
+  void _recordQuery(NovelSearchQuery query) async {
+    _query = query;
+    try {
+      await tagHistoryStore.insert(
+        TagsPersist(
+          name: query.word,
+          translatedName: query.translatedName,
+          type: 1,
+          lastPage: query.normalizedPage,
+          queryJson: query.encode(),
+        ),
+        historyType: 1,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Failed to save novel search history: $error\n$stackTrace');
+    }
   }
 
   @override
@@ -32,7 +62,7 @@ class _NovelResultPageState extends State<NovelResultPage> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.word),
+          title: Text(_query.word),
           bottom: TabBar(
             onTap: (i) {
               HapticUtil.selectionClick();
@@ -48,9 +78,13 @@ class _NovelResultPageState extends State<NovelResultPage> {
         ),
         body: TabBarView(
           children: [
-            NovelResultList(word: widget.word),
+            NovelResultList(
+              initialQuery: _query,
+              restoreQuery: widget.initialQuery != null,
+              onQueryChanged: _recordQuery,
+            ),
             PainterList(
-              futureGet: () => apiClient.getSearchUser(widget.word),
+              futureGet: () => apiClient.getSearchUser(_query.word),
               isNovel: true,
             )
           ],

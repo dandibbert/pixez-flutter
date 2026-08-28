@@ -26,6 +26,8 @@ import 'package:pixez/models/tags.dart';
 import 'package:pixez/models/trend_tags.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/search/novel_result_page.dart';
+import 'package:pixez/page/novel/search/novel_search_query.dart';
+import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
@@ -314,41 +316,68 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
   }
 
   Widget buildActionChip(TagsPersist f, BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onLongPress: () {
+        HapticUtil.heavy();
         showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: Text('${I18n.of(context).delete}?'),
-                actions: [
-                  TextButton(
-                      onPressed: () {
-                        tagHistoryStore.delete(f.id!);
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(I18n.of(context).ok)),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(I18n.of(context).cancel)),
-                ],
-              );
-            });
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(I18n.of(context).history_actions),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    tagHistoryStore.delete(f.id!);
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(I18n.of(context).delete),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _openSavedHistory(context, f);
+                  },
+                  child: Text(I18n.of(context).jump_to_saved_page(f.lastPage)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(I18n.of(context).cancel),
+                ),
+              ],
+            );
+          },
+        );
       },
-      onTap: () {
-        Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
-            builder: (context) => NovelResultPage(
-                  word: f.name,
-                  translatedName: f.translatedName,
-                )));
-      },
-      child: Chip(
+      child: ActionChip(
         padding: EdgeInsets.all(0.0),
         label: Text(
-          f.name,
+          f.lastPage > 1
+              ? '${f.name} · ${I18n.of(context).search_result_page(f.lastPage)}'
+              : f.name,
           style: TextStyle(fontSize: 12.0),
+        ),
+        onPressed: () {
+          _openSavedHistory(context, f);
+        },
+      ),
+    );
+  }
+
+  void _openSavedHistory(BuildContext context, TagsPersist history) {
+    final restoredQuery = NovelSearchQuery.fromHistory(
+      name: history.name,
+      translatedName: history.translatedName,
+      lastPage: history.lastPage,
+      queryJson: history.queryJson,
+    );
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (context) => NovelResultPage(
+          word: history.name,
+          translatedName: history.translatedName,
+          initialQuery: restoredQuery,
         ),
       ),
     );

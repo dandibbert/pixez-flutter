@@ -31,6 +31,7 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/network/network_mode.dart';
 import 'package:pixez/network/oauth_client.dart';
 import 'package:pixez/page/about/languages.dart';
+import 'package:pixez/page/novel/viewer/installed_fonts.dart';
 import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
 import 'package:pixez/secure_plugin.dart';
 import 'package:pixez/store/welcome_page_type.dart';
@@ -412,6 +413,7 @@ abstract class _UserSetting with Store {
     await prefs.setString(NOVEL_FONT_FAMILY_KEY, family);
     if (filePath == null || filePath.isEmpty) {
       await prefs.remove(NOVEL_FONT_FILE_KEY);
+      await InstalledFonts.ensureRegistered(family);
     } else {
       await prefs.setString(NOVEL_FONT_FILE_KEY, filePath);
       await NovelCustomFont.ensureLoaded(family, filePath);
@@ -611,6 +613,9 @@ abstract class _UserSetting with Store {
     novelLineHeight = prefs.getDouble(NOVEL_LINE_HEIGHT_KEY) ?? 1.8;
     _syncNovelTextStyle();
     await NovelCustomFont.ensureLoaded(novelFontFamily, novelFontFile);
+    if (novelFontFile == null || novelFontFile!.isEmpty) {
+      await InstalledFonts.ensureRegistered(novelFontFamily);
+    }
     saveMode =
         prefs.getInt(SAVE_MODE_KEY) ??
         (isHelplessWay == null ? 0 : (isHelplessWay! ? 2 : 1));
