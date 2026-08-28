@@ -88,11 +88,7 @@ android {
         }
     }
 
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-    }
+
 
     splits {
         abi {
