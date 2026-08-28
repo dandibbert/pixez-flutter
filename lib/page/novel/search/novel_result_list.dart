@@ -41,6 +41,10 @@ class _NovelResultListState extends State<NovelResultList> {
   late bool _translatedTags;
   late bool _mergeKeyword;
   DateTimeRange? _dateTimeRange;
+  late TextEditingController _bookmarkMinController;
+  late TextEditingController _bookmarkMaxController;
+  late TextEditingController _textLengthController;
+  String? _filterError;
 
   final sort = ["date_desc", "date_asc", "popular_desc"];
   static const List<String> search_target = [
@@ -71,7 +75,24 @@ class _NovelResultListState extends State<NovelResultList> {
         end: _query.endDate!,
       );
     }
+    _bookmarkMinController = TextEditingController(
+      text: _bookmarkMin > 0 ? '$_bookmarkMin' : '',
+    );
+    _bookmarkMaxController = TextEditingController(
+      text: _bookmarkMax > 0 ? '$_bookmarkMax' : '',
+    );
+    _textLengthController = TextEditingController(
+      text: _textLengthMin > 0 ? '$_textLengthMin' : '',
+    );
     _applyQuery(page: widget.restoreQuery ? _query.normalizedPage : 1);
+  }
+
+  @override
+  void dispose() {
+    _bookmarkMinController.dispose();
+    _bookmarkMaxController.dispose();
+    _textLengthController.dispose();
+    super.dispose();
   }
 
   String _label(String en, String zh) {
@@ -229,6 +250,8 @@ class _NovelResultListState extends State<NovelResultList> {
   }
 
   void _buildShowBottomSheet(BuildContext context) {
+    _syncNumberFields();
+    _filterError = null;
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -256,7 +279,34 @@ class _NovelResultListState extends State<NovelResultList> {
                                 child: Text(I18n.of(context).filter)),
                             TextButton(
                                 onPressed: () {
+                                  final min =
+                                      NovelSearchQuery.parseNumberInput(
+                                    _bookmarkMinController.text,
+                                  );
+                                  final max =
+                                      NovelSearchQuery.parseNumberInput(
+                                    _bookmarkMaxController.text,
+                                  );
+                                  if (NovelSearchQuery.isBookmarkRangeInvalid(
+                                    min,
+                                    max,
+                                  )) {
+                                    setS(() {
+                                      _filterError = _label(
+                                        'Bookmark minimum cannot be greater than maximum',
+                                        '收藏下限不能大于上限',
+                                      );
+                                    });
+                                    return;
+                                  }
                                   setState(() {
+                                    _bookmarkMin = min;
+                                    _bookmarkMax = max;
+                                    _textLengthMin =
+                                        NovelSearchQuery.parseNumberInput(
+                                      _textLengthController.text,
+                                    );
+                                    _filterError = null;
                                     _applyQuery();
                                   });
                                   Navigator.of(context).pop();
@@ -327,6 +377,7 @@ class _NovelResultListState extends State<NovelResultList> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        Text(_label('Publish date', '投稿日期')),
                         Wrap(
                           spacing: 8,
                           children: [
@@ -349,6 +400,42 @@ class _NovelResultListState extends State<NovelResultList> {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dateButton(
+                                context,
+                                setS,
+                                label: _label('Start date', '开始日期'),
+                                value: _dateTimeRange?.start,
+                                onPicked: (date) {
+                                  final end = _dateTimeRange?.end ?? date;
+                                  _dateTimeRange = DateTimeRange(
+                                    start: date,
+                                    end: end.isBefore(date) ? date : end,
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _dateButton(
+                                context,
+                                setS,
+                                label: _label('End date', '结束日期'),
+                                value: _dateTimeRange?.end,
+                                onPicked: (date) {
+                                  final start = _dateTimeRange?.start ?? date;
+                                  _dateTimeRange = DateTimeRange(
+                                    start: start.isAfter(date) ? date : start,
+                                    end: date,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         Text(_label('Bookmarks', '收藏数')),
                         Wrap(
                           spacing: 8,
@@ -363,24 +450,59 @@ class _NovelResultListState extends State<NovelResultList> {
                                   setS(() {
                                     _bookmarkMin = value;
                                     _bookmarkMax = 0;
+                                    _syncNumberFields();
                                   });
                                 },
                               ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(_label('Minimum length', '最少字数')),
-                        Slider(
-                          value: _textLengthMin.toDouble().clamp(0, 20000),
-                          min: 0,
-                          max: 20000,
-                          divisions: 20,
-                          label: _textLengthMin == 0
-                              ? _label('Any', '不限')
-                              : '$_textLengthMin',
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _numberField(
+                                controller: _bookmarkMinController,
+                                label: _label('Minimum', '下限'),
+                                hint: _label('No limit', '不限'),
+                                onChanged: (value) {
+                                  setS(() {
+                                    _bookmarkMin =
+                                        NovelSearchQuery.parseNumberInput(
+                                      value,
+                                    );
+                                    _filterError = null;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _numberField(
+                                controller: _bookmarkMaxController,
+                                label: _label('Maximum', '上限'),
+                                hint: _label('No limit', '不限'),
+                                onChanged: (value) {
+                                  setS(() {
+                                    _bookmarkMax =
+                                        NovelSearchQuery.parseNumberInput(
+                                      value,
+                                    );
+                                    _filterError = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _numberField(
+                          controller: _textLengthController,
+                          label: _label('Minimum length', '最少字数'),
+                          hint: _label('No limit', '不限'),
                           onChanged: (value) {
                             setS(() {
-                              _textLengthMin = value.round();
+                              _textLengthMin =
+                                  NovelSearchQuery.parseNumberInput(value);
                             });
                           },
                         ),
@@ -399,6 +521,16 @@ class _NovelResultListState extends State<NovelResultList> {
                             ),
                           ],
                         ),
+                        if (_filterError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              _filterError!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(_label('Exclude AI', '排除 AI')),
@@ -453,6 +585,63 @@ class _NovelResultListState extends State<NovelResultList> {
         });
   }
 
+  void _syncNumberFields() {
+    _bookmarkMinController.text = _bookmarkMin > 0 ? '$_bookmarkMin' : '';
+    _bookmarkMaxController.text = _bookmarkMax > 0 ? '$_bookmarkMax' : '';
+    _textLengthController.text = _textLengthMin > 0 ? '$_textLengthMin' : '';
+  }
+
+  Widget _numberField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required ValueChanged<String> onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        isDense: true,
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+
+  Widget _dateButton(
+    BuildContext context,
+    void Function(void Function()) setS, {
+    required String label,
+    required DateTime? value,
+    required ValueChanged<DateTime> onPicked,
+  }) {
+    return OutlinedButton(
+      onPressed: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime.now(),
+          firstDate: DateTime(2007, 8),
+          lastDate: DateTime.now(),
+        );
+        if (picked == null) {
+          return;
+        }
+        setS(() => onPicked(picked));
+      },
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          value == null
+              ? label
+              : '${label}\n${value.year}/${value.month.toString().padLeft(2, '0')}/${value.day.toString().padLeft(2, '0')}',
+          textAlign: TextAlign.left,
+        ),
+      ),
+    );
+  }
+
   Widget _buildBookmarkMenu() {
     return PopupMenuButton(
       initialValue: _bookmarkMin,
@@ -470,6 +659,7 @@ class _NovelResultListState extends State<NovelResultList> {
               setState(() {
                 _bookmarkMin = value;
                 _bookmarkMax = 0;
+                _syncNumberFields();
                 _applyQuery();
               });
             },

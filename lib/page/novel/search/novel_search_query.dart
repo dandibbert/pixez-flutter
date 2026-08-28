@@ -153,6 +153,18 @@ class NovelSearchQuery {
 
   String encode() => jsonEncode(toJson());
 
+  static int parseNumberInput(String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      return 0;
+    }
+    return int.tryParse(digits) ?? 0;
+  }
+
+  static bool isBookmarkRangeInvalid(int min, int max) {
+    return max > 0 && min > max;
+  }
+
   static DateTimeRangeDays? dateRangeForPreset(int days, {DateTime? now}) {
     if (days <= 0) return null;
     final end = now ?? DateTime.now();

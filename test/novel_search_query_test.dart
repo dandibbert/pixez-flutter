@@ -150,6 +150,20 @@ void main() {
       expect(restored.mode, SearchResultMode.paged);
     });
 
+    test('parses free-form filter numbers like pixvel', () {
+      expect(NovelSearchQuery.parseNumberInput(''), 0);
+      expect(NovelSearchQuery.parseNumberInput('  '), 0);
+      expect(NovelSearchQuery.parseNumberInput('2500'), 2500);
+      expect(NovelSearchQuery.parseNumberInput('2,500'), 2500);
+      expect(NovelSearchQuery.parseNumberInput('abc'), 0);
+    });
+
+    test('rejects a bookmark maximum below the minimum', () {
+      expect(NovelSearchQuery.isBookmarkRangeInvalid(100, 0), isFalse);
+      expect(NovelSearchQuery.isBookmarkRangeInvalid(100, 500), isFalse);
+      expect(NovelSearchQuery.isBookmarkRangeInvalid(500, 100), isTrue);
+    });
+
     test('date presets match pixvel last-N-days windows', () {
       final now = DateTime.utc(2026, 8, 28);
       final week = NovelSearchQuery.dateRangeForPreset(7, now: now);
