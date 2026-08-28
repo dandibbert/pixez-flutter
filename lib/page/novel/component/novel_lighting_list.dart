@@ -23,7 +23,9 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/models/novel_recom_response.dart';
 import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
+import 'package:pixez/page/novel/component/novel_intro.dart';
 import 'package:pixez/page/novel/component/novel_lighting_store.dart';
+import 'package:pixez/page/novel/search/novel_search_pager.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/exts.dart';
 
@@ -260,9 +262,10 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                   ],
                                 ),
                               ),
-                              Container(
-                                height: 8.0,
-                              )
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                                child: NovelIntroPreview(caption: novel.caption),
+                              ),
                             ],
                           ),
                         ),
@@ -276,7 +279,19 @@ class _NovelLightingListState extends State<NovelLightingList> {
                       children: [
                         NovelBookmarkButton(novel: novel),
                         Text('${novel.totalBookmarks}',
-                            style: Theme.of(context).textTheme.bodySmall)
+                            style: Theme.of(context).textTheme.bodySmall),
+                        IconButton(
+                          key: Key('novelIntroButton_${novel.id}'),
+                          tooltip: I18n.of(context).novel_details,
+                          icon: const Icon(Icons.info_outline),
+                          onPressed: () {
+                            showNovelIntroDialog(
+                              context: context,
+                              title: novel.title,
+                              caption: novel.caption,
+                            );
+                          },
+                        ),
                       ],
                     ),
                   )
@@ -313,45 +328,18 @@ class _NovelLightingListState extends State<NovelLightingList> {
         return Column(
           children: [
             Expanded(child: list),
-            _buildPaginationBar(context),
+            NovelSearchPagerBar(
+              currentPage: _store.currentPage,
+              loading: _store.refreshing,
+              hasPrevious: _store.currentPage > 1,
+              hasNext: _store.nextUrl != null,
+              onPrevious: () => _loadPage(_store.currentPage - 1),
+              onNext: () => _loadPage(_store.currentPage + 1),
+              onPickPage: _showPageDialog,
+            ),
           ],
         );
       },
-    );
-  }
-
-  Widget _buildPaginationBar(BuildContext context) {
-    final loading = _store.refreshing;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TextButton.icon(
-              onPressed: loading || _store.currentPage <= 1
-                  ? null
-                  : () => _loadPage(_store.currentPage - 1),
-              icon: const Icon(Icons.chevron_left),
-              label: Text(I18n.of(context).pre),
-            ),
-            TextButton(
-              onPressed: loading ? null : _showPageDialog,
-              child: Text(
-                I18n.of(context).search_result_page(_store.currentPage),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: loading || _store.nextUrl == null
-                  ? null
-                  : () => _loadPage(_store.currentPage + 1),
-              label: Text(I18n.of(context).next),
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

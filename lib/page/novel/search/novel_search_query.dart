@@ -212,6 +212,24 @@ class NovelSearchQuery {
       return null;
     }
   }
+
+  /// Restores word, filters, and the saved result page from a history chip.
+  static NovelSearchQuery fromHistory({
+    required String name,
+    required String translatedName,
+    required int lastPage,
+    String? queryJson,
+  }) {
+    final decoded = tryDecode(queryJson);
+    return (decoded ??
+            NovelSearchQuery(word: name, translatedName: translatedName))
+        .copyWith(
+          word: name,
+          translatedName: translatedName,
+          page: lastPage > 0 ? lastPage : 1,
+          mode: SearchResultMode.paged,
+        );
+  }
 }
 
 class DateTimeRangeDays {

@@ -115,6 +115,41 @@ void main() {
       expect(NovelSearchQuery.tryDecode(history.queryJson), isNull);
     });
 
+    test('history restore keeps the saved word, filters, and page', () {
+      final saved = NovelSearchQuery(
+        word: '猫',
+        translatedName: 'cat',
+        searchTarget: 'text',
+        bookmarkNumMin: 500,
+        page: 4,
+      );
+      final restored = NovelSearchQuery.fromHistory(
+        name: '猫',
+        translatedName: 'cat',
+        lastPage: 4,
+        queryJson: saved.encode(),
+      );
+
+      expect(restored.word, '猫');
+      expect(restored.page, 4);
+      expect(restored.bookmarkNumMin, 500);
+      expect(restored.searchTarget, 'text');
+      expect(restored.mode, SearchResultMode.paged);
+    });
+
+    test('history without query_json still opens the saved page', () {
+      final restored = NovelSearchQuery.fromHistory(
+        name: 'old',
+        translatedName: '',
+        lastPage: 6,
+        queryJson: null,
+      );
+
+      expect(restored.word, 'old');
+      expect(restored.page, 6);
+      expect(restored.mode, SearchResultMode.paged);
+    });
+
     test('date presets match pixvel last-N-days windows', () {
       final now = DateTime.utc(2026, 8, 28);
       final week = NovelSearchQuery.dateRangeForPreset(7, now: now);

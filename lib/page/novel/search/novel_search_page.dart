@@ -27,7 +27,6 @@ import 'package:pixez/models/trend_tags.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/search/novel_result_page.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
-import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
@@ -360,28 +359,18 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
           style: TextStyle(fontSize: 12.0),
         ),
         onPressed: () {
-          Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
-            builder: (context) => NovelResultPage(
-              word: f.name,
-              translatedName: f.translatedName,
-            ),
-          ));
+          _openSavedHistory(context, f);
         },
       ),
     );
   }
 
   void _openSavedHistory(BuildContext context, TagsPersist history) {
-    final decoded = NovelSearchQuery.tryDecode(history.queryJson);
-    final query = (decoded ??
-            NovelSearchQuery(
-              word: history.name,
-              translatedName: history.translatedName,
-            ))
-        .copyWith(page: history.lastPage, mode: SearchResultMode.paged);
-    final restoredQuery = query.copyWith(
-      word: history.name,
+    final restoredQuery = NovelSearchQuery.fromHistory(
+      name: history.name,
       translatedName: history.translatedName,
+      lastPage: history.lastPage,
+      queryJson: history.queryJson,
     );
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
