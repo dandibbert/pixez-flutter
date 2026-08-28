@@ -2,34 +2,47 @@ import 'dart:convert';
 
 import 'package:pixez/store/search_result_mode.dart';
 
-/// Recoverable novel search state. Stores the query only, not page responses
-/// or next_url. Page numbers map onto Pixiv's `offset` the same way as
-/// [IllustSearchQuery].
+/// Recoverable novel search state aligned with pixvel's /v1/search/novel
+/// params. History still uses PixEz `query_json` + `last_page`.
 class NovelSearchQuery {
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
+  static const Set<int> supportedSchemaVersions = {1, 2};
   static const int pageSize = 30;
+  static const int maxPage = 100;
   static const Set<String> supportedSearchTargets = {
+    'keyword',
     'partial_match_for_tags',
     'exact_match_for_tags',
     'text',
-    'keyword',
   };
   static const Set<String> supportedSorts = {
     'date_desc',
     'date_asc',
     'popular_desc',
   };
+  static const Set<String> supportedLangs = {'ja', 'zh-CN'};
+  static const List<int> bookmarkPresets = [0, 100, 500, 1000, 5000, 10000];
+  static const List<int> datePresetDays = [7, 30, 180, 365];
 
   const NovelSearchQuery({
     required this.word,
     this.translatedName = '',
-    this.searchTarget = 'partial_match_for_tags',
+    this.searchTarget = 'keyword',
     this.sort = 'date_desc',
     this.startDate,
     this.endDate,
-    this.starValue = 0,
+    this.bookmarkNumMin = 0,
+    this.bookmarkNumMax = 0,
+    this.textLengthMin = 0,
+    this.lang = 'ja',
+    this.includePotentialViolationWorks = false,
+    this.includeTranslatedTagResults = true,
+    this.isOriginalOnly = false,
+    this.isReplaceableOnly = false,
+    this.mergePlainKeywordResults = true,
+    this.searchAiType = 1,
     this.page = 1,
-    this.mode = SearchResultMode.infinite,
+    this.mode = SearchResultMode.paged,
   });
 
   final String word;
@@ -38,16 +51,33 @@ class NovelSearchQuery {
   final String sort;
   final DateTime? startDate;
   final DateTime? endDate;
-  final int starValue;
+  final int bookmarkNumMin;
+  final int bookmarkNumMax;
+  final int textLengthMin;
+  final String lang;
+  final bool includePotentialViolationWorks;
+  final bool includeTranslatedTagResults;
+  final bool isOriginalOnly;
+  final bool isReplaceableOnly;
+  final bool mergePlainKeywordResults;
+  final int searchAiType;
   final int page;
   final SearchResultMode mode;
 
-  int get normalizedPage => page < 1 ? 1 : page;
+  int get normalizedPage {
+    if (page < 1) return 1;
+    if (page > maxPage) return maxPage;
+    return page;
+  }
 
   int? get offset =>
       normalizedPage == 1 ? null : (normalizedPage - 1) * pageSize;
 
-  String get requestWord => starValue == 0 ? word : '$word ${starValue}users入り';
+  /// Pixvel sends the typed word as-is. Bookmark floors go through
+  /// `bookmark_num_min`, not a `users入り` suffix.
+  String get requestWord => word;
+
+  int get starValue => bookmarkNumMin;
 
   NovelSearchQuery copyWith({
     String? word,
@@ -57,7 +87,16 @@ class NovelSearchQuery {
     DateTime? startDate,
     DateTime? endDate,
     bool clearDateRange = false,
-    int? starValue,
+    int? bookmarkNumMin,
+    int? bookmarkNumMax,
+    int? textLengthMin,
+    String? lang,
+    bool? includePotentialViolationWorks,
+    bool? includeTranslatedTagResults,
+    bool? isOriginalOnly,
+    bool? isReplaceableOnly,
+    bool? mergePlainKeywordResults,
+    int? searchAiType,
     int? page,
     SearchResultMode? mode,
   }) {
@@ -68,7 +107,19 @@ class NovelSearchQuery {
       sort: sort ?? this.sort,
       startDate: clearDateRange ? null : (startDate ?? this.startDate),
       endDate: clearDateRange ? null : (endDate ?? this.endDate),
-      starValue: starValue ?? this.starValue,
+      bookmarkNumMin: bookmarkNumMin ?? this.bookmarkNumMin,
+      bookmarkNumMax: bookmarkNumMax ?? this.bookmarkNumMax,
+      textLengthMin: textLengthMin ?? this.textLengthMin,
+      lang: lang ?? this.lang,
+      includePotentialViolationWorks:
+          includePotentialViolationWorks ?? this.includePotentialViolationWorks,
+      includeTranslatedTagResults:
+          includeTranslatedTagResults ?? this.includeTranslatedTagResults,
+      isOriginalOnly: isOriginalOnly ?? this.isOriginalOnly,
+      isReplaceableOnly: isReplaceableOnly ?? this.isReplaceableOnly,
+      mergePlainKeywordResults:
+          mergePlainKeywordResults ?? this.mergePlainKeywordResults,
+      searchAiType: searchAiType ?? this.searchAiType,
       page: page ?? this.page,
       mode: mode ?? this.mode,
     );
@@ -84,13 +135,32 @@ class NovelSearchQuery {
       'sort': sort,
       'start_date': startDate?.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
-      'star_value': starValue,
+      'bookmark_num_min': bookmarkNumMin,
+      'bookmark_num_max': bookmarkNumMax,
+      'star_value': bookmarkNumMin,
+      'text_length_min': textLengthMin,
+      'lang': lang,
+      'include_potential_violation_works': includePotentialViolationWorks,
+      'include_translated_tag_results': includeTranslatedTagResults,
+      'is_original_only': isOriginalOnly,
+      'is_replaceable_only': isReplaceableOnly,
+      'merge_plain_keyword_results': mergePlainKeywordResults,
+      'search_ai_type': searchAiType,
       'page': normalizedPage,
       'mode': mode.code,
     };
   }
 
   String encode() => jsonEncode(toJson());
+
+  static DateTimeRangeDays? dateRangeForPreset(int days, {DateTime? now}) {
+    if (days <= 0) return null;
+    final end = now ?? DateTime.now();
+    return DateTimeRangeDays(
+      start: end.subtract(Duration(days: days)),
+      end: end,
+    );
+  }
 
   static NovelSearchQuery? tryDecode(String? value) {
     if (value == null || value.isEmpty) return null;
@@ -100,28 +170,53 @@ class NovelSearchQuery {
         return null;
       }
       final version = (json['version'] as num?)?.toInt() ?? 0;
-      if (version != schemaVersion) return null;
+      if (!supportedSchemaVersions.contains(version)) return null;
       final word = json['word'] as String?;
       if (word == null || word.isEmpty) return null;
       final decodedSearchTarget = json['search_target'] as String?;
       final decodedSort = json['sort'] as String?;
       final decodedPage = (json['page'] as num?)?.toInt() ?? 1;
-      final decodedStarValue = (json['star_value'] as num?)?.toInt() ?? 0;
+      final decodedBookmarkMin =
+          (json['bookmark_num_min'] as num?)?.toInt() ??
+          (json['star_value'] as num?)?.toInt() ??
+          0;
+      final decodedBookmarkMax = (json['bookmark_num_max'] as num?)?.toInt() ?? 0;
+      final decodedTextLength = (json['text_length_min'] as num?)?.toInt() ?? 0;
+      final decodedLang = json['lang'] as String? ?? 'ja';
+      final decodedAi = (json['search_ai_type'] as num?)?.toInt() ?? 1;
       return NovelSearchQuery(
         word: word,
         translatedName: json['translated_name'] as String? ?? '',
         searchTarget: supportedSearchTargets.contains(decodedSearchTarget)
             ? decodedSearchTarget!
-            : 'partial_match_for_tags',
+            : 'keyword',
         sort: supportedSorts.contains(decodedSort) ? decodedSort! : 'date_desc',
         startDate: DateTime.tryParse(json['start_date'] as String? ?? ''),
         endDate: DateTime.tryParse(json['end_date'] as String? ?? ''),
-        starValue: decodedStarValue >= 0 ? decodedStarValue : 0,
+        bookmarkNumMin: decodedBookmarkMin >= 0 ? decodedBookmarkMin : 0,
+        bookmarkNumMax: decodedBookmarkMax >= 0 ? decodedBookmarkMax : 0,
+        textLengthMin: decodedTextLength >= 0 ? decodedTextLength : 0,
+        lang: supportedLangs.contains(decodedLang) ? decodedLang : 'ja',
+        includePotentialViolationWorks:
+            json['include_potential_violation_works'] == true,
+        includeTranslatedTagResults:
+            json['include_translated_tag_results'] != false,
+        isOriginalOnly: json['is_original_only'] == true,
+        isReplaceableOnly: json['is_replaceable_only'] == true,
+        mergePlainKeywordResults: json['merge_plain_keyword_results'] != false,
+        searchAiType: decodedAi == 0 ? 0 : 1,
         page: decodedPage > 0 ? decodedPage : 1,
-        mode: SearchResultMode.fromCode(json['mode'] as String?),
+        mode: SearchResultMode.paged,
       );
     } catch (_) {
       return null;
     }
   }
+}
+
+class DateTimeRangeDays {
+  const DateTimeRangeDays({required this.start, required this.end});
+
+  final DateTime start;
+  final DateTime end;
 }

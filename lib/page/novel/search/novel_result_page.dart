@@ -34,7 +34,6 @@ class _NovelResultPageState extends State<NovelResultPage> {
         NovelSearchQuery(
           word: widget.word,
           translatedName: widget.translatedName ?? '',
-          mode: userSetting.searchResultMode,
         );
     _recordQuery(_query);
   }

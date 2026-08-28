@@ -31,6 +31,7 @@ import 'package:pixez/models/novel_web_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/page/novel/viewer/novel_links.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 
 //这一堆都是专门给小说特殊约定写的
@@ -329,8 +330,9 @@ class NovelSpansGenerator {
           .replaceAll(flag, '')
           .replaceAll(']', '')
           .split('>');
-      final resultText = '${contentText.first}(${contentText.last})';
-      return NovelSpansData(NovelSpansType.normal, resultText);
+      final base = contentText.first;
+      final ruby = contentText.length > 1 ? contentText.last : '';
+      return NovelSpansData(NovelSpansType.rb, '$base>$ruby');
     } else {
       return NovelSpansData(NovelSpansType.normal, spanStr);
     }
@@ -340,6 +342,7 @@ class NovelSpansGenerator {
     BuildContext context,
     NovelSpansData data, {
     void Function(int page)? onJumpToPage,
+    void Function(int novelId)? onOpenNovel,
     TextStyle? style,
   }) {
     if (data.type == NovelSpansType.newPage) {
@@ -365,12 +368,39 @@ class NovelSpansGenerator {
             ? (TapGestureRecognizer()..onTap = () => onJumpToPage(page))
             : null,
       );
+    } else if (data.type == NovelSpansType.rb) {
+      final parts = data.text.split('>');
+      final base = parts.first;
+      final ruby = parts.length > 1 ? parts.last : '';
+      final baseStyle = style ?? DefaultTextStyle.of(context).style;
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (ruby.isNotEmpty)
+              Text(
+                ruby,
+                style: baseStyle.copyWith(
+                  fontSize: (baseStyle.fontSize ?? 16) * 0.55,
+                  height: 1.1,
+                ),
+              ),
+            Text(base, style: baseStyle),
+          ],
+        ),
+      );
     } else if (data.type == NovelSpansType.jumpUri) {
       return TextSpan(
         text: data.text,
         style: TextStyle(color: Theme.of(context).colorScheme.primary),
         recognizer: TapGestureRecognizer()
           ..onTap = () async {
+            final novelId = parsePixivNovelId(data.text);
+            if (novelId != null && onOpenNovel != null) {
+              onOpenNovel(novelId);
+              return;
+            }
             final open = await showDialog(
               context: context,
               builder: (context) {

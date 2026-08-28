@@ -5,13 +5,17 @@ import 'package:pixez/store/search_result_mode.dart';
 
 void main() {
   group('NovelSearchQuery', () {
-    test('converts page numbers to Pixiv offsets', () {
+    test('uses pixvel page offsets and does not rewrite the word', () {
       const first = NovelSearchQuery(word: 'test');
-      final fifth = first.copyWith(page: 5, mode: SearchResultMode.paged);
+      final fifth = first.copyWith(page: 5, bookmarkNumMin: 1000);
 
+      expect(first.searchTarget, 'keyword');
+      expect(first.mode, SearchResultMode.paged);
       expect(first.offset, isNull);
       expect(fifth.offset, 120);
       expect(fifth.requestWord, 'test');
+      expect(fifth.searchAiType, 1);
+      expect(fifth.lang, 'ja');
     });
 
     test('round-trips the complete recoverable query', () {
@@ -22,9 +26,14 @@ void main() {
         sort: 'date_asc',
         startDate: DateTime.utc(2024, 1, 2),
         endDate: DateTime.utc(2024, 2, 3),
-        starValue: 500,
+        bookmarkNumMin: 500,
+        bookmarkNumMax: 2000,
+        textLengthMin: 3000,
+        lang: 'zh-CN',
+        includePotentialViolationWorks: true,
+        isOriginalOnly: true,
+        searchAiType: 0,
         page: 7,
-        mode: SearchResultMode.paged,
       );
 
       final restored = NovelSearchQuery.tryDecode(source.encode());
@@ -32,7 +41,28 @@ void main() {
       expect(restored, isNotNull);
       expect(restored!.toJson(), source.toJson());
       expect(restored.offset, 180);
-      expect(restored.requestWord, '猫 500users入り');
+      expect(restored.requestWord, '猫');
+      expect(restored.bookmarkNumMin, 500);
+    });
+
+    test('reads v1 history star_value as bookmark_num_min', () {
+      final restored = NovelSearchQuery.tryDecode('''
+{
+  "version": 1,
+  "kind": "novel",
+  "word": "test",
+  "search_target": "partial_match_for_tags",
+  "star_value": 1000,
+  "page": 3
+}
+''');
+
+      expect(restored, isNotNull);
+      expect(restored!.bookmarkNumMin, 1000);
+      expect(restored.searchTarget, 'partial_match_for_tags');
+      expect(restored.page, 3);
+      expect(restored.mode, SearchResultMode.paged);
+      expect(restored.requestWord, 'test');
     });
 
     test('rejects illust snapshots and malformed payloads', () {
@@ -55,20 +85,20 @@ void main() {
     test('normalizes unsafe values from imported history', () {
       final restored = NovelSearchQuery.tryDecode('''
 {
-  "version": 1,
+  "version": 2,
   "kind": "novel",
   "word": "test",
   "search_target": "invalid",
   "sort": "invalid",
-  "star_value": -10,
+  "bookmark_num_min": -10,
   "page": -3
 }
 ''');
 
       expect(restored, isNotNull);
-      expect(restored!.searchTarget, 'partial_match_for_tags');
+      expect(restored!.searchTarget, 'keyword');
       expect(restored.sort, 'date_desc');
-      expect(restored.starValue, 0);
+      expect(restored.bookmarkNumMin, 0);
       expect(restored.page, 1);
     });
 
@@ -83,6 +113,16 @@ void main() {
       expect(history.lastPage, 1);
       expect(history.queryJson, isNull);
       expect(NovelSearchQuery.tryDecode(history.queryJson), isNull);
+    });
+
+    test('date presets match pixvel last-N-days windows', () {
+      final now = DateTime.utc(2026, 8, 28);
+      final week = NovelSearchQuery.dateRangeForPreset(7, now: now);
+
+      expect(week, isNotNull);
+      expect(week!.end, now);
+      expect(week.start, DateTime.utc(2026, 8, 21));
+      expect(NovelSearchQuery.dateRangeForPreset(0, now: now), isNull);
     });
   });
 }

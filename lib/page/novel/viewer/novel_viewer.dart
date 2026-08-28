@@ -306,6 +306,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               context,
               block.span,
               onJumpToPage: _goToPage,
+              onOpenNovel: (id) {
+                Leader.push(context, NovelViewerPage(id: id));
+              },
               style: style,
             ),
           ],
