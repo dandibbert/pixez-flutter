@@ -1,27 +1,74 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_lighting_list.dart';
+import 'package:pixez/page/novel/search/novel_search_query.dart';
+import 'package:pixez/store/search_result_mode.dart';
 
 class NovelResultList extends StatefulWidget {
-  final String word;
+  final NovelSearchQuery initialQuery;
+  final bool restoreQuery;
+  final ValueChanged<NovelSearchQuery>? onQueryChanged;
 
-  const NovelResultList({Key? key, required this.word}) : super(key: key);
+  const NovelResultList({
+    Key? key,
+    required this.initialQuery,
+    this.restoreQuery = false,
+    this.onQueryChanged,
+  }) : super(key: key);
 
   @override
   _NovelResultListState createState() => _NovelResultListState();
 }
 
 class _NovelResultListState extends State<NovelResultList> {
+  late NovelSearchQuery _query;
+  late LightSource _source;
+  String searchTarget = NovelSearchQuery.supportedSearchTargets.first;
+  String selectSort = "date_desc";
+  int _starValue = 0;
+  DateTimeRange? _dateTimeRange;
+
+  final sort = ["date_desc", "date_asc", "popular_desc"];
+  static const List<String> search_target = [
+    "partial_match_for_tags",
+    "exact_match_for_tags",
+    "text",
+    "keyword",
+  ];
+  List<int> starNum = [
+    0,
+    100,
+    250,
+    500,
+    1000,
+    5000,
+    7500,
+    10000,
+    20000,
+    30000,
+    50000,
+  ];
+
   @override
   void initState() {
-    futureGet = ApiForceSource(
-        futureGet: (bool e) => apiClient.getSearchNovel(widget.word));
     super.initState();
+    _query = widget.initialQuery;
+    searchTarget = _query.searchTarget;
+    selectSort = _query.sort;
+    _starValue = _query.starValue;
+    if (_query.startDate != null && _query.endDate != null) {
+      _dateTimeRange = DateTimeRange(
+        start: _query.startDate!,
+        end: _query.endDate!,
+      );
+    }
+    _applyQuery(page: widget.restoreQuery ? _query.normalizedPage : 1);
   }
 
   @override
@@ -41,7 +88,7 @@ class _NovelResultListState extends State<NovelResultList> {
                     child: Padding(
                       padding: EdgeInsets.only(left: 16.0),
                       child: Text(
-                        widget.word,
+                        _query.word,
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -62,7 +109,6 @@ class _NovelResultListState extends State<NovelResultList> {
                         icon: Icon(Icons.filter_alt_outlined),
                         onPressed: () {
                           _buildShowBottomSheet(context);
-                          // _showMaterialBottom();
                         }),
                   ],
                 ),
@@ -70,75 +116,81 @@ class _NovelResultListState extends State<NovelResultList> {
             ],
           ),
           Expanded(
-            child: NovelLightingList(futureGet: () => futureGet.fetch(false)),
+            child: NovelLightingList(
+              source: _source,
+              onPageChanged: _onPageChanged,
+            ),
           ),
         ],
       ),
     );
   }
 
-  List<int> starNum = [
-    0,
-    100,
-    250,
-    500,
-    1000,
-    5000,
-    7500,
-    10000,
-    20000,
-    30000,
-    50000,
-  ];
-
-  final sort = ["date_desc", "date_asc", "popular_desc"];
-  static List<String> search_target = [
-    "partial_match_for_tags",
-    "exact_match_for_tags",
-    "text",
-    "keyword"
-  ];
-  String searchTarget = search_target[0];
-  String selectSort = "date_desc";
-  int selectStarNum = 0;
-
-  DateTimeRange? _dateTimeRange;
-
   Future _buildShowDateRange(BuildContext context) async {
     DateTimeRange? dateTimeRange = await showDateRangePicker(
         context: context,
         initialDateRange: _dateTimeRange,
-        firstDate: DateTime.fromMillisecondsSinceEpoch(
-            DateTime.now().millisecondsSinceEpoch -
-                (24 * 60 * 60 * 365 * 1000 * 8)),
+        firstDate: DateTime(2007, 8),
         lastDate: DateTime.now());
     if (dateTimeRange != null) {
       _dateTimeRange = dateTimeRange;
       setState(() {
-        _changeQueryParams();
+        _applyQuery();
       });
     }
   }
 
-  late ApiForceSource futureGet;
-  var _starValue = 0;
+  void _applyQuery({int page = 1}) {
+    _query = NovelSearchQuery(
+      word: _query.word,
+      translatedName: _query.translatedName,
+      searchTarget: searchTarget,
+      sort: selectSort,
+      startDate: _dateTimeRange?.start,
+      endDate: _dateTimeRange?.end,
+      starValue: _starValue,
+      page: page,
+      mode: _query.mode,
+    );
+    _source = _buildSource(_query);
+    widget.onQueryChanged?.call(_query);
+  }
 
-  _changeQueryParams() {
-    if (_starValue == 0)
-      futureGet = ApiForceSource(
-          futureGet: (bool e) => apiClient.getSearchNovel(widget.word,
-              search_target: searchTarget,
-              sort: selectSort,
-              start_date: _dateTimeRange?.start,
-              end_date: _dateTimeRange?.end));
-    else
-      futureGet = ApiForceSource(
-          futureGet: (bool e) => apiClient.getSearchNovel(
-              '${widget.word} ${_starValue}users入り',
-              search_target: searchTarget,
-              sort: selectSort,
-              start_date: _dateTimeRange?.start,
-              end_date: _dateTimeRange?.end));
+  LightSource _buildSource(NovelSearchQuery query) {
+    Future<Response> fetchPage(int page, bool force) {
+      final pageQuery = query.copyWith(page: page);
+      return apiClient.getSearchNovel(
+        pageQuery.requestWord,
+        search_target: pageQuery.searchTarget,
+        sort: pageQuery.sort,
+        start_date: pageQuery.startDate,
+        end_date: pageQuery.endDate,
+        offset: pageQuery.offset,
+        force: force,
+      );
+    }
+
+    if (query.mode == SearchResultMode.paged) {
+      return ApiPagedSource(
+        initialPage: query.normalizedPage,
+        futureGet: fetchPage,
+        searchQueryJson: query.encode(),
+        searchPage: query.normalizedPage,
+      );
+    }
+    return ApiForceSource(
+      futureGet: (force) => fetchPage(1, force),
+      searchQueryJson: query.copyWith(page: 1).encode(),
+      searchPage: 1,
+    );
+  }
+
+  void _onPageChanged(int page) {
+    if (_query.page == page) return;
+    setState(() {
+      _query = _query.copyWith(page: page);
+    });
+    widget.onQueryChanged?.call(_query);
   }
 
   void _buildShowBottomSheet(BuildContext context) {
@@ -168,7 +220,7 @@ class _NovelResultListState extends State<NovelResultList> {
                           TextButton(
                               onPressed: () {
                                 setState(() {
-                                  _changeQueryParams();
+                                  _applyQuery();
                                 });
                                 Navigator.of(context).pop();
                               },
@@ -273,7 +325,7 @@ class _NovelResultListState extends State<NovelResultList> {
               onTap: () {
                 setState(() {
                   _starValue = value;
-                  _changeQueryParams();
+                  _applyQuery();
                 });
               },
             );
@@ -284,7 +336,7 @@ class _NovelResultListState extends State<NovelResultList> {
               onTap: () {
                 setState(() {
                   _starValue = value;
-                  _changeQueryParams();
+                  _applyQuery();
                 });
               },
             );

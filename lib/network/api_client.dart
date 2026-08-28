@@ -476,17 +476,25 @@ class ApiClient {
     DateTime? start_date,
     DateTime? end_date,
     int? bookmark_num,
+    int? offset,
+    bool force = false,
   }) async {
     return httpClient.get(
-      "/v1/search/novel?filter=for_android&merge_plain_keyword_results=true",
+      "/v1/search/novel",
       queryParameters: notNullMap({
+        "filter": "for_android",
+        "merge_plain_keyword_results": true,
         "sort": sort,
         "search_target": search_target,
         "start_date": getFormatDate(start_date),
         "end_date": getFormatDate(end_date),
         "bookmark_num": bookmark_num,
         "word": word,
+        "offset": offset,
       }),
+      options: options
+          .copyWith(policy: force ? CachePolicy.refresh : null)
+          .toOptions(),
     );
   }
 
