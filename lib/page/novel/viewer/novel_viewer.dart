@@ -41,6 +41,7 @@ import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
+import 'package:pixez/page/novel/viewer/novel_reader_keys.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
@@ -87,12 +88,14 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _restoreBookedPage();
     });
     _novelStore.fetch();
+    HardwareKeyboard.instance.addHandler(_onHardwareKey);
     super.initState();
     initMethod();
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _offsetDisposer?.call();
     if (_novelStore.positionBooked) {
       _novelStore.bookPosition(_currentPage.toDouble());
@@ -158,6 +161,77 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     }
   }
 
+  bool _onHardwareKey(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return false;
+    }
+    if (!mounted ||
+        _novelStore.novelTextResponse == null ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return false;
+    }
+    final action = resolveNovelReaderKey(
+      key: event.logicalKey,
+      isEditingText: novelReaderIsEditingText(
+        FocusManager.instance.primaryFocus,
+      ),
+      hasModifier: novelReaderHasModifier(
+        HardwareKeyboard.instance.logicalKeysPressed,
+      ),
+      canScrollUp: _controller != null &&
+          _controller!.hasClients &&
+          novelReaderCanScroll(_controller!.position, -1),
+      canScrollDown: _controller != null &&
+          _controller!.hasClients &&
+          novelReaderCanScroll(_controller!.position, 1),
+      isRepeat: event is KeyRepeatEvent,
+    );
+    if (action == null) {
+      return false;
+    }
+    _performKeyAction(action);
+    return true;
+  }
+
+  void _performKeyAction(NovelReaderKeyAction action) {
+    switch (action) {
+      case NovelReaderKeyAction.prevPage:
+        _handleNav('prev');
+      case NovelReaderKeyAction.nextPage:
+        _handleNav('next');
+      case NovelReaderKeyAction.firstPage:
+        _goToPage(1);
+      case NovelReaderKeyAction.lastPage:
+        _goToPage(_totalPages);
+      case NovelReaderKeyAction.jumpToPage:
+        _showJumpDialog(context, _totalPages);
+      case NovelReaderKeyAction.goBack:
+        Navigator.of(context).maybePop();
+      case NovelReaderKeyAction.scrollUp:
+        _scrollArticle(-1);
+      case NovelReaderKeyAction.scrollDown:
+        _scrollArticle(1);
+    }
+  }
+
+  void _scrollArticle(double direction) {
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
+    final position = controller.position;
+    final delta = position.viewportDimension * 0.9 * direction;
+    final target = (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+    );
+  }
+
   TextStyle _readerStyle(BuildContext context) {
     // Track MobX text style so font family / line height changes rebuild.
     userSetting.novelTextStyle;
@@ -181,21 +255,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           if (_controller == null) {
             _controller = ScrollController();
           }
-          return CallbackShortcuts(
-            bindings: {
-              const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-                  _handleNav('prev'),
-              const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-                  _handleNav('next'),
-            },
-            child: Focus(
-              autofocus: true,
-              child: Scaffold(
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
-                body: _buildReader(context),
-              ),
+          return Focus(
+            autofocus: true,
+            child: Scaffold(
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
+              body: _buildReader(context),
             ),
           );
         }
