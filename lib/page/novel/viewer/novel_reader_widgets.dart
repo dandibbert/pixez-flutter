@@ -16,6 +16,7 @@ const Key novelFontSizeSliderKey = Key('novelFontSizeSlider');
 const Key novelLineHeightSliderKey = Key('novelLineHeightSlider');
 const Key novelReaderPreviewKey = Key('novelReaderPreview');
 const Key novelReaderTitleKey = Key('novelReaderTitle');
+const Key novelReaderDetailsButtonKey = Key('novelReaderDetailsButton');
 
 class NovelReaderScaffold extends StatelessWidget {
   final Widget header;
@@ -55,6 +56,7 @@ class NovelReaderHeader extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onTitleTap;
   final VoidCallback onAuthorTap;
+  final VoidCallback? onDetails;
   final Widget? trailing;
 
   const NovelReaderHeader({
@@ -64,6 +66,7 @@ class NovelReaderHeader extends StatelessWidget {
     required this.onBack,
     required this.onTitleTap,
     required this.onAuthorTap,
+    this.onDetails,
     this.trailing,
   });
 
@@ -122,6 +125,13 @@ class NovelReaderHeader extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onDetails != null)
+                IconButton(
+                  key: novelReaderDetailsButtonKey,
+                  tooltip: I18n.of(context).novel_details,
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: onDetails,
+                ),
               if (trailing != null) trailing!,
             ],
           ),

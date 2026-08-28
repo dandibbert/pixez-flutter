@@ -229,6 +229,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         author: novel.user.name,
         onBack: () => Navigator.of(context).pop(),
         onTitleTap: () => _showDetails(context),
+        onDetails: () => _showDetails(context),
         onAuthorTap: () {
           Leader.push(context, NovelUsersPage(id: novel.user.id));
         },

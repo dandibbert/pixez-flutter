@@ -60,6 +60,23 @@ void main() {
     );
   });
 
+  test('user-installed font paths exclude system directories', () {
+    expect(
+      InstalledFonts.isUserInstalledFontPath(
+        '/var/mobile/Library/Fonts/Custom.ttf',
+      ),
+      isTrue,
+    );
+    expect(
+      InstalledFonts.isUserInstalledFontPath('/System/Library/Fonts/PingFang.ttc'),
+      isFalse,
+    );
+    expect(
+      InstalledFonts.isUserInstalledFontPath('/Library/Fonts/Arial.ttf'),
+      isFalse,
+    );
+  });
+
   test('selected custom family stays in the picker list', () {
     expect(
       InstalledFonts.mergeSelected(['Noto Sans'], 'LXGW WenKai'),
@@ -84,6 +101,7 @@ void main() {
               author: 'Author A',
               onBack: () {},
               onTitleTap: () {},
+              onDetails: () {},
               onAuthorTap: () {},
             ),
             article: const NovelReaderArticle(
@@ -116,6 +134,7 @@ void main() {
     expect(find.byKey(novelReaderHeaderKey), findsOneWidget);
     expect(find.byKey(novelReaderArticleKey), findsOneWidget);
     expect(find.byKey(novelReaderPageNavKey), findsOneWidget);
+    expect(find.byKey(novelReaderDetailsButtonKey), findsOneWidget);
   });
 
   testWidgets('article list only builds visible paragraph blocks', (
