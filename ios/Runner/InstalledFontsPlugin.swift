@@ -53,8 +53,11 @@ struct InstalledFontsPlugin {
         if let ctNames = CTFontManagerCopyAvailableFontFamilyNames() as? [String] {
             names.formUnion(ctNames)
         }
-        for url in availableFontURLs() {
-            for family in families(at: url) {
+        for descriptor in registeredDescriptors() {
+            if let family = CTFontDescriptorCopyAttribute(
+                descriptor,
+                kCTFontFamilyNameAttribute
+            ) as? String {
                 names.insert(family)
             }
         }
@@ -64,21 +67,42 @@ struct InstalledFontsPlugin {
     }
 
     static func loadFamily(_ family: String) -> Data? {
-        var systemMatch: Data?
-        for url in availableFontURLs() {
-            guard families(at: url).contains(family) else { continue }
-            guard let data = try? Data(contentsOf: url), !data.isEmpty else { continue }
-            if isUserInstalled(url) {
+        for descriptor in registeredDescriptors() {
+            let name = CTFontDescriptorCopyAttribute(
+                descriptor,
+                kCTFontFamilyNameAttribute
+            ) as? String
+            guard name == family else { continue }
+            if let data = data(from: descriptor) {
                 return data
             }
-            systemMatch = data
-        }
-        if let systemMatch {
-            return systemMatch
         }
         let descriptor = CTFontDescriptorCreateWithAttributes([
             kCTFontFamilyNameAttribute: family,
         ] as CFDictionary)
+        return data(from: descriptor)
+    }
+
+    /// User-installed fonts from configuration profiles / the Fonts app.
+    /// `CTFontManagerCopyAvailableFontURLs` is macOS-only.
+    static func registeredDescriptors() -> [CTFontDescriptor] {
+        var descriptors: [CTFontDescriptor] = []
+        let scopes: [CTFontManagerScope] = [.user, .process]
+        for scope in scopes {
+            if let copied = CTFontManagerCopyRegisteredFontDescriptors(scope, true)
+                as? [CTFontDescriptor] {
+                descriptors.append(contentsOf: copied)
+            }
+        }
+        return descriptors
+    }
+
+    static func data(from descriptor: CTFontDescriptor) -> Data? {
+        if let url = CTFontDescriptorCopyAttribute(descriptor, kCTFontURLAttribute) as? URL,
+           let data = try? Data(contentsOf: url),
+           !data.isEmpty {
+            return data
+        }
         let font = CTFontCreateWithFontDescriptor(descriptor, 0, nil)
         if let url = CTFontCopyAttribute(font, kCTFontURLAttribute) as? URL,
            let data = try? Data(contentsOf: url),
@@ -86,30 +110,5 @@ struct InstalledFontsPlugin {
             return data
         }
         return nil
-    }
-
-    static func availableFontURLs() -> [URL] {
-        (CTFontManagerCopyAvailableFontURLs() as? [URL]) ?? []
-    }
-
-    static func families(at url: URL) -> [String] {
-        guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL)
-                as? [CTFontDescriptor] else {
-            return []
-        }
-        return descriptors.compactMap { descriptor in
-            CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute) as? String
-        }
-    }
-
-    static func isUserInstalled(_ url: URL) -> Bool {
-        let path = url.path
-        if path.contains("/System/") || path.hasPrefix("/System/") {
-            return false
-        }
-        if path.contains("/usr/share") {
-            return false
-        }
-        return true
     }
 }
