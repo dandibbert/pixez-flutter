@@ -89,6 +89,37 @@ class NovelReaderBlock {
       spans.first.text.isEmpty;
 }
 
+/// Remembers the last page and block split for a chapter.
+///
+/// Both splits walk every span in the chapter, and the reader asks for them
+/// several times per interaction (page navigation, key handling, and once per
+/// rebuild, including every frame of a font-size drag). Recomputing each time
+/// burns CPU for a result that only changes when the chapter or page does.
+class NovelReaderSplitCache {
+  List<NovelSpansData>? _source;
+  List<List<NovelSpansData>>? _pages;
+  int _blocksPage = -1;
+  List<NovelReaderBlock>? _blocks;
+
+  List<List<NovelSpansData>> pages(List<NovelSpansData> spans) {
+    if (_pages == null || !identical(spans, _source)) {
+      _source = spans;
+      _pages = splitNovelSpanPages(spans);
+      _blocksPage = -1;
+      _blocks = null;
+    }
+    return _pages!;
+  }
+
+  List<NovelReaderBlock> blocks(List<NovelSpansData> pageSpans, int pageIndex) {
+    if (_blocks == null || _blocksPage != pageIndex) {
+      _blocks = splitNovelReaderBlocks(pageSpans);
+      _blocksPage = pageIndex;
+    }
+    return _blocks!;
+  }
+}
+
 bool isNovelInlineSpan(NovelSpansType type) {
   switch (type) {
     case NovelSpansType.normal:

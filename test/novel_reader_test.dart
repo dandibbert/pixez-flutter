@@ -170,6 +170,50 @@ void main() {
     expect(applyNovelShellTheme(theme), same(theme));
   });
 
+  group('NovelReaderSplitCache', () {
+    final spans = [
+      NovelSpansData(NovelSpansType.normal, 'page one'),
+      NovelSpansData(NovelSpansType.newPage, ''),
+      NovelSpansData(NovelSpansType.normal, 'page two'),
+    ];
+
+    test('reuses the split until the chapter changes', () {
+      final cache = NovelReaderSplitCache();
+      final first = cache.pages(spans);
+      expect(identical(cache.pages(spans), first), isTrue);
+
+      final reloaded = List<NovelSpansData>.from(spans);
+      final second = cache.pages(reloaded);
+      expect(identical(second, first), isFalse);
+      expect(second, hasLength(2));
+    });
+
+    test('reuses blocks for the same page and recomputes on a page turn', () {
+      final cache = NovelReaderSplitCache();
+      final pages = cache.pages(spans);
+
+      final firstPage = cache.blocks(pages[0], 0);
+      expect(identical(cache.blocks(pages[0], 0), firstPage), isTrue);
+      expect(firstPage.single.text, 'page one');
+
+      final secondPage = cache.blocks(pages[1], 1);
+      expect(identical(secondPage, firstPage), isFalse);
+      expect(secondPage.single.text, 'page two');
+
+      // Turning back re-splits rather than serving the other page's blocks.
+      expect(cache.blocks(pages[0], 0).single.text, 'page one');
+    });
+
+    test('drops cached blocks when the chapter is replaced', () {
+      final cache = NovelReaderSplitCache();
+      cache.blocks(cache.pages(spans)[0], 0);
+
+      final other = [NovelSpansData(NovelSpansType.normal, 'different novel')];
+      final pages = cache.pages(other);
+      expect(cache.blocks(pages[0], 0).single.text, 'different novel');
+    });
+  });
+
   test('desktop novel rail does not use a swipeable PageView', () {
     expect(
       novelRailUsesSwipeablePages(isAndroid: false, isIOS: false),
