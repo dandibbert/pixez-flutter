@@ -5,6 +5,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
 import 'package:pixez/page/novel/viewer/novel_font_picker.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
+import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 
 const Key novelReaderHeaderKey = Key('novelReaderHeader');
@@ -18,6 +19,10 @@ const Key novelFontPickerButtonKey = Key('novelFontPickerButton');
 const Key novelFontSizeSliderKey = Key('novelFontSizeSlider');
 const Key novelLineHeightSliderKey = Key('novelLineHeightSlider');
 const Key novelReaderPreviewKey = Key('novelReaderPreview');
+const Key novelReaderBackgroundKey = Key('novelReaderBackground');
+
+Key novelReaderBackgroundChipKey(NovelReaderBackground background) =>
+    Key('novelReaderBackground-${background.name}');
 const Key novelReaderTitleKey = Key('novelReaderTitle');
 const Key novelReaderDetailsButtonKey = Key('novelReaderDetailsButton');
 
@@ -494,6 +499,8 @@ class NovelReaderSettingsSheet extends StatefulWidget {
   final ValueChanged<double> onFontSizeChanged;
   final ValueChanged<double> onLineHeightChanged;
   final ValueChanged<NovelFontChoice> onFontFamilyChanged;
+  final NovelReaderBackground background;
+  final ValueChanged<NovelReaderBackground>? onBackgroundChanged;
 
   const NovelReaderSettingsSheet({
     super.key,
@@ -503,6 +510,8 @@ class NovelReaderSettingsSheet extends StatefulWidget {
     required this.onFontSizeChanged,
     required this.onLineHeightChanged,
     required this.onFontFamilyChanged,
+    this.background = NovelReaderBackground.system,
+    this.onBackgroundChanged,
     this.fontFilePath,
     this.fontFamilies,
     this.importFont,
@@ -518,6 +527,7 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
   late double _lineHeight;
   late String _fontFamily;
   String? _fontFilePath;
+  late NovelReaderBackground _background;
 
   @override
   void initState() {
@@ -526,6 +536,28 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
     _lineHeight = widget.lineHeight;
     _fontFamily = widget.fontFamily;
     _fontFilePath = widget.fontFilePath;
+    _background = widget.background;
+  }
+
+  void _setBackground(NovelReaderBackground value) {
+    setState(() => _background = value);
+    widget.onBackgroundChanged?.call(value);
+  }
+
+  String _backgroundLabel(NovelReaderBackground value) {
+    final i18n = I18n.of(context);
+    switch (value) {
+      case NovelReaderBackground.system:
+        return i18n.novel_background_system;
+      case NovelReaderBackground.paper:
+        return i18n.novel_background_paper;
+      case NovelReaderBackground.sepia:
+        return i18n.novel_background_sepia;
+      case NovelReaderBackground.dark:
+        return i18n.novel_background_dark;
+      case NovelReaderBackground.black:
+        return i18n.novel_background_black;
+    }
   }
 
   void _setFamily(NovelFontChoice choice) {
@@ -636,6 +668,28 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
                     },
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              i18n.novel_background,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              key: novelReaderBackgroundKey,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final value in NovelReaderBackground.values)
+                  ChoiceChip(
+                    key: novelReaderBackgroundChipKey(value),
+                    label: Text(_backgroundLabel(value)),
+                    selected: _background == value,
+                    onSelected: (_) => _setBackground(value),
+                  ),
               ],
             ),
             const SizedBox(height: 8),

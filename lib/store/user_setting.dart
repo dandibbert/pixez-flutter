@@ -33,6 +33,7 @@ import 'package:pixez/network/oauth_client.dart';
 import 'package:pixez/page/about/languages.dart';
 import 'package:pixez/page/novel/viewer/installed_fonts.dart';
 import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
+import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/secure_plugin.dart';
 import 'package:pixez/store/welcome_page_type.dart';
 import 'package:pixez/store/search_result_mode.dart';
@@ -74,6 +75,7 @@ abstract class _UserSetting with Store {
   static const String NOVEL_FONT_FAMILY_KEY = "novel_font_family";
   static const String NOVEL_FONT_FILE_KEY = "novel_font_file";
   static const String NOVEL_LINE_HEIGHT_KEY = "novel_line_height";
+  static const String NOVEL_READER_BACKGROUND_KEY = "novel_reader_background";
   static const String IS_RETURN_AGAIN_TO_EXIT_KEY = "return_again_to_exit";
   static const String IS_CLEAR_OLD_FORMAT_FILE_KEY = "is_clear_old_format_file";
   static const String IS_FOLLOW_AFTER_STAR = "is_follow_after_star";
@@ -183,6 +185,8 @@ abstract class _UserSetting with Store {
   String novelFontFamily = '';
   String? novelFontFile;
   double novelLineHeight = 1.8;
+  @observable
+  NovelReaderBackground novelReaderBackground = NovelReaderBackground.system;
   @observable
   dynamic locale = Locale('en', 'US'); //stupid mobx generator
   @observable
@@ -421,6 +425,12 @@ abstract class _UserSetting with Store {
     _syncNovelTextStyle();
   }
 
+  @action
+  Future<void> setNovelReaderBackground(NovelReaderBackground value) async {
+    novelReaderBackground = value;
+    await prefs.setString(NOVEL_READER_BACKGROUND_KEY, value.name);
+  }
+
   Future<void> setNovelLineHeight(double value, {bool persist = true}) async {
     novelLineHeight = value;
     if (persist) {
@@ -611,6 +621,9 @@ abstract class _UserSetting with Store {
     novelFontFamily = prefs.getString(NOVEL_FONT_FAMILY_KEY) ?? '';
     novelFontFile = prefs.getString(NOVEL_FONT_FILE_KEY);
     novelLineHeight = prefs.getDouble(NOVEL_LINE_HEIGHT_KEY) ?? 1.8;
+    novelReaderBackground = novelReaderBackgroundFromName(
+      prefs.getString(NOVEL_READER_BACKGROUND_KEY),
+    );
     _syncNovelTextStyle();
     await NovelCustomFont.ensureLoaded(novelFontFamily, novelFontFile);
     if (novelFontFile == null || novelFontFile!.isEmpty) {
