@@ -2,14 +2,25 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/page/novel/search/novel_search_filter_sheet.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
+Future<void> _loadCjkFont() async {
+  final bytes = File(
+    '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+  ).readAsBytesSync();
+  final loader = FontLoader('CJK');
+  loader.addFont(Future<ByteData>.value(ByteData.view(bytes.buffer)));
+  await loader.load();
+}
+
 void main() {
   const phoneSize = Size(390, 844);
+  const captureKey = Key('novelSearchFilterCapture');
 
   Future<void> pumpSheet(
     WidgetTester tester, {
@@ -25,39 +36,47 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPadding);
+    await _loadCjkFont();
 
     await tester.pumpWidget(
-      MaterialApp(
-        locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: openAsModal
-            ? Builder(
-                builder: (context) {
-                  return Scaffold(
-                    body: Center(
-                      child: TextButton(
-                        onPressed: () {
-                          NovelSearchFilterSheet.show(
-                            context: context,
-                            initial: initial,
-                            onApply: onApply ?? (_) {},
-                            canUsePopular: canUsePopular,
-                          );
-                        },
-                        child: const Text('open-filters'),
+      RepaintBoundary(
+        key: captureKey,
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true, fontFamily: 'CJK'),
+          locale: locale,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: openAsModal
+              ? Builder(
+                  builder: (context) {
+                    return Scaffold(
+                      body: Center(
+                        child: TextButton(
+                          onPressed: () {
+                            NovelSearchFilterSheet.show(
+                              context: context,
+                              initial: initial,
+                              onApply: onApply ?? (_) {},
+                              canUsePopular: canUsePopular,
+                            );
+                          },
+                          child: const Text('open-filters'),
+                        ),
                       ),
-                    ),
-                  );
-                },
-              )
-            : Scaffold(
-                body: NovelSearchFilterSheet(
-                  initial: initial,
-                  onApply: onApply ?? (_) {},
-                  canUsePopular: canUsePopular,
+                    );
+                  },
+                )
+              : Scaffold(
+                  body: NovelSearchFilterSheet(
+                    initial: initial,
+                    onApply: onApply ?? (_) {},
+                    canUsePopular: canUsePopular,
+                  ),
                 ),
-              ),
+        ),
       ),
     );
     if (openAsModal) {
@@ -79,8 +98,8 @@ void main() {
     );
 
     final apply = tester.getRect(find.byKey(novelSearchFilterApplyKey));
-    expect(apply.top, greaterThanOrEqualTo(0));
-    expect(apply.bottom, lessThanOrEqualTo(phoneSize.height));
+    expect(apply.top, greaterThanOrEqualTo(47));
+    expect(apply.bottom, lessThanOrEqualTo(phoneSize.height - 34));
     expect(find.text('フィルター'), findsOneWidget);
     expect(tester.getTopLeft(find.text('フィルター')).dy, greaterThanOrEqualTo(47));
 
@@ -101,11 +120,15 @@ void main() {
     expect(find.text('Exclude AI'), findsNothing);
     expect(find.text('投稿日時'), findsOneWidget);
     expect(find.text('ブックマーク数'), findsOneWidget);
-    expect(find.text('AI 作品を除外'), findsOneWidget);
     expect(find.text('タグ（部分一致）'), findsOneWidget);
     expect(find.text('タグの完全一致'), findsOneWidget);
     expect(find.text('適用'), findsOneWidget);
     expect(find.text('リセット'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -800));
+    await tester.pumpAndSettle();
+    expect(find.text('AI 作品を除外'), findsOneWidget);
+    expect(find.text('Exclude AI'), findsNothing);
   });
 
   testWidgets('rejects a bookmark minimum above the maximum', (tester) async {
@@ -117,8 +140,18 @@ void main() {
       onApply: (query) => applied = query,
     );
 
-    await tester.enterText(find.widgetWithText(TextField, 'Minimum'), '500');
-    await tester.enterText(find.widgetWithText(TextField, 'Maximum'), '100');
+    await tester.scrollUntilVisible(
+      find.byKey(novelSearchFilterBookmarkMinKey),
+      240,
+    );
+    await tester.enterText(
+      find.byKey(novelSearchFilterBookmarkMinKey),
+      '500',
+    );
+    await tester.enterText(
+      find.byKey(novelSearchFilterBookmarkMaxKey),
+      '100',
+    );
     await tester.tap(find.byKey(novelSearchFilterApplyKey));
     await tester.pump();
 
@@ -145,13 +178,18 @@ void main() {
     );
 
     final boundary = tester.renderObject<RenderRepaintBoundary>(
-      find.byType(MaterialApp),
+      find.byKey(captureKey),
     );
-    final image = await boundary.toImage(pixelRatio: 2);
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    final file = File('/opt/cursor/artifacts/novel_filter_sheet_ja_phone.png');
-    file.parent.createSync(recursive: true);
-    file.writeAsBytesSync(bytes!.buffer.asUint8List());
-    expect(file.existsSync(), isTrue);
+    late ui.Image image;
+    await tester.runAsync(() async {
+      image = await boundary.toImage(pixelRatio: 2);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final file = File(
+        '/opt/cursor/artifacts/novel_filter_sheet_ja_phone_cjk.png',
+      );
+      file.parent.createSync(recursive: true);
+      file.writeAsBytesSync(bytes!.buffer.asUint8List());
+      expect(file.existsSync(), isTrue);
+    });
   });
 }

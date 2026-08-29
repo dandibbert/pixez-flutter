@@ -7,6 +7,12 @@ import 'package:pixez/store/search_result_mode.dart';
 const Key novelSearchFilterSheetKey = Key('novelSearchFilterSheet');
 const Key novelSearchFilterApplyKey = Key('novelSearchFilterApply');
 const Key novelSearchFilterResetKey = Key('novelSearchFilterReset');
+const Key novelSearchFilterBookmarkMinKey = Key(
+  'novelSearchFilterBookmarkMin',
+);
+const Key novelSearchFilterBookmarkMaxKey = Key(
+  'novelSearchFilterBookmarkMax',
+);
 
 class NovelSearchFilterSheet extends StatefulWidget {
   final NovelSearchQuery initial;
@@ -404,6 +410,7 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
                         children: [
                           Expanded(
                             child: _numberField(
+                              key: novelSearchFilterBookmarkMinKey,
                               controller: _bookmarkMinController,
                               label: i18n.novel_filter_minimum,
                               hint: i18n.novel_filter_no_limit,
@@ -419,6 +426,7 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _numberField(
+                              key: novelSearchFilterBookmarkMaxKey,
                               controller: _bookmarkMaxController,
                               label: i18n.novel_filter_maximum,
                               hint: i18n.novel_filter_no_limit,
@@ -516,14 +524,6 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
                     ],
                   ),
                 ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: scheme.error),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -534,22 +534,34 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        key: novelSearchFilterResetKey,
-                        onPressed: _reset,
-                        child: Text(i18n.novel_filter_reset),
+                    if (_error != null) ...[
+                      Text(
+                        _error!,
+                        style: TextStyle(color: scheme.error),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        key: novelSearchFilterApplyKey,
-                        onPressed: _apply,
-                        child: Text(i18n.apply),
-                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            key: novelSearchFilterResetKey,
+                            onPressed: _reset,
+                            child: Text(i18n.novel_filter_reset),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            key: novelSearchFilterApplyKey,
+                            onPressed: _apply,
+                            child: Text(i18n.apply),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -584,11 +596,11 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+      child: Material(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: scheme.outlineVariant),
+          side: BorderSide(color: scheme.outlineVariant),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
@@ -650,12 +662,14 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
   }
 
   Widget _numberField({
+    Key? key,
     required TextEditingController controller,
     required String label,
     required String hint,
     required ValueChanged<String> onChanged,
   }) {
     return TextField(
+      key: key,
       controller: controller,
       keyboardType: TextInputType.number,
       onChanged: onChanged,
@@ -673,11 +687,14 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title),
-      value: value,
-      onChanged: onChanged,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(title)),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }
