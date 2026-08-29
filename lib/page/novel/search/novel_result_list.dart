@@ -1,5 +1,4 @@
 import 'package:bot_toast/bot_toast.dart';
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
@@ -7,6 +6,7 @@ import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_lighting_list.dart';
+import 'package:pixez/page/novel/search/novel_search_filter_sheet.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/store/search_result_mode.dart';
 
@@ -29,178 +29,96 @@ class NovelResultList extends StatefulWidget {
 class _NovelResultListState extends State<NovelResultList> {
   late NovelSearchQuery _query;
   late LightSource _source;
-  late String searchTarget;
-  late String selectSort;
-  late int _bookmarkMin;
-  late int _bookmarkMax;
-  late int _textLengthMin;
-  late String _lang;
-  late bool _excludeAi;
-  late bool _originalOnly;
-  late bool _includeR18;
-  late bool _translatedTags;
-  late bool _mergeKeyword;
-  DateTimeRange? _dateTimeRange;
-  late TextEditingController _bookmarkMinController;
-  late TextEditingController _bookmarkMaxController;
-  late TextEditingController _textLengthController;
-  String? _filterError;
-
-  final sort = ["date_desc", "date_asc", "popular_desc"];
-  static const List<String> search_target = [
-    "keyword",
-    "partial_match_for_tags",
-    "exact_match_for_tags",
-    "text",
-  ];
 
   @override
   void initState() {
     super.initState();
     _query = widget.initialQuery;
-    searchTarget = _query.searchTarget;
-    selectSort = _query.sort;
-    _bookmarkMin = _query.bookmarkNumMin;
-    _bookmarkMax = _query.bookmarkNumMax;
-    _textLengthMin = _query.textLengthMin;
-    _lang = _query.lang;
-    _excludeAi = _query.searchAiType == 1;
-    _originalOnly = _query.isOriginalOnly;
-    _includeR18 = _query.includePotentialViolationWorks;
-    _translatedTags = _query.includeTranslatedTagResults;
-    _mergeKeyword = _query.mergePlainKeywordResults;
-    if (_query.startDate != null && _query.endDate != null) {
-      _dateTimeRange = DateTimeRange(
-        start: _query.startDate!,
-        end: _query.endDate!,
-      );
-    }
-    _bookmarkMinController = TextEditingController(
-      text: _bookmarkMin > 0 ? '$_bookmarkMin' : '',
+    _applyQuery(
+      _query,
+      page: widget.restoreQuery ? _query.normalizedPage : 1,
     );
-    _bookmarkMaxController = TextEditingController(
-      text: _bookmarkMax > 0 ? '$_bookmarkMax' : '',
-    );
-    _textLengthController = TextEditingController(
-      text: _textLengthMin > 0 ? '$_textLengthMin' : '',
-    );
-    _applyQuery(page: widget.restoreQuery ? _query.normalizedPage : 1);
-  }
-
-  @override
-  void dispose() {
-    _bookmarkMinController.dispose();
-    _bookmarkMaxController.dispose();
-    _textLengthController.dispose();
-    super.dispose();
-  }
-
-  String _label(String en, String zh) {
-    return Localizations.localeOf(context).languageCode == 'zh' ? zh : en;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              InkWell(
-                onTap: () {},
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 2 / 3,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 16.0),
-                      child: Text(
-                        _query.word,
-                        textAlign: TextAlign.center,
-                      ),
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            InkWell(
+              onTap: () {},
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 2 / 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: Text(
+                      _query.word,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  children: [
-                    IconButton(
-                        icon: Icon(Icons.date_range),
-                        onPressed: () {
-                          _buildShowDateRange(context);
-                        }),
-                    _buildBookmarkMenu(),
-                    IconButton(
-                        icon: Icon(Icons.filter_alt_outlined),
-                        onPressed: () {
-                          _buildShowBottomSheet(context);
-                        }),
-                  ],
-                ),
-              )
-            ],
-          ),
-          Expanded(
-            child: NovelLightingList(
-              source: _source,
-              onPageChanged: _onPageChanged,
             ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.date_range),
+                    onPressed: () {
+                      _buildShowDateRange(context);
+                    },
+                  ),
+                  _buildBookmarkMenu(),
+                  IconButton(
+                    icon: const Icon(Icons.filter_alt_outlined),
+                    onPressed: () {
+                      _openFilterSheet();
+                    },
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
+        Expanded(
+          child: NovelLightingList(
+            source: _source,
+            onPageChanged: _onPageChanged,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Future _buildShowDateRange(BuildContext context) async {
-    DateTimeRange? dateTimeRange = await showDateRangePicker(
-        context: context,
-        initialDateRange: _dateTimeRange,
-        firstDate: DateTime(2007, 8),
-        lastDate: DateTime.now());
-    if (dateTimeRange != null) {
-      _dateTimeRange = dateTimeRange;
-      setState(() {
-        _applyQuery();
-      });
-    }
-  }
-
-  void _applyDatePreset(int? days) {
-    if (days == null) {
-      _dateTimeRange = null;
-      return;
-    }
-    final range = NovelSearchQuery.dateRangeForPreset(days);
-    if (range == null) {
-      _dateTimeRange = null;
-      return;
-    }
-    _dateTimeRange = DateTimeRange(start: range.start, end: range.end);
-  }
-
-  void _applyQuery({int page = 1}) {
-    _query = NovelSearchQuery(
-      word: _query.word,
-      translatedName: _query.translatedName,
-      searchTarget: searchTarget,
-      sort: selectSort,
-      startDate: _dateTimeRange?.start,
-      endDate: _dateTimeRange?.end,
-      bookmarkNumMin: _bookmarkMin,
-      bookmarkNumMax: _bookmarkMax,
-      textLengthMin: _textLengthMin,
-      lang: _lang,
-      includePotentialViolationWorks: _includeR18,
-      includeTranslatedTagResults: _translatedTags,
-      isOriginalOnly: _originalOnly,
-      mergePlainKeywordResults: _mergeKeyword,
-      searchAiType: _excludeAi ? 1 : 0,
-      page: page,
-      mode: SearchResultMode.paged,
+  Future<void> _buildShowDateRange(BuildContext context) async {
+    final dateTimeRange = await showDateRangePicker(
+      context: context,
+      initialDateRange: _query.startDate != null && _query.endDate != null
+          ? DateTimeRange(start: _query.startDate!, end: _query.endDate!)
+          : null,
+      firstDate: DateTime(2007, 8),
+      lastDate: DateTime.now(),
     );
+    if (dateTimeRange == null) {
+      return;
+    }
+    setState(() {
+      _applyQuery(
+        _query.copyWith(
+          startDate: dateTimeRange.start,
+          endDate: dateTimeRange.end,
+        ),
+      );
+    });
+  }
+
+  void _applyQuery(NovelSearchQuery query, {int page = 1}) {
+    _query = query.copyWith(page: page, mode: SearchResultMode.paged);
     _source = _buildSource(_query);
     widget.onQueryChanged?.call(_query);
   }
@@ -249,418 +167,50 @@ class _NovelResultListState extends State<NovelResultList> {
     widget.onQueryChanged?.call(_query);
   }
 
-  void _buildShowBottomSheet(BuildContext context) {
-    _syncNumberFields();
-    _filterError = null;
-    showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(8.0))),
-        builder: (context) {
-          return StatefulBuilder(builder: (_, setS) {
-            return SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            TextButton(
-                                onPressed: () {},
-                                child: Text(I18n.of(context).filter)),
-                            TextButton(
-                                onPressed: () {
-                                  final min =
-                                      NovelSearchQuery.parseNumberInput(
-                                    _bookmarkMinController.text,
-                                  );
-                                  final max =
-                                      NovelSearchQuery.parseNumberInput(
-                                    _bookmarkMaxController.text,
-                                  );
-                                  if (NovelSearchQuery.isBookmarkRangeInvalid(
-                                    min,
-                                    max,
-                                  )) {
-                                    setS(() {
-                                      _filterError = _label(
-                                        'Bookmark minimum cannot be greater than maximum',
-                                        '收藏下限不能大于上限',
-                                      );
-                                    });
-                                    return;
-                                  }
-                                  setState(() {
-                                    _bookmarkMin = min;
-                                    _bookmarkMax = max;
-                                    _textLengthMin =
-                                        NovelSearchQuery.parseNumberInput(
-                                      _textLengthController.text,
-                                    );
-                                    _filterError = null;
-                                    _applyQuery();
-                                  });
-                                  Navigator.of(context).pop();
-                                },
-                                child: Text(I18n.of(context).apply)),
-                          ],
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: CupertinoSlidingSegmentedControl(
-                            groupValue: search_target.indexOf(searchTarget),
-                            children: <int, Widget>{
-                              0: Text(
-                                I18n.of(context).key_word,
-                                maxLines: 1,
-                              ),
-                              1: Text(
-                                I18n.of(context).partial_match_for_tag,
-                                maxLines: 1,
-                              ),
-                              2: Text(
-                                I18n.of(context).exact_match_for_tag,
-                                maxLines: 1,
-                              ),
-                              3: Text(
-                                I18n.of(context).text,
-                                maxLines: 1,
-                              ),
-                            },
-                            onValueChanged: (int? index) {
-                              setS(() {
-                                searchTarget = search_target[index!];
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: CupertinoSlidingSegmentedControl(
-                            groupValue: sort.indexOf(selectSort),
-                            children: <int, Widget>{
-                              0: Text(
-                                I18n.of(context).date_desc,
-                                maxLines: 1,
-                              ),
-                              1: Text(
-                                I18n.of(context).date_asc,
-                                maxLines: 1,
-                              ),
-                              2: Text(
-                                I18n.of(context).popular_desc,
-                                maxLines: 1,
-                              ),
-                            },
-                            onValueChanged: (int? index) {
-                              if (accountStore.now != null && index == 2) {
-                                if (accountStore.now!.isPremium == 0) {
-                                  BotToast.showText(text: 'not premium');
-                                  Navigator.of(context).pop();
-                                  return;
-                                }
-                              }
-                              setS(() {
-                                selectSort = sort[index!];
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(_label('Publish date', '投稿日期')),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            ActionChip(
-                              label: Text(_label('Anytime', '不限时间')),
-                              onPressed: () {
-                                setS(() => _applyDatePreset(null));
-                              },
-                            ),
-                            for (final days in NovelSearchQuery.datePresetDays)
-                              ActionChip(
-                                label: Text(_label(
-                                  'Last $days days',
-                                  '近$days天',
-                                )),
-                                onPressed: () {
-                                  setS(() => _applyDatePreset(days));
-                                },
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _dateButton(
-                                context,
-                                setS,
-                                label: _label('Start date', '开始日期'),
-                                value: _dateTimeRange?.start,
-                                onPicked: (date) {
-                                  final end = _dateTimeRange?.end ?? date;
-                                  _dateTimeRange = DateTimeRange(
-                                    start: date,
-                                    end: end.isBefore(date) ? date : end,
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _dateButton(
-                                context,
-                                setS,
-                                label: _label('End date', '结束日期'),
-                                value: _dateTimeRange?.end,
-                                onPicked: (date) {
-                                  final start = _dateTimeRange?.start ?? date;
-                                  _dateTimeRange = DateTimeRange(
-                                    start: start.isAfter(date) ? date : start,
-                                    end: date,
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(_label('Bookmarks', '收藏数')),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            for (final value
-                                in NovelSearchQuery.bookmarkPresets)
-                              ActionChip(
-                                label: Text(value == 0
-                                    ? _label('Any', '不限')
-                                    : '$value+'),
-                                onPressed: () {
-                                  setS(() {
-                                    _bookmarkMin = value;
-                                    _bookmarkMax = 0;
-                                    _syncNumberFields();
-                                  });
-                                },
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _numberField(
-                                controller: _bookmarkMinController,
-                                label: _label('Minimum', '下限'),
-                                hint: _label('No limit', '不限'),
-                                onChanged: (value) {
-                                  setS(() {
-                                    _bookmarkMin =
-                                        NovelSearchQuery.parseNumberInput(
-                                      value,
-                                    );
-                                    _filterError = null;
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _numberField(
-                                controller: _bookmarkMaxController,
-                                label: _label('Maximum', '上限'),
-                                hint: _label('No limit', '不限'),
-                                onChanged: (value) {
-                                  setS(() {
-                                    _bookmarkMax =
-                                        NovelSearchQuery.parseNumberInput(
-                                      value,
-                                    );
-                                    _filterError = null;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _numberField(
-                          controller: _textLengthController,
-                          label: _label('Minimum length', '最少字数'),
-                          hint: _label('No limit', '不限'),
-                          onChanged: (value) {
-                            setS(() {
-                              _textLengthMin =
-                                  NovelSearchQuery.parseNumberInput(value);
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        Text(_label('Language', '语言')),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            ActionChip(
-                              label: const Text('日本語'),
-                              onPressed: () => setS(() => _lang = 'ja'),
-                            ),
-                            ActionChip(
-                              label: const Text('中文'),
-                              onPressed: () => setS(() => _lang = 'zh-CN'),
-                            ),
-                          ],
-                        ),
-                        if (_filterError != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              _filterError!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                          ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(_label('Exclude AI', '排除 AI')),
-                          value: _excludeAi,
-                          onChanged: (value) =>
-                              setS(() => _excludeAi = value),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(_label('Original only', '仅原创')),
-                          value: _originalOnly,
-                          onChanged: (value) =>
-                              setS(() => _originalOnly = value),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(_label(
-                            'Include potential R-18',
-                            '包含可能违规作品',
-                          )),
-                          value: _includeR18,
-                          onChanged: (value) =>
-                              setS(() => _includeR18 = value),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(_label(
-                            'Translated tags',
-                            '包含翻译标签',
-                          )),
-                          value: _translatedTags,
-                          onChanged: (value) =>
-                              setS(() => _translatedTags = value),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(_label(
-                            'Merge keyword results',
-                            '合并关键词结果',
-                          )),
-                          value: _mergeKeyword,
-                          onChanged: (value) =>
-                              setS(() => _mergeKeyword = value),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          });
+  bool _canUsePopular() {
+    final now = accountStore.now;
+    if (now != null && now.isPremium == 0) {
+      BotToast.showText(text: 'not premium');
+      return false;
+    }
+    return true;
+  }
+
+  void _openFilterSheet() {
+    NovelSearchFilterSheet.show(
+      context: context,
+      initial: _query,
+      canUsePopular: _canUsePopular,
+      onApply: (query) {
+        setState(() {
+          _applyQuery(query);
         });
-  }
-
-  void _syncNumberFields() {
-    _bookmarkMinController.text = _bookmarkMin > 0 ? '$_bookmarkMin' : '';
-    _bookmarkMaxController.text = _bookmarkMax > 0 ? '$_bookmarkMax' : '';
-    _textLengthController.text = _textLengthMin > 0 ? '$_textLengthMin' : '';
-  }
-
-  Widget _numberField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required ValueChanged<String> onChanged,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        isDense: true,
-        border: const OutlineInputBorder(),
-      ),
-    );
-  }
-
-  Widget _dateButton(
-    BuildContext context,
-    void Function(void Function()) setS, {
-    required String label,
-    required DateTime? value,
-    required ValueChanged<DateTime> onPicked,
-  }) {
-    return OutlinedButton(
-      onPressed: () async {
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: value ?? DateTime.now(),
-          firstDate: DateTime(2007, 8),
-          lastDate: DateTime.now(),
-        );
-        if (picked == null) {
-          return;
-        }
-        setS(() => onPicked(picked));
       },
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          value == null
-              ? label
-              : '${label}\n${value.year}/${value.month.toString().padLeft(2, '0')}/${value.day.toString().padLeft(2, '0')}',
-          textAlign: TextAlign.left,
-        ),
-      ),
     );
   }
 
   Widget _buildBookmarkMenu() {
-    return PopupMenuButton(
-      initialValue: _bookmarkMin,
-      child: Icon(
-        Icons.sort,
-      ),
+    return PopupMenuButton<int>(
+      initialValue: _query.bookmarkNumMin,
+      child: const Icon(Icons.sort),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16.0))),
+        borderRadius: BorderRadius.all(Radius.circular(16.0)),
+      ),
       itemBuilder: (context) {
         return NovelSearchQuery.bookmarkPresets.map((int value) {
-          return PopupMenuItem(
+          return PopupMenuItem<int>(
             value: value,
-            child: Text(value == 0 ? _label('Any', '不限') : '$value+'),
+            child: Text(
+              value == 0 ? I18n.of(context).novel_filter_any : '$value+',
+            ),
             onTap: () {
               setState(() {
-                _bookmarkMin = value;
-                _bookmarkMax = 0;
-                _syncNumberFields();
-                _applyQuery();
+                _applyQuery(
+                  _query.copyWith(
+                    bookmarkNumMin: value,
+                    bookmarkNumMax: 0,
+                  ),
+                );
               });
             },
           );
