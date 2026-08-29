@@ -104,8 +104,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     super.dispose();
   }
 
-  List<List<NovelSpansData>> get _pages =>
-      splitNovelSpanPages(_novelStore.spans);
+  final NovelReaderSplitCache _splitCache = NovelReaderSplitCache();
+
+  List<List<NovelSpansData>> get _pages => _splitCache.pages(_novelStore.spans);
 
   int get _totalPages => _pages.length;
 
@@ -277,7 +278,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final totalPages = pages.isEmpty ? 1 : pages.length;
     final pageIndex = clampNovelPage(_currentPage, totalPages) - 1;
     final pageSpans = pages.isEmpty ? <NovelSpansData>[] : pages[pageIndex];
-    final blocks = splitNovelReaderBlocks(pageSpans);
+    final blocks = _splitCache.blocks(pageSpans, pageIndex);
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     final navState = resolveNovelPageNavState(
       currentPage: clampNovelPage(_currentPage, totalPages),

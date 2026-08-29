@@ -28,7 +28,6 @@ import 'package:pixez/models/novel_web_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
-import 'package:flutter/widgets.dart';
 
 part 'novel_store.g.dart';
 
@@ -80,12 +79,15 @@ abstract class _NovelStoreBase with Store {
     try {
       bookedOffset = 0.0;
       final response = await apiClient.webviewNovel(id);
-      final json = parseNovelJsonFromHtml(response.data);
-      if (json == null) {
-        throw FormatException('Unable to parse novel data from Pixiv HTML');
-      }
-      novelTextResponse = NovelWebResponse.fromJson(jsonDecode(json));
-      spans = await compute(buildSpans, novelTextResponse!);
+      // Building the DOM for a pixiv page and decoding its payload costs tens
+      // of milliseconds; run it in the same isolate hop as span building so a
+      // chapter never stalls the UI thread.
+      final document = await compute(
+        parseNovelDocument,
+        response.data as String,
+      );
+      novelTextResponse = document.webResponse;
+      spans = document.spans;
       if (novel == null) {
         Response response = await apiClient.getNovelDetail(id);
         novel = Novel.fromJson(response.data['novel']);
@@ -112,18 +114,25 @@ abstract class _NovelStoreBase with Store {
   }
 }
 
-class ComputeSpan {
-  final BuildContext context;
+class NovelDocument {
   final NovelWebResponse webResponse;
+  final List<NovelSpansData> spans;
 
-  ComputeSpan(this.context, this.webResponse);
+  const NovelDocument(this.webResponse, this.spans);
 }
 
-Future<List<NovelSpansData>> buildSpans(NovelWebResponse webResponse) {
-  return Future.delayed(Duration(milliseconds: 100), () {
-    NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
-    return novelSpansGenerator.buildSpans(webResponse);
-  });
+/// Turns a pixiv novel page into the model and the spans the reader renders.
+/// Meant to run off the UI isolate via [compute].
+NovelDocument parseNovelDocument(String html) {
+  final json = parseNovelJsonFromHtml(html);
+  if (json == null) {
+    throw FormatException('Unable to parse novel data from Pixiv HTML');
+  }
+  final webResponse = NovelWebResponse.fromJson(jsonDecode(json));
+  return NovelDocument(
+    webResponse,
+    NovelSpansGenerator().buildSpans(webResponse),
+  );
 }
 
 String? parseNovelJsonFromHtml(String html) {
