@@ -360,7 +360,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     NovelReaderBlock block,
     TextStyle style,
   ) {
-    if (block.type == NovelSpansType.normal && block.text.isEmpty) {
+    if (block.isBlank) {
       return SizedBox(height: style.fontSize ?? 16);
     }
     return Padding(
@@ -369,15 +369,16 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         TextSpan(
           style: style,
           children: [
-            novelSpansGenerator.novelSpansDatatoInlineSpan(
-              context,
-              block.span,
-              onJumpToPage: _goToPage,
-              onOpenNovel: (id) {
-                Leader.push(context, NovelViewerPage(id: id));
-              },
-              style: style,
-            ),
+            for (final span in block.spans)
+              novelSpansGenerator.novelSpansDatatoInlineSpan(
+                context,
+                span,
+                onJumpToPage: _goToPage,
+                onOpenNovel: (id) {
+                  Leader.push(context, NovelViewerPage(id: id));
+                },
+                style: style,
+              ),
           ],
         ),
         textHeightBehavior: const TextHeightBehavior(

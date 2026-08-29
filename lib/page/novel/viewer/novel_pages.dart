@@ -69,44 +69,112 @@ List<List<NovelSpansData>> splitNovelSpanPages(List<NovelSpansData> spans) {
 }
 
 class NovelReaderBlock {
-  final NovelSpansData span;
+  final List<NovelSpansData> spans;
 
-  const NovelReaderBlock(this.span);
+  NovelReaderBlock(NovelSpansData span) : spans = [span];
 
-  NovelSpansType get type => span.type;
+  NovelReaderBlock.spans(List<NovelSpansData> spans)
+    : spans = List<NovelSpansData>.unmodifiable(spans);
 
-  String get text => span.text;
+  NovelSpansData get span => spans.first;
+
+  NovelSpansType get type =>
+      spans.length == 1 ? spans.first.type : NovelSpansType.normal;
+
+  String get text => spans.map((span) => span.text).join();
+
+  bool get isBlank =>
+      spans.length == 1 &&
+      spans.first.type == NovelSpansType.normal &&
+      spans.first.text.isEmpty;
+}
+
+bool isNovelInlineSpan(NovelSpansType type) {
+  switch (type) {
+    case NovelSpansType.normal:
+    case NovelSpansType.rb:
+    case NovelSpansType.jump:
+    case NovelSpansType.jumpUri:
+      return true;
+    case NovelSpansType.newPage:
+    case NovelSpansType.pixivImage:
+    case NovelSpansType.uploadedImage:
+    case NovelSpansType.chapter:
+      return false;
+  }
 }
 
 const int novelReaderBlockMaxChars = 1200;
 
 List<NovelReaderBlock> splitNovelReaderBlocks(List<NovelSpansData> spans) {
   final blocks = <NovelReaderBlock>[];
+  var pending = <NovelSpansData>[];
+  var pendingChars = 0;
   var pendingEmpty = false;
 
-  void addBlock(NovelSpansData span) {
-    if (span.type == NovelSpansType.normal && span.text.isEmpty) {
-      pendingEmpty = blocks.isNotEmpty;
+  void emitBlank() {
+    blocks.add(NovelReaderBlock(NovelSpansData(NovelSpansType.normal, '')));
+  }
+
+  void flushParagraph() {
+    if (pending.isEmpty) {
       return;
     }
     if (pendingEmpty) {
-      blocks.add(NovelReaderBlock(NovelSpansData(NovelSpansType.normal, '')));
+      emitBlank();
       pendingEmpty = false;
     }
-    blocks.add(NovelReaderBlock(span));
+    blocks.add(NovelReaderBlock.spans(pending));
+    pending = <NovelSpansData>[];
+    pendingChars = 0;
+  }
+
+  void addInline(NovelSpansData span) {
+    if (pending.isNotEmpty &&
+        pendingChars + span.text.length > novelReaderBlockMaxChars) {
+      flushParagraph();
+    }
+    pending.add(span);
+    pendingChars += span.text.length;
   }
 
   for (final span in spans) {
     if (span.type == NovelSpansType.newPage) {
       continue;
     }
-    if (span.type == NovelSpansType.normal) {
-      for (final part in _splitNormalText(span.text)) {
-        addBlock(NovelSpansData(NovelSpansType.normal, part));
+    if (!isNovelInlineSpan(span.type)) {
+      flushParagraph();
+      if (pendingEmpty) {
+        emitBlank();
+        pendingEmpty = false;
       }
-    } else {
-      addBlock(span);
+      blocks.add(NovelReaderBlock(span));
+      continue;
     }
+    if (span.type != NovelSpansType.normal) {
+      addInline(span);
+      continue;
+    }
+    final lines = _splitLines(span.text);
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (line.isNotEmpty) {
+        for (final part in _chunkLine(line)) {
+          addInline(NovelSpansData(NovelSpansType.normal, part));
+        }
+      }
+      if (i < lines.length - 1) {
+        flushParagraph();
+        if (line.isEmpty) {
+          pendingEmpty = blocks.isNotEmpty;
+        }
+      }
+    }
+  }
+
+  flushParagraph();
+  if (pendingEmpty && blocks.isNotEmpty) {
+    emitBlank();
   }
 
   if (blocks.isEmpty) {
@@ -117,28 +185,30 @@ List<NovelReaderBlock> splitNovelReaderBlocks(List<NovelSpansData> spans) {
   return blocks;
 }
 
-Iterable<String> _splitNormalText(String text) sync* {
+List<String> _splitLines(String text) {
   final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-  for (final line in normalized.split('\n')) {
-    if (line.length <= novelReaderBlockMaxChars) {
-      yield line;
-      continue;
+  return normalized.split('\n');
+}
+
+Iterable<String> _chunkLine(String line) sync* {
+  if (line.length <= novelReaderBlockMaxChars) {
+    yield line;
+    return;
+  }
+  var start = 0;
+  while (start < line.length) {
+    var end = start + novelReaderBlockMaxChars;
+    if (end >= line.length) {
+      yield line.substring(start);
+      break;
     }
-    var start = 0;
-    while (start < line.length) {
-      var end = start + novelReaderBlockMaxChars;
-      if (end >= line.length) {
-        yield line.substring(start);
-        break;
-      }
-      final window = line.substring(start, end);
-      final breakAt = _lastTextBreak(window);
-      if (breakAt > novelReaderBlockMaxChars ~/ 4) {
-        end = start + breakAt;
-      }
-      yield line.substring(start, end);
-      start = end;
+    final window = line.substring(start, end);
+    final breakAt = _lastTextBreak(window);
+    if (breakAt > novelReaderBlockMaxChars ~/ 4) {
+      end = start + breakAt;
     }
+    yield line.substring(start, end);
+    start = end;
   }
 }
 

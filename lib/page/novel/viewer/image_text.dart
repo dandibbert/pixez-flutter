@@ -32,6 +32,7 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/page/novel/viewer/novel_links.dart';
+import 'package:pixez/page/novel/viewer/novel_ruby.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 
 //这一堆都是专门给小说特殊约定写的
@@ -324,15 +325,11 @@ class NovelSpansGenerator {
         return NovelSpansData(NovelSpansType.normal, now);
       }
     } else if (spanStr.startsWith('[[rb:')) {
-      final String key = spanStr.toString();
-      final flag = '[[rb:';
-      final contentText = key
-          .replaceAll(flag, '')
-          .replaceAll(']', '')
-          .split('>');
-      final base = contentText.first;
-      final ruby = contentText.length > 1 ? contentText.last : '';
-      return NovelSpansData(NovelSpansType.rb, '$base>$ruby');
+      final ruby = parseNovelRubyMarkup(spanStr);
+      if (ruby == null) {
+        return NovelSpansData(NovelSpansType.normal, spanStr);
+      }
+      return NovelSpansData(NovelSpansType.rb, ruby.encoded);
     } else {
       return NovelSpansData(NovelSpansType.normal, spanStr);
     }
@@ -369,26 +366,12 @@ class NovelSpansGenerator {
             : null,
       );
     } else if (data.type == NovelSpansType.rb) {
-      final parts = data.text.split('>');
-      final base = parts.first;
-      final ruby = parts.length > 1 ? parts.last : '';
+      final ruby = parseNovelRubyPayload(data.text);
       final baseStyle = style ?? DefaultTextStyle.of(context).style;
-      return WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (ruby.isNotEmpty)
-              Text(
-                ruby,
-                style: baseStyle.copyWith(
-                  fontSize: (baseStyle.fontSize ?? 16) * 0.55,
-                  height: 1.1,
-                ),
-              ),
-            Text(base, style: baseStyle),
-          ],
-        ),
+      return novelRubySpan(
+        base: ruby.base,
+        ruby: ruby.ruby,
+        style: baseStyle,
       );
     } else if (data.type == NovelSpansType.jumpUri) {
       return TextSpan(
