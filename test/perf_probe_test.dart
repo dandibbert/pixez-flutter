@@ -7,11 +7,15 @@ import 'package:pixez/component/perf_probe.dart';
 
 PerfSample sample({
   int frames = 0,
+  int pointerEvents = 0,
+  double dutyPercent = 0,
+  double refreshRate = 60,
   double avgBuildMs = 0,
   double maxBuildMs = 0,
   double avgRasterMs = 0,
   double maxRasterMs = 0,
   int requests = 0,
+  int totalRequests = 0,
   int errors = 0,
   double lagMs = 0,
   int liveImages = 0,
@@ -20,12 +24,17 @@ PerfSample sample({
 }) {
   return PerfSample(
     window: const Duration(seconds: 2),
+    historyWindow: const Duration(seconds: 30),
+    refreshRate: refreshRate,
     frames: frames,
+    pointerEvents: pointerEvents,
+    dutyPercent: dutyPercent,
     avgBuildMs: avgBuildMs,
     maxBuildMs: maxBuildMs,
     avgRasterMs: avgRasterMs,
     maxRasterMs: maxRasterMs,
     requests: requests,
+    totalRequests: totalRequests,
     errors: errors,
     lagMs: lagMs,
     liveImages: liveImages,
@@ -39,27 +48,56 @@ void main() {
 
   test('an app that stopped drawing reads as idle', () {
     // The probe repaints once per window, so a sleeping app still reports a
-    // frame or two. That must not read as "drawing".
-    expect(sample(frames: 0).idle, isTrue);
-    expect(sample(frames: 1).idle, isTrue);
-    expect(sample(frames: 2).idle, isTrue);
+    // frame or two. That must not read as activity.
+    expect(sample(frames: 0).activity, PerfActivity.idle);
+    expect(sample(frames: 1).activity, PerfActivity.idle);
+    expect(sample(frames: 2).activity, PerfActivity.idle);
   });
 
-  test('an app drawing every vsync does not read as idle', () {
-    final drawing = sample(frames: 120);
-    expect(drawing.idle, isFalse);
-    expect(drawing.fps, closeTo(60, 0.001));
-    expect(drawing.lines.first, contains('DRAWING'));
+  test('scrolling reads as active, not as never sleeping', () {
+    // The reading from the device: 17 frames in 2s while a finger was moving.
+    // Drawing to scroll is unavoidable and must not look like a runaway.
+    final scrolling = sample(frames: 17, pointerEvents: 42);
+    expect(scrolling.activity, PerfActivity.active);
+    expect(scrolling.drawsUntouched, isFalse);
+    expect(scrolling.lines.first, contains('ACTIVE'));
+  });
+
+  test('drawing every vsync reads as pegged', () {
+    final pegged = sample(frames: 120, pointerEvents: 40);
+    expect(pegged.activity, PerfActivity.pegged);
+    expect(pegged.fps, closeTo(60, 0.001));
+    expect(pegged.lines.first, contains('PEGGED'));
+  });
+
+  test('a 120Hz display is not mistaken for a runaway at 60fps', () {
+    final half = sample(frames: 120, refreshRate: 120);
+    expect(half.activity, PerfActivity.active);
+    expect(sample(frames: 240, refreshRate: 120).activity, PerfActivity.pegged);
+  });
+
+  test('frames with nobody touching the screen are called out', () {
+    expect(sample(frames: 120, pointerEvents: 0).drawsUntouched, isTrue);
+    expect(sample(frames: 120, pointerEvents: 1).drawsUntouched, isFalse);
+    // A couple of stray frames while idle is the probe itself, not the app.
+    expect(sample(frames: 2, pointerEvents: 0).drawsUntouched, isFalse);
+    expect(
+      sample(frames: 120, pointerEvents: 0).lines[1],
+      contains('UNTOUCHED'),
+    );
   });
 
   test('the readout names every signal it collects', () {
     final lines = sample(
       frames: 120,
+      pointerEvents: 7,
+      dutyPercent: 98.4,
       avgBuildMs: 3.25,
       maxBuildMs: 11.5,
       avgRasterMs: 6.5,
       maxRasterMs: 22.25,
       requests: 47,
+      totalRequests: 1503,
       errors: 3,
       lagMs: 12.5,
       liveImages: 84,
@@ -69,10 +107,14 @@ void main() {
     final text = lines.join('\n');
 
     expect(text, contains('120'));
-    expect(text, contains('60.0 fps'));
-    expect(text, contains('3.3ms'));
-    expect(text, contains('22.3ms'));
+    expect(text, contains('60.0fps'));
+    expect(text, contains('@60Hz'));
+    expect(text, contains('98%'));
+    expect(text, contains('touch 7'));
+    expect(text, contains('3.3'));
+    expect(text, contains('22.3'));
     expect(text, contains('47 req'));
+    expect(text, contains('1503 all'));
     expect(text, contains('3 err'));
     expect(text, contains('12.5ms'));
     expect(text, contains('84 live'));
@@ -132,5 +174,36 @@ void main() {
       await tester.pump(const Duration(milliseconds: 16));
     }
     expect(busy, lessThanOrEqualTo(2), reason: 'probe drew $busy frames');
+  });
+
+  testWidgets('the probe sees touches without swallowing them', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PerfProbe(
+            window: const Duration(seconds: 2),
+            child: Center(
+              child: GestureDetector(
+                onTap: () => taps++,
+                child: const Text('page'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('page'));
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(taps, 1, reason: 'the probe must not consume input');
+    final overlay = tester.widget<DecoratedBox>(find.byKey(perfProbeKey));
+    expect(overlay, isNotNull);
+    expect(
+      find.textContaining('touch 0'),
+      findsNothing,
+      reason: 'the tap should have been counted',
+    );
   });
 }
