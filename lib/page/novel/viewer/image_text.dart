@@ -151,7 +151,7 @@ class PixivImageSpan extends WidgetSpan {
       final result = Illusts.fromJson(response.data['illust']);
       return result;
     } catch (e) {
-      print(e);
+      LPrinter.d(e);
     }
     return null;
   }
@@ -215,54 +215,15 @@ class NovelSpansGenerator {
   List<NovelSpansData> buildSpans(NovelWebResponse webResponse) {
     final source = webResponse.text;
     try {
-      String nowStr = '';
-      bool spanCollectStart = false;
-      List<NovelSpansData> result = [];
-      for (var i = 0; i < source.length; i++) {
-        final posStr = source[i];
-        if (posStr == '[') {
-          if (nowStr.isEmpty) {
-            nowStr = posStr;
-            spanCollectStart = true;
-          } else {
-            if (nowStr == '[') {
-              spanCollectStart = true;
-              nowStr += posStr;
-            } else {
-              result.add(NovelSpansData(NovelSpansType.normal, nowStr));
-              nowStr = posStr;
-              spanCollectStart = true;
-            }
-          }
-        } else if (posStr == ']') {
-          if (nowStr.startsWith("[[")) {
-            if (nowStr.endsWith("]")) {
-              spanCollectStart = false;
-              nowStr += posStr;
-              result.add(_parseText(nowStr, webResponse));
-              nowStr = '';
-            } else {
-              nowStr += posStr;
-            }
-          } else {
-            spanCollectStart = false;
-            nowStr += posStr;
-            result.add(_parseText(nowStr, webResponse));
-            nowStr = '';
-          }
-        } else if (spanCollectStart) {
-          nowStr += posStr;
-        } else {
-          nowStr += posStr;
-        }
-      }
-      if (nowStr.isNotEmpty) {
-        result.add(NovelSpansData(NovelSpansType.normal, nowStr));
-      }
-      print(result);
-      return result;
+      return [
+        for (final token in tokenizeNovelText(source))
+          if (token.delimited)
+            _parseText(token.text, webResponse)
+          else
+            NovelSpansData(NovelSpansType.normal, token.text),
+      ];
     } catch (e) {
-      print(e);
+      LPrinter.d(e);
     }
     return [NovelSpansData(NovelSpansType.normal, source)];
   }
