@@ -134,10 +134,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void _openSeriesNovel(int id) {
     Navigator.of(context, rootNavigator: true).pushReplacement(
       MaterialPageRoute(
-        builder: (BuildContext context) => NovelViewerPage(
-          id: id,
-          novelStore: NovelStore(id, null),
-        ),
+        builder: (BuildContext context) =>
+            NovelViewerPage(id: id, novelStore: NovelStore(id, null)),
       ),
     );
   }
@@ -178,10 +176,12 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       hasModifier: novelReaderHasModifier(
         HardwareKeyboard.instance.logicalKeysPressed,
       ),
-      canScrollUp: _controller != null &&
+      canScrollUp:
+          _controller != null &&
           _controller!.hasClients &&
           novelReaderCanScroll(_controller!.position, -1),
-      canScrollDown: _controller != null &&
+      canScrollDown:
+          _controller != null &&
           _controller!.hasClients &&
           novelReaderCanScroll(_controller!.position, 1),
       isRepeat: event is KeyRepeatEvent,
@@ -258,9 +258,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           return Focus(
             autofocus: true,
             child: Scaffold(
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               body: _buildReader(context),
             ),
           );
@@ -571,9 +569,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 const SizedBox(height: 12),
                 Text(
                   novel.title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 if (novel.series.id != null)
                   Padding(
@@ -784,9 +782,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) {
-                          return NovelUsersPage(
-                            id: _novelStore.novel!.user.id,
-                          );
+                          return NovelUsersPage(id: _novelStore.novel!.user.id);
                         },
                       ),
                     );

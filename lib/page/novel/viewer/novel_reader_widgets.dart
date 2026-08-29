@@ -9,6 +9,9 @@ import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 
 const Key novelReaderHeaderKey = Key('novelReaderHeader');
 const Key novelReaderArticleKey = Key('novelReaderArticle');
+const Key novelReaderSeriesBarKey = Key('novelReaderSeriesBar');
+const Key novelReaderScrollbarKey = Key('novelReaderScrollbar');
+const Key novelReaderProgressKey = Key('novelReaderProgress');
 const Key novelReaderPageNavKey = Key('novelReaderPageNav');
 const Key novelReaderSettingsKey = Key('novelReaderSettings');
 const Key novelFontPickerButtonKey = Key('novelFontPickerButton');
@@ -40,11 +43,7 @@ class NovelReaderScaffold extends StatelessWidget {
         header,
         if (seriesBar != null) seriesBar!,
         Expanded(child: article),
-        Material(
-          color: scheme.surface,
-          elevation: 8,
-          child: pageNav,
-        ),
+        Material(color: scheme.surface, elevation: 8, child: pageNav),
       ],
     );
   }
@@ -88,10 +87,7 @@ class NovelReaderHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: onBack,
-              ),
+              IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,40 +156,42 @@ class NovelReaderSeriesBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final i18n = I18n.of(context);
     return Material(
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: scheme.surface,
+      child: Container(
+        key: novelReaderSeriesBarKey,
+        height: 32,
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
           children: [
-            _SeriesChip(
-              label: i18n.pre,
+            _SeriesNavButton(
+              tooltip: i18n.pre,
+              icon: Icons.chevron_left,
               enabled: onPrev != null,
               onTap: onPrev,
-              leading: true,
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: InkWell(
-                  onTap: onOpenSeries,
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
-                    ),
+              child: InkWell(
+                onTap: onOpenSeries,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ),
             ),
-            _SeriesChip(
-              label: i18n.next,
+            _SeriesNavButton(
+              tooltip: i18n.next,
+              icon: Icons.chevron_right,
               enabled: onNext != null,
               onTap: onNext,
-              leading: false,
             ),
           ],
         ),
@@ -202,62 +200,33 @@ class NovelReaderSeriesBar extends StatelessWidget {
   }
 }
 
-class _SeriesChip extends StatelessWidget {
-  final String label;
+class _SeriesNavButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
   final bool enabled;
-  final bool leading;
   final VoidCallback? onTap;
 
-  const _SeriesChip({
-    required this.label,
+  const _SeriesNavButton({
+    required this.tooltip,
+    required this.icon,
     required this.enabled,
-    required this.leading,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final icon = Icon(
-      leading ? Icons.chevron_left : Icons.chevron_right,
-      size: 18,
-      color: enabled ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.3),
-    );
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: enabled ? scheme.surface : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: enabled ? scheme.outlineVariant : Colors.transparent,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (leading) icon,
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: enabled
-                    ? scheme.onSurface
-                    : scheme.onSurface.withValues(alpha: 0.3),
-              ),
-            ),
-            if (!leading) icon,
-          ],
-        ),
-      ),
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: enabled ? onTap : null,
+      icon: Icon(icon, size: 20),
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
     );
   }
 }
 
-class NovelReaderArticle extends StatelessWidget {
+class NovelReaderArticle extends StatefulWidget {
   final Widget? child;
   final int? itemCount;
   final IndexedWidgetBuilder? itemBuilder;
@@ -270,67 +239,117 @@ class NovelReaderArticle extends StatelessWidget {
     this.itemCount,
     this.itemBuilder,
     this.controller,
-    this.padding = const EdgeInsets.fromLTRB(16, 24, 16, 32),
+    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 24),
   }) : assert(
          child != null || (itemCount != null && itemBuilder != null),
          'Provide child or itemBuilder',
        );
 
   @override
+  State<NovelReaderArticle> createState() => _NovelReaderArticleState();
+}
+
+class _NovelReaderArticleState extends State<NovelReaderArticle> {
+  ScrollController? _owned;
+  double _progress = 0;
+
+  ScrollController get _controller => widget.controller ?? _owned!;
+
+  @override
+  void initState() {
+    super.initState();
+    _owned = widget.controller == null ? ScrollController() : null;
+    _controller.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(NovelReaderArticle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) {
+      return;
+    }
+    oldWidget.controller?.removeListener(_onScroll);
+    _owned?.removeListener(_onScroll);
+    _owned?.dispose();
+    _owned = widget.controller == null ? ScrollController() : null;
+    _controller.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onScroll);
+    _owned?.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_controller.hasClients) {
+      return;
+    }
+    final max = _controller.position.maxScrollExtent;
+    final next = max <= 0 ? 1.0 : (_controller.offset / max).clamp(0.0, 1.0);
+    if ((next - _progress).abs() < 0.002) {
+      return;
+    }
+    setState(() => _progress = next);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final width = MediaQuery.sizeOf(context).width;
-    final horizontal = math.max(
-      16.0,
-      (width - 720) / 2,
-    );
-    final resolvedPadding = padding.add(
+    final horizontal = math.max(16.0, (width - 720) / 2);
+    final resolvedPadding = widget.padding.add(
       EdgeInsets.symmetric(horizontal: math.max(0, horizontal - 16)),
     );
-    final decoration = BoxDecoration(
-      color: scheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border(
-        bottom: BorderSide(
-          color: scheme.surfaceContainerHighest,
-          width: 8,
-        ),
-      ),
-    );
     final Widget sliver;
-    if (itemBuilder != null && itemCount != null) {
-      sliver = DecoratedSliver(
-        decoration: decoration,
-        sliver: SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              itemBuilder!,
-              childCount: itemCount,
-              addAutomaticKeepAlives: false,
-            ),
-          ),
+    if (widget.itemBuilder != null && widget.itemCount != null) {
+      sliver = SliverList(
+        delegate: SliverChildBuilderDelegate(
+          widget.itemBuilder!,
+          childCount: widget.itemCount,
+          addAutomaticKeepAlives: false,
         ),
       );
     } else {
-      sliver = SliverToBoxAdapter(
-        child: Container(
-          key: novelReaderArticleKey,
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
-          decoration: decoration,
-          child: child,
-        ),
-      );
+      sliver = SliverToBoxAdapter(child: widget.child);
     }
     return ColoredBox(
-      key: itemBuilder != null ? novelReaderArticleKey : null,
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
-      child: CustomScrollView(
-        controller: controller,
-        slivers: [
-          SliverPadding(
-            padding: resolvedPadding,
-            sliver: sliver,
+      key: novelReaderArticleKey,
+      color: scheme.surface,
+      child: Column(
+        children: [
+          LinearProgressIndicator(
+            key: novelReaderProgressKey,
+            value: _progress,
+            minHeight: 3,
+            color: scheme.primary,
+            backgroundColor: scheme.outlineVariant,
+          ),
+          Expanded(
+            child: ScrollbarTheme(
+              data: ScrollbarThemeData(
+                thumbVisibility: const WidgetStatePropertyAll(true),
+                thickness: const WidgetStatePropertyAll(6),
+                radius: const Radius.circular(4),
+                thumbColor: WidgetStatePropertyAll(
+                  scheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Scrollbar(
+                key: novelReaderScrollbarKey,
+                controller: _controller,
+                interactive: true,
+                child: CustomScrollView(
+                  controller: _controller,
+                  slivers: [
+                    SliverPadding(padding: resolvedPadding, sliver: sliver),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
