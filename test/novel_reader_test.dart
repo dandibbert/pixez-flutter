@@ -125,6 +125,31 @@ void main() {
     );
   });
 
+  test('keeps ruby on the same paragraph as the surrounding text', () {
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, '彼は'),
+      NovelSpansData(NovelSpansType.rb, '走>はし'),
+      NovelSpansData(NovelSpansType.normal, 'った。'),
+    ]);
+
+    expect(blocks, hasLength(1));
+    expect(blocks.single.spans, hasLength(3));
+    expect(blocks.single.spans[1].type, NovelSpansType.rb);
+    expect(blocks.single.text, '彼は走>はしった。');
+  });
+
+  test('still starts a new paragraph after a newline around ruby', () {
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, '彼は'),
+      NovelSpansData(NovelSpansType.rb, '走>はし'),
+      NovelSpansData(NovelSpansType.normal, 'った。\n次の行'),
+    ]);
+
+    expect(blocks, hasLength(2));
+    expect(blocks.first.spans, hasLength(3));
+    expect(blocks.last.text, '次の行');
+  });
+
   test('chunks a single huge line so layout stays bounded', () {
     final huge = 'あ' * 5000;
     final blocks = splitNovelReaderBlocks([
