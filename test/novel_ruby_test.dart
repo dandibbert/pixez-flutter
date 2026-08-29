@@ -25,10 +25,7 @@ const _style = TextStyle(
   color: Color(0xFF222222),
 );
 
-Widget _rubyApp({
-  required InlineSpan paragraph,
-  Key? captureKey,
-}) {
+Widget _rubyApp({required Widget child, Key? captureKey, Size? surface}) {
   return MaterialApp(
     home: Scaffold(
       backgroundColor: Colors.white,
@@ -37,15 +34,34 @@ Widget _rubyApp({
           key: captureKey,
           child: ColoredBox(
             color: Colors.white,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: Text.rich(paragraph),
+            child: SizedBox(
+              width: surface?.width,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
+                child: child,
+              ),
             ),
           ),
         ),
       ),
     ),
   );
+}
+
+Rect _globalBox(
+  WidgetTester tester,
+  RenderParagraph paragraph,
+  TextSelection selection, {
+  ui.BoxHeightStyle heightStyle = ui.BoxHeightStyle.tight,
+}) {
+  final local = paragraph
+      .getBoxesForSelection(selection, boxHeightStyle: heightStyle)
+      .single
+      .toRect();
+  return local.shift(tester.getTopLeft(find.byType(RichText).first));
 }
 
 void main() {
@@ -75,13 +91,15 @@ void main() {
 
     await tester.pumpWidget(
       _rubyApp(
-        paragraph: TextSpan(
-          style: _style,
-          children: [
-            const TextSpan(text: '彼は'),
-            novelRubySpan(base: '走', ruby: 'はし', style: _style),
-            const TextSpan(text: 'った。続きの文章です。'),
-          ],
+        child: Text.rich(
+          TextSpan(
+            style: _style,
+            children: [
+              const TextSpan(text: '彼は'),
+              novelRubySpan(base: '走', ruby: 'はし', style: _style),
+              const TextSpan(text: 'った。続きの文章です。'),
+            ],
+          ),
         ),
       ),
     );
@@ -98,99 +116,108 @@ void main() {
     expect(rubyBox.top, lessThan(paragraph.top + 40));
   });
 
-  testWidgets('base stays on the body baseline; reading sits above it', (
+  testWidgets('base shares the body TextSpan glyph box, not the 1.8 line box', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = const Size(800, 400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    const probeKey = Key('ruby-probe');
-    const probeStyle = TextStyle(
-      fontSize: 20,
-      height: 1.0,
-      fontFamily: _cjkFamily,
-      color: Color(0xFF222222),
-    );
-
     await tester.pumpWidget(
       _rubyApp(
-        paragraph: TextSpan(
-          style: _style,
-          children: [
-            const TextSpan(text: '彼は'),
-            WidgetSpan(
-              alignment: PlaceholderAlignment.baseline,
-              baseline: TextBaseline.alphabetic,
-              child: NovelRubyText(
-                key: probeKey,
-                base: '標',
-                ruby: '',
-                baseStyle: probeStyle,
-                rubyStyle: probeStyle,
-              ),
-            ),
-            novelRubySpan(base: '走', ruby: 'はし', style: _style),
-            const TextSpan(text: 'った。'),
-          ],
+        surface: const Size(720, 0),
+        child: Text.rich(
+          TextSpan(
+            style: _style,
+            children: [
+              const TextSpan(text: '彼は'),
+              novelRubySpan(base: '走', ruby: 'はし', style: _style),
+              const TextSpan(text: 'った。'),
+            ],
+          ),
         ),
       ),
     );
 
-    final probeBox = tester.getRect(find.byKey(probeKey));
-    final rubyFinder = find.byWidgetPredicate(
-      (widget) => widget is NovelRubyText && widget.base == '走',
+    final rubyBox = tester.getRect(find.byType(NovelRubyText));
+    final rubyRo = tester.renderObject<RenderNovelRuby>(
+      find.byType(NovelRubyText),
     );
-    final rubyBox = tester.getRect(rubyFinder);
-    final probeRo = tester.renderObject<RenderNovelRuby>(find.byKey(probeKey));
-    final rubyRo = tester.renderObject<RenderNovelRuby>(rubyFinder);
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byType(RichText).first,
+    );
+    // 彼は = 0-2, WidgetSpan placeholder = 2-3, った。 = 3-6
+    final prefix = _globalBox(
+      tester,
+      paragraph,
+      const TextSelection(baseOffset: 0, extentOffset: 2),
+    );
+    final suffix = _globalBox(
+      tester,
+      paragraph,
+      const TextSelection(baseOffset: 3, extentOffset: 6),
+    );
+    final lineBox = _globalBox(
+      tester,
+      paragraph,
+      const TextSelection(baseOffset: 0, extentOffset: 2),
+      heightStyle: ui.BoxHeightStyle.max,
+    );
 
-    final probeBaseline = probeBox.top + probeRo.alphabeticBaseline;
-    final rubyBaseline = rubyBox.top + rubyRo.alphabeticBaseline;
-
-    // Same line as neighboring body text — the annotated kanji must not sink.
-    expect(rubyBaseline, closeTo(probeBaseline, 1.5));
-    expect(rubyBox.bottom, closeTo(probeBox.bottom, 2.0));
-
-    // Reading occupies the extra space above the shared baseline.
-    expect(rubyBox.top, lessThan(probeBox.top - 6));
-    expect(rubyRo.alphabeticBaseline, greaterThan(probeRo.alphabeticBaseline + 6));
-
-    // Descent matches a normal character, not (reading + base).
-    final rubyDescent = rubyBox.height - rubyRo.alphabeticBaseline;
-    final probeDescent = probeBox.height - probeRo.alphabeticBaseline;
-    expect(rubyDescent, closeTo(probeDescent, 2.0));
-
-    // Reported baseline is the base, not the furigana near the top.
+    expect(rubyBox.bottom, closeTo(prefix.bottom, 2.0));
+    expect(rubyBox.bottom, closeTo(suffix.bottom, 2.0));
+    // Old Stack/bottom alignment sat on the line box and dropped the kanji.
+    expect(lineBox.bottom - rubyBox.bottom, greaterThan(4));
+    expect(rubyBox.top, lessThan(prefix.top - 6));
     expect(rubyRo.alphabeticBaseline, greaterThan(rubyRo.size.height * 0.45));
   });
 
   testWidgets('captures HTML-style ruby on the body baseline', (tester) async {
-    tester.view.physicalSize = const Size(390, 220);
+    tester.view.physicalSize = const Size(1800, 700);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     const captureKey = Key('ruby-capture');
     const displayStyle = TextStyle(
-      fontSize: 32,
+      fontSize: 40,
       height: 1.8,
       fontFamily: _cjkFamily,
       color: Color(0xFF1A1A1A),
+    );
+    const labelStyle = TextStyle(
+      fontSize: 14,
+      height: 1.2,
+      fontFamily: _cjkFamily,
+      color: Color(0xFF666666),
     );
 
     await tester.pumpWidget(
       _rubyApp(
         captureKey: captureKey,
-        paragraph: TextSpan(
-          style: displayStyle,
+        surface: const Size(800, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const TextSpan(text: '彼は'),
-            novelRubySpan(base: '走', ruby: 'はし', style: displayStyle),
-            const TextSpan(text: 'った。漢字'),
-            novelRubySpan(base: '物語', ruby: 'ものがたり', style: displayStyle),
-            const TextSpan(text: '。'),
+            const Text(
+              'Flutter reader — HTML <ruby> layout',
+              style: labelStyle,
+            ),
+            const SizedBox(height: 12),
+            Text.rich(
+              TextSpan(
+                style: displayStyle,
+                children: [
+                  const TextSpan(text: '彼は'),
+                  novelRubySpan(base: '走', ruby: 'はし', style: displayStyle),
+                  const TextSpan(text: 'った。'),
+                  novelRubySpan(base: '物語', ruby: 'ものがたり', style: displayStyle),
+                  const TextSpan(text: '。'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -202,7 +229,7 @@ void main() {
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 2);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-      final file = File('/opt/cursor/artifacts/novel_ruby_baseline.png');
+      final file = File('/opt/cursor/artifacts/novel_ruby_html_style.png');
       file.parent.createSync(recursive: true);
       file.writeAsBytesSync(bytes!.buffer.asUint8List());
       expect(file.existsSync(), isTrue);

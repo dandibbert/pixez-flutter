@@ -97,7 +97,8 @@ class NovelRubyText extends LeafRenderObjectWidget {
       ..baseStyle = baseStyle
       ..rubyStyle = rubyStyle
       ..textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr
-      ..textScaler = MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
+      ..textScaler =
+          MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
   }
 }
 
@@ -232,10 +233,12 @@ class RenderNovelRuby extends RenderBox {
       _intrinsicSize(double.infinity).width;
 
   @override
-  double computeMinIntrinsicHeight(double width) => _intrinsicSize(width).height;
+  double computeMinIntrinsicHeight(double width) =>
+      _intrinsicSize(width).height;
 
   @override
-  double computeMaxIntrinsicHeight(double width) => _intrinsicSize(width).height;
+  double computeMaxIntrinsicHeight(double width) =>
+      _intrinsicSize(width).height;
 
   @override
   Size computeDryLayout(BoxConstraints constraints) {
@@ -247,12 +250,26 @@ class RenderNovelRuby extends RenderBox {
     size = computeDryLayout(constraints);
   }
 
+  double _baselineFor(double maxWidth, TextBaseline baseline) {
+    _layoutPainters(maxWidth);
+    return _rubyBoxHeight +
+        _basePainter.computeDistanceToActualBaseline(baseline);
+  }
+
   @override
   double? computeDistanceToActualBaseline(TextBaseline baseline) {
-    _layoutPainters(
+    return _baselineFor(
       hasSize ? constraints.maxWidth : double.infinity,
+      baseline,
     );
-    return _rubyBoxHeight + _basePainter.computeDistanceToActualBaseline(baseline);
+  }
+
+  @override
+  double? computeDryBaseline(
+    BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    return _baselineFor(constraints.maxWidth, baseline);
   }
 
   @override
@@ -279,6 +296,7 @@ class RenderNovelRuby extends RenderBox {
     super.describeSemanticsConfiguration(config);
     config
       ..isSemanticBoundary = true
+      ..textDirection = _textDirection
       ..label = _ruby.isEmpty ? _base : '$_base $_ruby';
   }
 
