@@ -456,7 +456,7 @@ void main() {
     const captureKey = Key('reader-chrome-capture');
     await tester.pumpWidget(
       MaterialApp(
-        locale: const Locale('zh'),
+        locale: const Locale('en', 'US'),
         theme: ThemeData(useMaterial3: true, fontFamily: 'CJK'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -506,6 +506,8 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.drag(find.byType(Scrollable), const Offset(0, -240));
+    await tester.pumpAndSettle();
 
     final boundary = tester.renderObject<RenderRepaintBoundary>(
       find.byKey(captureKey),

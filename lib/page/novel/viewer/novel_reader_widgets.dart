@@ -324,23 +324,30 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
           LinearProgressIndicator(
             key: novelReaderProgressKey,
             value: _progress,
-            minHeight: 2,
-            backgroundColor: scheme.surfaceContainerHighest.withValues(
-              alpha: 0.35,
-            ),
+            minHeight: 3,
+            color: scheme.primary,
+            backgroundColor: scheme.outlineVariant,
           ),
           Expanded(
-            child: Scrollbar(
-              key: novelReaderScrollbarKey,
-              controller: _controller,
-              thumbVisibility: true,
-              thickness: 5,
-              radius: const Radius.circular(4),
-              child: CustomScrollView(
+            child: ScrollbarTheme(
+              data: ScrollbarThemeData(
+                thumbVisibility: const WidgetStatePropertyAll(true),
+                thickness: const WidgetStatePropertyAll(6),
+                radius: const Radius.circular(4),
+                thumbColor: WidgetStatePropertyAll(
+                  scheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Scrollbar(
+                key: novelReaderScrollbarKey,
                 controller: _controller,
-                slivers: [
-                  SliverPadding(padding: resolvedPadding, sliver: sliver),
-                ],
+                interactive: true,
+                child: CustomScrollView(
+                  controller: _controller,
+                  slivers: [
+                    SliverPadding(padding: resolvedPadding, sliver: sliver),
+                  ],
+                ),
               ),
             ),
           ),
