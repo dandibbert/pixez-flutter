@@ -437,5 +437,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "perf_probe": "Performance readout",
+  "perf_probe_summary": "Overlay frames, network and memory to diagnose heat or battery drain"
 }

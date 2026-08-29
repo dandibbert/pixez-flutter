@@ -76,6 +76,7 @@ abstract class _UserSetting with Store {
   static const String NOVEL_FONT_FILE_KEY = "novel_font_file";
   static const String NOVEL_LINE_HEIGHT_KEY = "novel_line_height";
   static const String NOVEL_READER_BACKGROUND_KEY = "novel_reader_background";
+  static const String PERF_PROBE_KEY = "perf_probe";
   static const String IS_RETURN_AGAIN_TO_EXIT_KEY = "return_again_to_exit";
   static const String IS_CLEAR_OLD_FORMAT_FILE_KEY = "is_clear_old_format_file";
   static const String IS_FOLLOW_AFTER_STAR = "is_follow_after_star";
@@ -187,6 +188,8 @@ abstract class _UserSetting with Store {
   double novelLineHeight = 1.8;
   @observable
   NovelReaderBackground novelReaderBackground = NovelReaderBackground.system;
+  @observable
+  bool perfProbe = false;
   @observable
   dynamic locale = Locale('en', 'US'); //stupid mobx generator
   @observable
@@ -426,6 +429,12 @@ abstract class _UserSetting with Store {
   }
 
   @action
+  Future<void> setPerfProbe(bool value) async {
+    perfProbe = value;
+    await prefs.setBool(PERF_PROBE_KEY, value);
+  }
+
+  @action
   Future<void> setNovelReaderBackground(NovelReaderBackground value) async {
     novelReaderBackground = value;
     await prefs.setString(NOVEL_READER_BACKGROUND_KEY, value.name);
@@ -624,6 +633,7 @@ abstract class _UserSetting with Store {
     novelReaderBackground = novelReaderBackgroundFromName(
       prefs.getString(NOVEL_READER_BACKGROUND_KEY),
     );
+    perfProbe = prefs.getBool(PERF_PROBE_KEY) ?? false;
     _syncNovelTextStyle();
     await NovelCustomFont.ensureLoaded(novelFontFamily, novelFontFile);
     if (novelFontFile == null || novelFontFile!.isEmpty) {

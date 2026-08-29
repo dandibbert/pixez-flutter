@@ -25,6 +25,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_compatibility_layer/dio_compatibility_layer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:pixez/component/perf_probe.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/follow_detail.dart';
@@ -117,6 +118,7 @@ class ApiClient {
               },
             ),
           )
+          ..interceptors.add(PerfCountingInterceptor())
           ..interceptors.add(DioCacheInterceptor(options: options))
           ..interceptors.add(RefreshTokenInterceptor());
     if (kDebugMode) {

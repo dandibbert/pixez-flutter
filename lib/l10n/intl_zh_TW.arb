@@ -430,5 +430,7 @@
   "novel_filter_matching": "匹配",
   "novel_filter_translated_tags": "包含翻譯標籤結果",
   "novel_filter_merge_keyword": "合併關鍵詞結果",
-  "novel_filter_reset": "重設"
+  "novel_filter_reset": "重設",
+  "perf_probe": "效能診斷",
+  "perf_probe_summary": "浮層顯示影格、網路與記憶體，用於排查發燙或耗電"
 }

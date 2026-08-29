@@ -405,5 +405,7 @@
   "novel_filter_matching": "一致条件",
   "novel_filter_translated_tags": "翻訳タグ結果を含める",
   "novel_filter_merge_keyword": "通常キーワード結果を統合",
-  "novel_filter_reset": "リセット"
+  "novel_filter_reset": "リセット",
+  "perf_probe": "パフォーマンス表示",
+  "perf_probe_summary": "フレーム・通信・メモリを重ねて表示し、発熱や電池消費を調べます"
 }
