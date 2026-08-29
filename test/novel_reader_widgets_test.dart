@@ -1,3 +1,8 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/page/novel/viewer/installed_fonts.dart';
@@ -42,7 +47,10 @@ void main() {
       '@MingLiU',
       'LXGW WenKai',
     ]);
-    expect(families, containsAll(['Noto Sans CJK JP', 'Source Han Serif CN', 'LXGW WenKai']));
+    expect(
+      families,
+      containsAll(['Noto Sans CJK JP', 'Source Han Serif CN', 'LXGW WenKai']),
+    );
     expect(families, isNot(contains('@MingLiU')));
     expect(InstalledFonts.filterFamilies(families, 'wenkai'), ['LXGW WenKai']);
   });
@@ -52,7 +60,10 @@ void main() {
       NovelCustomFont.familyFromFileName('LXGWWenKai-Regular.ttf'),
       'pixez__LXGWWenKai-Regular',
     );
-    expect(NovelCustomFont.isImportedFamily('pixez__LXGWWenKai-Regular'), isTrue);
+    expect(
+      NovelCustomFont.isImportedFamily('pixez__LXGWWenKai-Regular'),
+      isTrue,
+    );
     expect(NovelCustomFont.isImportedFamily('Noto Sans'), isFalse);
     expect(
       NovelCustomFont.displayName('pixez__LXGWWenKai-Regular'),
@@ -68,7 +79,9 @@ void main() {
       isTrue,
     );
     expect(
-      InstalledFonts.isUserInstalledFontPath('/System/Library/Fonts/PingFang.ttc'),
+      InstalledFonts.isUserInstalledFontPath(
+        '/System/Library/Fonts/PingFang.ttc',
+      ),
       isFalse,
     );
     expect(
@@ -78,14 +91,13 @@ void main() {
   });
 
   test('selected custom family stays in the picker list', () {
-    expect(
-      InstalledFonts.mergeSelected(['Noto Sans'], 'LXGW WenKai'),
-      ['LXGW WenKai', 'Noto Sans'],
-    );
-    expect(
-      InstalledFonts.mergeSelected(['LXGW WenKai'], 'LXGW WenKai'),
-      ['LXGW WenKai'],
-    );
+    expect(InstalledFonts.mergeSelected(['Noto Sans'], 'LXGW WenKai'), [
+      'LXGW WenKai',
+      'Noto Sans',
+    ]);
+    expect(InstalledFonts.mergeSelected(['LXGW WenKai'], 'LXGW WenKai'), [
+      'LXGW WenKai',
+    ]);
   });
 
   testWidgets('reader chrome shows title and page controls', (tester) async {
@@ -104,6 +116,7 @@ void main() {
               onDetails: () {},
               onAuthorTap: () {},
             ),
+            seriesBar: const NovelReaderSeriesBar(title: 'Winter Cycle'),
             article: const NovelReaderArticle(
               child: Text('The snow kept falling.'),
             ),
@@ -135,6 +148,57 @@ void main() {
     expect(find.byKey(novelReaderArticleKey), findsOneWidget);
     expect(find.byKey(novelReaderPageNavKey), findsOneWidget);
     expect(find.byKey(novelReaderDetailsButtonKey), findsOneWidget);
+    expect(find.byKey(novelReaderSeriesBarKey), findsOneWidget);
+    expect(find.text('Winter Cycle'), findsOneWidget);
+    expect(tester.getSize(find.byKey(novelReaderSeriesBarKey)).height, 32);
+    expect(find.byKey(novelReaderScrollbarKey), findsOneWidget);
+    expect(find.byKey(novelReaderProgressKey), findsOneWidget);
+    final article = tester.widget<ColoredBox>(
+      find.byKey(novelReaderArticleKey),
+    );
+    expect(
+      article.color,
+      Theme.of(
+        tester.element(find.byKey(novelReaderArticleKey)),
+      ).colorScheme.surface,
+    );
+  });
+
+  testWidgets('scroll progress and thumb move with the article', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NovelReaderArticle(
+            itemCount: 80,
+            itemBuilder: (context, index) {
+              return SizedBox(height: 48, child: Text('paragraph $index'));
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final before = tester
+        .widget<LinearProgressIndicator>(find.byKey(novelReaderProgressKey))
+        .value!;
+    expect(before, lessThan(0.15));
+    expect(find.byType(Scrollbar), findsOneWidget);
+
+    await tester.drag(find.byType(Scrollable), const Offset(0, -800));
+    await tester.pumpAndSettle();
+
+    final after = tester
+        .widget<LinearProgressIndicator>(find.byKey(novelReaderProgressKey))
+        .value!;
+    expect(after, greaterThan(before + 0.1));
   });
 
   testWidgets('article list only builds visible paragraph blocks', (
@@ -374,5 +438,85 @@ void main() {
     await tester.pump();
     expect(selected?.family, 'Source Han Serif CN');
     expect(find.text('Source Han Serif CN'), findsOneWidget);
+  });
+
+  testWidgets('captures the compact reader chrome', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final bytes = File(
+      '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+    ).readAsBytesSync();
+    final loader = FontLoader('CJK');
+    loader.addFont(Future<ByteData>.value(ByteData.view(bytes.buffer)));
+    await loader.load();
+
+    const captureKey = Key('reader-chrome-capture');
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        theme: ThemeData(useMaterial3: true, fontFamily: 'CJK'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: RepaintBoundary(
+            key: captureKey,
+            child: NovelReaderScaffold(
+              header: NovelReaderHeader(
+                title: '冬の物語',
+                author: '著者A',
+                onBack: () {},
+                onTitleTap: () {},
+                onDetails: () {},
+                onAuthorTap: () {},
+              ),
+              seriesBar: const NovelReaderSeriesBar(title: '連載シリーズ'),
+              article: NovelReaderArticle(
+                itemCount: 40,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      '第$index段。彼は走った。続きの文章がここにあります。',
+                      style: const TextStyle(fontSize: 16, height: 1.8),
+                    ),
+                  );
+                },
+              ),
+              pageNav: NovelReaderPageNav(
+                currentPage: 2,
+                totalPages: 8,
+                navState: const NovelPageNavState(
+                  isOnFirstPage: false,
+                  isOnLastPage: false,
+                  canJumpPrevSeries: false,
+                  canJumpNextSeries: false,
+                  isPrevDisabled: false,
+                  isNextDisabled: false,
+                ),
+                onPrev: () {},
+                onNext: () {},
+                onPickPage: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(captureKey),
+    );
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 2);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final file = File('/opt/cursor/artifacts/novel_reader_chrome.png');
+      file.parent.createSync(recursive: true);
+      file.writeAsBytesSync(bytes!.buffer.asUint8List());
+      expect(file.existsSync(), isTrue);
+    });
   });
 }
