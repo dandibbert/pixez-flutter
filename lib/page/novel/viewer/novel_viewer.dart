@@ -375,6 +375,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       for (var i = 0; i < totalPages; i++) novelTtsDocumentFromPages(pages, i),
     ];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
+    final start = fromEnd ? null : _visibleStart(page);
     await _tts.start(
       novelId: widget.id,
       title: novel.title,
@@ -393,19 +394,20 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           ? navigation!.nextNovel!.id
           : null,
       startChunk: fromEnd ? 1 << 20 : null,
-      startNeedle: fromEnd ? null : _visibleStartNeedle(page),
+      startNeedle: fromEnd ? null : start?.needle,
+      startOffset: fromEnd ? null : start?.offset,
     );
   }
 
-  String _visibleStartNeedle(int page) {
+  ({String needle, int? offset})? _visibleStart(int page) {
     final pages = _pages;
     if (pages.isEmpty) {
-      return '';
+      return null;
     }
     final pageIndex = clampNovelPage(page, pages.length) - 1;
     final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
     if (blocks.isEmpty) {
-      return '';
+      return null;
     }
     final viewportTop = _articleViewportTop();
     var blockIndex = 0;
@@ -430,7 +432,16 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 .clamp(0, blocks.length - 1);
       }
     }
-    return novelTtsNeedleForBlock(blocks, blockIndex);
+    final needle = novelTtsNeedleForBlock(blocks, blockIndex);
+    final display = novelTtsDocumentFromPages(pages, pageIndex).displayText;
+    return (
+      needle: needle,
+      offset: novelTtsSourceOffsetForBlock(
+        pageText: display,
+        blocks: blocks,
+        blockIndex: blockIndex,
+      ),
+    );
   }
 
   double? _articleViewportTop() {

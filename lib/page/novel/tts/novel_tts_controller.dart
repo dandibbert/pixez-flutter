@@ -17,6 +17,7 @@ import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/tts/pronunciation/matching/pronunciation_compiler.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
 import 'package:pixez/page/novel/tts/pronunciation/resolution/pronunciation_pipeline.dart';
 import 'package:pixez/page/novel/tts/pronunciation/resolution/pronunciation_renderer.dart';
@@ -195,6 +196,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   final SourceAwareNovelTtsSplitter _splitter;
   final PronunciationRenderer _renderer;
   PronunciationSnapshot? _sessionSnapshot;
+  final Map<String, List<PronunciationDecision>> _pageDecisions = {};
 
   StreamSubscription<void>? _completionSub;
   StreamSubscription<int>? _clipSub;
@@ -280,6 +282,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     String? seriesId,
     int? startChunk,
     String? startNeedle,
+    int? startOffset,
   }) async {
     final loaded = settings;
     if (!loaded.isConfigured) {
@@ -295,6 +298,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         ? [for (final text in texts) novelTtsDocumentFromText(text)]
         : pageDocuments;
     _generation++;
+    _pageDecisions.clear();
     _pronunciationPipeline.worker.sessionGeneration = _generation;
     _sessionSnapshot = await _pronunciationRepository.snapshotFor(
       workId: '$novelId',
@@ -350,6 +354,14 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       novelId: novelId,
       startChunk: startChunk,
       startNeedle: startNeedle,
+      startOffset: startOffset,
+      pageDisplayText: documents[page.clamp(1, documents.length) - 1].displayText,
+    );
+    session = session!.copyWith(
+      chunks: [
+        for (final clip in clips)
+          if (clip.page == page) clip.text,
+      ],
     );
     errorMessage = null;
     _holdAfterReady = false;
@@ -874,6 +886,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         continue;
       }
       final applied = resolved?.appliedDecisions ?? const [];
+      _pageDecisions['$id:${page + pageOffset}'] = applied;
       final ranges = _splitter.split(
         displayText: document.displayText,
         appliedDecisions: applied,
@@ -911,7 +924,35 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     required int novelId,
     int? startChunk,
     String? startNeedle,
+    int? startOffset,
+    String? pageDisplayText,
   }) {
+    var offset = startOffset;
+    if ((offset == null || offset < 0) &&
+        startNeedle != null &&
+        startNeedle.trim().isNotEmpty &&
+        pageDisplayText != null &&
+        pageDisplayText.isNotEmpty) {
+      offset = novelTtsAlignFlexible(pageDisplayText, startNeedle)?.start;
+    }
+    if (offset != null && offset >= 0) {
+      var cut = offset;
+      if (pageDisplayText != null && cut < pageDisplayText.length) {
+        while (cut < pageDisplayText.length &&
+            _isSpeakableSpace(pageDisplayText[cut])) {
+          cut++;
+        }
+      }
+      final index = _clipIndexContaining(page: page, sourceOffset: cut);
+      if (index >= 0) {
+        _trimClipToSourceOffset(
+          clipIndex: index,
+          sourceOffset: cut,
+          pageDisplayText: pageDisplayText,
+        );
+        return index;
+      }
+    }
     if (startNeedle != null && startNeedle.trim().isNotEmpty) {
       final pageTexts = [
         for (final clip in clips)
@@ -937,6 +978,74 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
           _bookmarkChunk(novelId: novelId, page: page) ??
           0,
     );
+  }
+
+  int _clipIndexContaining({required int page, required int sourceOffset}) {
+    var fallback = -1;
+    for (var i = 0; i < clips.length; i++) {
+      final clip = clips[i];
+      if (clip.page != page) {
+        continue;
+      }
+      fallback = fallback < 0 ? i : fallback;
+      if (sourceOffset >= clip.sourceStart && sourceOffset < clip.sourceEnd) {
+        return i;
+      }
+    }
+    return fallback;
+  }
+
+  void _trimClipToSourceOffset({
+    required int clipIndex,
+    required int sourceOffset,
+    String? pageDisplayText,
+  }) {
+    if (clipIndex < 0 || clipIndex >= clips.length) {
+      return;
+    }
+    final clip = clips[clipIndex];
+    var cut = sourceOffset;
+    if (pageDisplayText != null) {
+      while (cut < clip.sourceEnd &&
+          cut < pageDisplayText.length &&
+          _isSpeakableSpace(pageDisplayText[cut])) {
+        cut++;
+      }
+    }
+    if (cut <= clip.sourceStart || cut >= clip.sourceEnd) {
+      return;
+    }
+    final local = (cut - clip.sourceStart).clamp(0, clip.text.length);
+    final text = clip.text.substring(local);
+    final spoken = pageDisplayText == null
+        ? clip.spokenText.substring(
+            local.clamp(0, clip.spokenText.length),
+          )
+        : _renderer.renderRange(
+            source: pageDisplayText,
+            range: NovelTtsSourceRange(cut, clip.sourceEnd),
+            decisions: _pageDecisions['${clip.novelId}:${clip.page}'] ?? const [],
+          );
+    final next = [...clips];
+    next[clipIndex] = NovelTtsClip(
+      novelId: clip.novelId,
+      page: clip.page,
+      chunkIndex: clip.chunkIndex,
+      text: text,
+      spokenText: spoken,
+      sourceStart: cut,
+      sourceEnd: clip.sourceEnd,
+      pronunciationFingerprint: clip.pronunciationFingerprint,
+    );
+    clips = next;
+  }
+
+  bool _isSpeakableSpace(String char) {
+    return char == ' ' ||
+        char == '\n' ||
+        char == '\r' ||
+        char == '\t' ||
+        char == '　';
   }
 
   int _indexOf({required int page, required int chunkIndex}) {

@@ -166,14 +166,19 @@ List<NovelTtsSpanHighlight> novelTtsHighlightsForSpokenText({
 }
 
 /// Finds [needle] in [pageText] while ignoring whitespace / newline mismatches.
-NovelTtsTextRange? novelTtsAlignFlexible(String pageText, String needle) {
+NovelTtsTextRange? novelTtsAlignFlexible(
+  String pageText,
+  String needle, {
+  int from = 0,
+}) {
   final compact = _stripSpeakableSpace(needle);
   if (compact.isEmpty || pageText.isEmpty) {
     return null;
   }
   var n = 0;
   var start = -1;
-  for (var i = 0; i < pageText.length; i++) {
+  final begin = from < 0 ? 0 : from;
+  for (var i = begin; i < pageText.length; i++) {
     if (_isSpeakableSpace(pageText[i])) {
       continue;
     }
@@ -246,6 +251,37 @@ String novelTtsNeedleForBlock(List<NovelReaderBlock> blocks, int blockIndex) {
     }
   }
   return '';
+}
+
+/// Source offset of [blockIndex] inside synthesizer [pageText].
+///
+/// Reader blocks drop newlines that the TTS document still has, so this walks
+/// blocks in order instead of using a raw `indexOf`.
+int? novelTtsSourceOffsetForBlock({
+  required String pageText,
+  required List<NovelReaderBlock> blocks,
+  required int blockIndex,
+}) {
+  if (pageText.isEmpty || blockIndex < 0 || blockIndex >= blocks.length) {
+    return null;
+  }
+  var from = 0;
+  for (var i = 0; i < blocks.length; i++) {
+    final text = novelTtsTextFromBlocks([blocks[i]]).trim();
+    if (text.isEmpty) {
+      continue;
+    }
+    final range = novelTtsAlignFlexible(pageText, text, from: from);
+    if (range == null) {
+      continue;
+    }
+    if (i >= blockIndex) {
+      return range.start;
+    }
+    from = range.end;
+  }
+  final needle = novelTtsNeedleForBlock(blocks, blockIndex);
+  return novelTtsAlignFlexible(pageText, needle)?.start;
 }
 
 NovelTtsSpanHighlight? novelTtsHighlightForSpan({

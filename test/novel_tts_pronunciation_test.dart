@@ -274,6 +274,32 @@ void main() {
     expect(source.substring(0, 3), '五条悟');
   });
 
+  test('spoken overflow splits at punctuation instead of mid-sentence', () {
+    const source = 'あ。BBBBBBBB。CCCCCCCC。';
+    final ranges = const SourceAwareNovelTtsSplitter().split(
+      displayText: source,
+      appliedDecisions: [
+        PronunciationDecision(
+          start: 0,
+          end: 1,
+          surface: 'あ',
+          reading: 'ああああああああああ',
+          ruleId: 'a',
+          status: PronunciationDecisionStatus.applied,
+          reason: PronunciationReason.forcedRule,
+          locked: false,
+        ),
+      ],
+      budget: const RuneTtsTextBudget(16),
+    );
+    expect(
+      [
+        for (final range in ranges) source.substring(range.start, range.end),
+      ],
+      ['あ。', 'BBBBBBBB。', 'CCCCCCCC。'],
+    );
+  });
+
   test('spoken budget splits again when readings expand', () {
     const source = 'AAAAABBBBBCCCCC';
     final ranges = const SourceAwareNovelTtsSplitter().split(

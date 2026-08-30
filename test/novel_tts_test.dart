@@ -510,6 +510,26 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('maps a visible reader line onto the synthesizer offset', () {
+    const pageText =
+        'とにかく私はこうしてここに住み始めた。\n悠仁くんに恋して一か月。\n今まで私の名を呼ばなかったり回避するためだったんだろう。';
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, pageText),
+    ]);
+    final yujiIndex = blocks.indexWhere(
+      (block) => block.text.contains('悠仁くんに恋して一か月。'),
+    );
+    expect(yujiIndex, greaterThan(0));
+    expect(
+      novelTtsSourceOffsetForBlock(
+        pageText: pageText,
+        blocks: blocks,
+        blockIndex: yujiIndex,
+      ),
+      pageText.indexOf('悠仁くんに恋して一か月。'),
+    );
+  });
+
   test('maps a spoken clip to the matching reader block', () {
     final blocks = [
       NovelReaderBlock.spans([
@@ -799,6 +819,7 @@ void main() {
     );
     expect(controller.subtitle, contains('悠仁くんに恋して一か月。'));
     expect(controller.subtitle.contains('今まで'), isFalse);
+    expect(controller.subtitle.contains('とにかく'), isFalse);
 
     await controller.start(
       novelId: 7,
@@ -813,6 +834,61 @@ void main() {
       ],
     );
     expect(controller.subtitle, '下一页第一句用来测试拆分的。');
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('starts at the visible sentence inside a packed clip', () async {
+    final synth = _FakeSynth();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_start_visible');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 200,
+        readings: [
+          NovelTtsReading(
+            surface: '悠仁',
+            reading: 'ゆうじ',
+            mode: PronunciationMatchMode.exactPhrase,
+          ),
+        ],
+      ),
+      cacheDir: () async => dir,
+    );
+    const pageText =
+        'とにかく私はこうしてここに住み始めた。\n悠仁くんに恋して一か月。\n今まで私の名を呼ばなかったり回避するためだったんだろう。';
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, pageText),
+    ]);
+    expect(blocks.map((block) => block.text.trim()), contains('悠仁くんに恋して一か月。'));
+    final yujiIndex = blocks.indexWhere(
+      (block) => block.text.contains('悠仁くんに恋して一か月。'),
+    );
+    final offset = novelTtsSourceOffsetForBlock(
+      pageText: pageText,
+      blocks: blocks,
+      blockIndex: yujiIndex,
+    );
+
+    await controller.start(
+      novelId: 8,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: pageText,
+      startNeedle: '悠仁くんに恋して一か月。',
+      startOffset: offset,
+    );
+    expect(controller.clips, hasLength(1));
+    expect(controller.subtitle, startsWith('悠仁くんに恋して一か月。'));
+    expect(controller.subtitle.contains('とにかく'), isFalse);
+    expect(synth.texts.single, startsWith('ゆうじくんに恋して一か月。'));
 
     controller.dispose();
     await dir.delete(recursive: true);

@@ -158,7 +158,7 @@ class PronunciationRepository {
     List<NovelTtsReading>? settingsReadings,
   }) async {
     final live = settingsReadings ?? NovelTtsSettings.load().readings;
-    if (live.isNotEmpty) {
+    if (settingsReadings != null || live.isNotEmpty) {
       final rules = _migration.migrateV1(live);
       final store = await load();
       if (!_sameSurfaces(store.rules, rules)) {

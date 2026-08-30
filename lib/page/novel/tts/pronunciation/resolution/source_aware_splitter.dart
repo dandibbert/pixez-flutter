@@ -131,29 +131,136 @@ class SourceAwareNovelTtsSplitter {
       range: range,
       decisions: applied,
     );
-    if (budget.measure(spoken) <= budget.maxUnits) {
+    final units = budget.measure(spoken);
+    if (units <= budget.maxUnits || units <= budget.maxUnits + _grace(budget)) {
       return [range];
     }
-    final mid = _safeMid(range, protected);
-    if (mid == null) {
+    final cut = _bestBudgetCut(
+      displayText: displayText,
+      range: range,
+      applied: applied,
+      budget: budget,
+      protected: protected,
+    );
+    if (cut == null) {
       throw StateError('pronunciation_reading_exceeds_budget');
     }
     return [
       ..._fitBudget(
         displayText: displayText,
-        range: NovelTtsSourceRange(range.start, mid),
+        range: NovelTtsSourceRange(range.start, cut),
         applied: applied,
         budget: budget,
         protected: protected,
       ),
       ..._fitBudget(
         displayText: displayText,
-        range: NovelTtsSourceRange(mid, range.end),
+        range: NovelTtsSourceRange(cut, range.end),
         applied: applied,
         budget: budget,
         protected: protected,
       ),
     ];
+  }
+
+  int _grace(TtsTextBudget budget) {
+    final extra = (budget.maxUnits * 0.2).round();
+    return extra > 24 ? 24 : extra;
+  }
+
+  int? _bestBudgetCut({
+    required String displayText,
+    required NovelTtsSourceRange range,
+    required List<PronunciationDecision> applied,
+    required TtsTextBudget budget,
+    required List<(int, int)> protected,
+  }) {
+    var sentenceCut = -1;
+    var lineCut = -1;
+    var softCut = -1;
+    var anyCut = -1;
+    for (var cut = range.start + 1; cut < range.end; cut++) {
+      if (_isInsideProtected(cut, protected)) {
+        continue;
+      }
+      final spoken = renderer.renderRange(
+        source: displayText,
+        range: NovelTtsSourceRange(range.start, cut),
+        decisions: applied,
+      );
+      if (budget.measure(spoken) > budget.maxUnits) {
+        continue;
+      }
+      anyCut = cut;
+      final prev = displayText[cut - 1];
+      if (_isSentenceEnder(prev) ||
+          (cut >= range.start + 2 &&
+              _isCloser(prev) &&
+              _isSentenceEnder(displayText[cut - 2]))) {
+        sentenceCut = cut;
+      } else if (prev == '\n') {
+        lineCut = cut;
+      } else if (_isSoftBreak(prev)) {
+        softCut = cut;
+      }
+    }
+    if (sentenceCut > range.start) {
+      return sentenceCut;
+    }
+    if (lineCut > range.start) {
+      return lineCut;
+    }
+    if (softCut > range.start) {
+      return softCut;
+    }
+    if (anyCut > range.start) {
+      return anyCut;
+    }
+    return _safeMid(range, protected);
+  }
+
+  bool _isInsideProtected(int cut, List<(int, int)> protected) {
+    for (final span in protected) {
+      if (cut > span.$1 && cut < span.$2) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isSentenceEnder(String char) {
+    return char == '。' ||
+        char == '！' ||
+        char == '？' ||
+        char == '!' ||
+        char == '?' ||
+        char == '…' ||
+        char == '．';
+  }
+
+  bool _isCloser(String char) {
+    return char == '」' ||
+        char == '』' ||
+        char == '"' ||
+        char == '”' ||
+        char == '’' ||
+        char == ')' ||
+        char == '）' ||
+        char == ']' ||
+        char == '】';
+  }
+
+  bool _isSoftBreak(String char) {
+    return char == '；' ||
+        char == ';' ||
+        char == '，' ||
+        char == ',' ||
+        char == '、' ||
+        char == '：' ||
+        char == ':' ||
+        char == '—' ||
+        char == '–' ||
+        char == ' ';
   }
 
   int? _safeMid(NovelTtsSourceRange range, List<(int, int)> protected) {
