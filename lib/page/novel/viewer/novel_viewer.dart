@@ -48,6 +48,7 @@ import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
+import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/saf_plugin.dart';
@@ -75,6 +76,10 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   bool supportTranslate = false;
   bool _ttsResumeChecked = false;
   bool _ttsDrivingPage = false;
+  int _ttsUiClip = -1;
+  NovelTtsStatus? _ttsUiStatus;
+  int? _ttsUiPage;
+  final Map<int, GlobalKey> _ttsBlockKeys = {};
   final Map<int, NovelStore> _prefetchedTtsStores = {};
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
@@ -98,6 +103,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     _tts = NovelTtsController.instance;
     _tts.onNavigate = _onTtsNavigate;
     _tts.onLoadChapter = _loadTtsChapter;
+    _tts.addListener(_onTtsProgress);
     if (_novelStore.novelTextResponse == null) {
       _novelStore.fetch();
     }
@@ -110,6 +116,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _offsetDisposer?.call();
+    _tts.removeListener(_onTtsProgress);
     if (identical(_tts.onNavigate, _onTtsNavigate)) {
       _tts.onNavigate = null;
     }
@@ -145,6 +152,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   void _goToPage(int page) {
     final next = clampNovelPage(page, _totalPages);
+    if (next != _currentPage) {
+      _ttsBlockKeys.clear();
+    }
     setState(() {
       _currentPage = next;
     });
@@ -192,6 +202,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       return;
     }
     if (navigate.kind == NovelTtsNavigateKind.page && navigate.page != null) {
+      _ttsBlockKeys.clear();
       _ttsDrivingPage = true;
       _goToPage(navigate.page!);
       _ttsDrivingPage = false;
@@ -207,6 +218,69 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         store: _prefetchedTtsStores.remove(navigate.seriesNovelId),
       );
     }
+  }
+
+  void _onTtsProgress() {
+    if (!mounted) {
+      return;
+    }
+    final clip = _tts.clipIndex;
+    final status = _tts.status;
+    final page = _tts.session?.page;
+    if (clip == _ttsUiClip && status == _ttsUiStatus && page == _ttsUiPage) {
+      return;
+    }
+    final clipMoved = clip != _ttsUiClip || page != _ttsUiPage;
+    _ttsUiClip = clip;
+    _ttsUiStatus = status;
+    _ttsUiPage = page;
+    setState(() {});
+    if (clipMoved && _tts.isActive && _tts.session?.novelId == widget.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToTtsClip();
+        }
+      });
+    }
+  }
+
+  void _scrollToTtsClip() {
+    if (_tts.session?.novelId != widget.id ||
+        _tts.session?.page != _currentPage) {
+      return;
+    }
+    final pages = _pages;
+    if (pages.isEmpty) {
+      return;
+    }
+    final pageIndex = clampNovelPage(_currentPage, pages.length) - 1;
+    final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
+    final index = novelTtsBlockIndexForClip(
+      blocks: blocks,
+      clipText: _tts.subtitle,
+    );
+    final targetContext = _ttsBlockKeys[index]?.currentContext;
+    if (targetContext != null) {
+      Scrollable.ensureVisible(
+        targetContext,
+        alignment: 0.28,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    final controller = _controller;
+    if (controller == null || !controller.hasClients || blocks.isEmpty) {
+      return;
+    }
+    final max = controller.position.maxScrollExtent;
+    final target = max * (index / blocks.length);
+    controller.animateTo(
+      target.clamp(controller.position.minScrollExtent, max),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
   }
 
   Future<NovelTtsChapter?> _loadTtsChapter(int id) async {
@@ -472,14 +546,21 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
             ListenableBuilder(
               listenable: _tts,
               builder: (context, _) {
-                final listening =
-                    _tts.isActive && _tts.session?.novelId == widget.id;
+                final mine = _tts.session?.novelId == widget.id;
+                final paused = mine && _tts.status == NovelTtsStatus.paused;
+                final listening = mine && _tts.isActive && !paused;
                 return IconButton(
-                  tooltip: listening
+                  tooltip: paused
+                      ? I18n.of(context).novel_tts_resume
+                      : listening
                       ? I18n.of(context).novel_tts_pause
                       : I18n.of(context).novel_tts_play,
                   icon: Icon(
-                    listening ? Icons.pause_circle_outline : Icons.headphones,
+                    paused
+                        ? Icons.play_circle_outline
+                        : listening
+                        ? Icons.pause_circle_outline
+                        : Icons.headphones,
                   ),
                   onPressed: _toggleTts,
                 );
@@ -523,7 +604,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           controller: _controller,
           itemCount: blocks.length,
           itemBuilder: (context, index) {
-            return _buildReaderBlock(context, blocks[index], style);
+            return _buildReaderBlock(context, blocks[index], style, index);
           },
         ),
       ),
@@ -554,30 +635,63 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     BuildContext context,
     NovelReaderBlock block,
     TextStyle style,
+    int index,
   ) {
     if (block.isBlank) {
       return SizedBox(height: style.fontSize ?? 16);
     }
+    final follow = _tts.isActive &&
+        _tts.session?.novelId == widget.id &&
+        _tts.session?.page == _currentPage;
+    var highlighted = false;
+    if (follow) {
+      final pages = _pages;
+      if (pages.isNotEmpty) {
+        final pageIndex = clampNovelPage(_currentPage, pages.length) - 1;
+        highlighted =
+            index ==
+            novelTtsBlockIndexForClip(
+              blocks: _splitCache.blocks(pages[pageIndex], pageIndex),
+              clipText: _tts.subtitle,
+            );
+      }
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final key = _ttsBlockKeys.putIfAbsent(index, GlobalKey.new);
     return Padding(
+      key: key,
       padding: const EdgeInsets.only(bottom: 10),
-      child: Text.rich(
-        TextSpan(
-          style: style,
-          children: [
-            for (final span in block.spans)
-              novelSpansGenerator.novelSpansDatatoInlineSpan(
-                context,
-                span,
-                onJumpToPage: _goToPage,
-                onOpenNovel: (id) {
-                  Leader.push(context, NovelViewerPage(id: id));
-                },
-                style: style,
-              ),
-          ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: highlighted
+              ? scheme.primaryContainer.withValues(alpha: 0.45)
+              : null,
+          borderRadius: BorderRadius.circular(6),
         ),
-        textHeightBehavior: const TextHeightBehavior(
-          applyHeightToLastDescent: true,
+        child: Padding(
+          padding: highlighted
+              ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+              : EdgeInsets.zero,
+          child: Text.rich(
+            TextSpan(
+              style: style,
+              children: [
+                for (final span in block.spans)
+                  novelSpansGenerator.novelSpansDatatoInlineSpan(
+                    context,
+                    span,
+                    onJumpToPage: _goToPage,
+                    onOpenNovel: (id) {
+                      Leader.push(context, NovelViewerPage(id: id));
+                    },
+                    style: style,
+                  ),
+              ],
+            ),
+            textHeightBehavior: const TextHeightBehavior(
+              applyHeightToLastDescent: true,
+            ),
+          ),
         ),
       ),
     );

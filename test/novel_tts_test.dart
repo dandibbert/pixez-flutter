@@ -11,6 +11,7 @@ import 'package:pixez/page/novel/tts/novel_tts_audio.dart';
 import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
+import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
@@ -18,6 +19,7 @@ import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
+import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_ruby.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
@@ -410,6 +412,126 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('maps a spoken clip to the matching reader block', () {
+    final blocks = [
+      NovelReaderBlock.spans([
+        NovelSpansData(NovelSpansType.normal, '第一段先写在这里。'),
+      ]),
+      NovelReaderBlock.spans([
+        NovelSpansData(NovelSpansType.normal, '第二段才是当前朗读。'),
+      ]),
+    ];
+    expect(
+      novelTtsBlockIndexForClip(blocks: blocks, clipText: '第二段才是当前朗读。'),
+      1,
+    );
+    expect(
+      novelTtsBlockIndexForClip(blocks: blocks, clipText: '第一段先写在这里。'),
+      0,
+    );
+  });
+
+  test('can pause while synthesizing and resume afterwards', () async {
+    final gate = Completer<void>();
+    final synth = _GatedSynth(gate.future);
+    final audio = _FakeAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_pause');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    final started = controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '暂停测试用的句子。',
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.status, NovelTtsStatus.synthesizing);
+    await controller.pause();
+    expect(controller.status, NovelTtsStatus.paused);
+    gate.complete();
+    await started;
+    expect(controller.status, NovelTtsStatus.paused);
+    expect(audio.paused, 1);
+    await controller.resume();
+    expect(controller.status, NovelTtsStatus.playing);
+    expect(audio.resumed, 1);
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('stop then play again resumes the same page clip', () async {
+    final synth = _FakeSynth();
+    final audio = _FakeAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_bookmark');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    await controller.start(
+      novelId: 7,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+    );
+    expect(controller.clips, hasLength(2));
+    await controller.skip(direction: 'next');
+    expect(controller.clipIndex, 1);
+    await controller.stop();
+    expect(controller.status, NovelTtsStatus.idle);
+    expect(controller.bookmark?.chunkIndex, 1);
+
+    await controller.start(
+      novelId: 7,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+    );
+    expect(controller.clipIndex, 1);
+    expect(controller.subtitle, '这是第二句用来测试拆分的。');
+
+    await controller.start(
+      novelId: 7,
+      title: 'Title',
+      author: 'Author',
+      page: 2,
+      totalPages: 2,
+      pageText: '下一页第一句用来测试拆分的。',
+      pageTexts: [
+        '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+        '下一页第一句用来测试拆分的。',
+      ],
+    );
+    expect(controller.subtitle, '下一页第一句用来测试拆分的。');
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
   test('TTS strings are translated instead of leftover English', () {
     final ja = lookupAppLocalizations(const Locale('ja'));
     expect(ja.novel_tts_settings, '小説の読み上げ');
@@ -482,7 +604,7 @@ void main() {
     controller.clips = const [
       NovelTtsClip(novelId: 1, page: 1, chunkIndex: 0, text: '当前字幕'),
     ];
-    controller.status = NovelTtsStatus.playing;
+    controller.status = NovelTtsStatus.synthesizing;
     controller.clipIndex = 0;
 
     await tester.pumpWidget(
@@ -500,6 +622,7 @@ void main() {
     );
 
     expect(find.byKey(novelTtsBarKey), findsOneWidget);
+    expect(find.byKey(novelTtsPauseButtonKey), findsOneWidget);
     expect(find.text('当前字幕'), findsOneWidget);
     controller.dispose();
   });
@@ -515,9 +638,23 @@ class _FakeSynth implements NovelTtsSynthesizer {
   }
 }
 
+class _GatedSynth implements NovelTtsSynthesizer {
+  _GatedSynth(this._gate);
+
+  final Future<void> _gate;
+
+  @override
+  Future<Uint8List> synthesize(NovelTtsSettings settings, String text) async {
+    await _gate;
+    return Uint8List.fromList(const [1, 2, 3, 4]);
+  }
+}
+
 class _FakeAudio implements NovelTtsAudioPlayer {
   final files = <String>[];
   var index = 0;
+  var paused = 0;
+  var resumed = 0;
   final _clipIndex = StreamController<int>.broadcast();
 
   @override
@@ -564,10 +701,14 @@ class _FakeAudio implements NovelTtsAudioPlayer {
   }
 
   @override
-  Future<void> pause() async {}
+  Future<void> pause() async {
+    paused++;
+  }
 
   @override
-  Future<void> resume() async {}
+  Future<void> resume() async {
+    resumed++;
+  }
 
   @override
   Future<void> stop() async {}

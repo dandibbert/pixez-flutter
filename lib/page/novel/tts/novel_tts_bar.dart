@@ -84,7 +84,8 @@ class NovelTtsBar extends StatelessWidget {
                   onPressed: () => controller.skip(direction: 'prev'),
                   icon: const Icon(Icons.skip_previous),
                 ),
-                if (controller.status == NovelTtsStatus.playing)
+                if (controller.status == NovelTtsStatus.playing ||
+                    controller.status == NovelTtsStatus.synthesizing)
                   IconButton(
                     key: novelTtsPauseButtonKey,
                     tooltip: i18n.novel_tts_pause,
@@ -94,7 +95,9 @@ class NovelTtsBar extends StatelessWidget {
                 else
                   IconButton(
                     key: novelTtsPlayButtonKey,
-                    tooltip: i18n.novel_tts_play,
+                    tooltip: controller.status == NovelTtsStatus.paused
+                        ? i18n.novel_tts_resume
+                        : i18n.novel_tts_play,
                     onPressed: controller.status == NovelTtsStatus.paused
                         ? controller.resume
                         : null,
