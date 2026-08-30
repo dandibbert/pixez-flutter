@@ -15,9 +15,11 @@ let package = Package(
         .library(name: "FlutterGeneratedPluginSwiftPackage", type: .static, targets: ["FlutterGeneratedPluginSwiftPackage"])
     ],
     dependencies: [
+        .package(name: "audio_service", path: "../.packages/audio_service-0.18.19"),
         .package(name: "audio_session", path: "../.packages/audio_session-0.2.4"),
         .package(name: "device_info_plus", path: "../.packages/device_info_plus"),
         .package(name: "file_picker_darwin", path: "../.packages/file_picker_darwin-1.0.1"),
+        .package(name: "flutter_secure_storage_darwin", path: "../.packages/flutter_secure_storage_darwin-0.4.0"),
         .package(name: "image_picker_ios", path: "../.packages/image_picker_ios-0.8.13+6"),
         .package(name: "in_app_purchase_storekit", path: "../.packages/in_app_purchase_storekit-0.4.11+1"),
         .package(name: "just_audio", path: "../.packages/just_audio-0.10.6"),
@@ -36,9 +38,11 @@ let package = Package(
         .target(
             name: "FlutterGeneratedPluginSwiftPackage",
             dependencies: [
+                .product(name: "audio-service", package: "audio_service"),
                 .product(name: "audio-session", package: "audio_session"),
                 .product(name: "device-info-plus", package: "device_info_plus"),
                 .product(name: "file-picker-darwin", package: "file_picker_darwin"),
+                .product(name: "flutter-secure-storage-darwin", package: "flutter_secure_storage_darwin"),
                 .product(name: "image-picker-ios", package: "image_picker_ios"),
                 .product(name: "in-app-purchase-storekit", package: "in_app_purchase_storekit"),
                 .product(name: "just-audio", package: "just_audio"),

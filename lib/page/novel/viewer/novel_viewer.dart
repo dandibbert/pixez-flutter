@@ -14,6 +14,7 @@
  *
  */
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -37,6 +38,19 @@ import 'package:pixez/models/novel_web_response.dart';
 import 'package:pixez/page/comment/comment_page.dart';
 import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
 import 'package:pixez/page/novel/search/novel_result_page.dart';
+import 'package:pixez/page/novel/tts/data/tts_settings_repository.dart';
+import 'package:pixez/page/novel/tts/data/pronunciation_dictionary_repository.dart';
+import 'package:pixez/page/novel/tts/domain/novel_tts_document.dart';
+import 'package:pixez/page/novel/tts/playback/novel_tts_playback_controller.dart';
+import 'package:pixez/page/novel/tts/pronunciation/pronunciation_engine.dart';
+import 'package:pixez/page/novel/tts/queue/tts_queue_policy.dart';
+import 'package:pixez/page/novel/tts/session/novel_tts_buffered_session.dart';
+import 'package:pixez/page/novel/tts/synthesis/novel_tts_synthesis_engine.dart';
+import 'package:pixez/page/novel/tts/ui/novel_tts_full_player.dart';
+import 'package:pixez/page/novel/tts/ui/novel_tts_mini_player.dart';
+import 'package:pixez/page/novel/tts/ui/novel_tts_start_sheet.dart';
+import 'package:pixez/page/novel/tts/ui/novel_tts_settings_page.dart';
+import 'package:pixez/page/novel/tts/ui/pronunciation_dictionary_page.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
@@ -71,6 +85,20 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   bool supportTranslate = false;
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
+  NovelTtsPlaybackController? _ttsController;
+  bool _ttsMiniPlayerVisible = false;
+  bool _ttsPreparing = false;
+
+  void _attachTtsController(NovelTtsPlaybackController controller) {
+    if (identical(_ttsController, controller)) return;
+    _ttsController?.removeListener(_onTtsChanged);
+    _ttsController = controller;
+    controller.addListener(_onTtsChanged);
+  }
+
+  void _onTtsChanged() {
+    if (mounted) setState(() {});
+  }
 
   Future<void> initMethod() async {
     if (!Platform.isAndroid) return;
@@ -89,6 +117,11 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _restoreBookedPage();
     });
     _novelStore.fetch();
+    final existingTtsController = novelTtsPlaybackController;
+    if (existingTtsController != null) {
+      _attachTtsController(existingTtsController);
+      _ttsMiniPlayerVisible = existingTtsController.snapshot.items.isNotEmpty;
+    }
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
     super.initState();
     initMethod();
@@ -101,6 +134,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     if (_novelStore.positionBooked) {
       _novelStore.bookPosition(_currentPage.toDouble());
     }
+    _ttsController?.removeListener(_onTtsChanged);
     _controller?.dispose();
     super.dispose();
   }
@@ -131,6 +165,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _currentPage = next;
     });
     _controller?.jumpTo(0);
+    _ttsController?.noteVisiblePageChanged(next);
   }
 
   void _openSeriesNovel(int id) {
@@ -354,6 +389,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           },
         ),
       ),
+      miniPlayer: _ttsMiniPlayerVisible ? _buildTtsMiniPlayer() : null,
       pageNav: NovelReaderPageNav(
         currentPage: clampNovelPage(_currentPage, totalPages),
         totalPages: totalPages,
@@ -363,6 +399,223 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         onPickPage: () => _showJumpDialog(context, totalPages),
       ),
     );
+  }
+
+  Widget _buildTtsMiniPlayer() {
+    final controller = _ttsController;
+    final snapshot = controller?.snapshot ?? const NovelTtsPlaybackSnapshot();
+    final item = snapshot.currentItem;
+    final buffering =
+        _ttsPreparing ||
+        snapshot.state == NovelTtsPlaybackState.preparing ||
+        snapshot.state == NovelTtsPlaybackState.buffering;
+    return NovelTtsMiniPlayer(
+      displayText: item?.displayText ?? '',
+      statusText: _ttsStatusText(snapshot),
+      pageAndChunkText: item == null
+          ? 'Waiting for audio'
+          : 'Page ${item.pageNumber} · Part ${item.chunkIndex + 1}/${item.chunkCount}',
+      playing: snapshot.playing,
+      buffering: buffering,
+      onTogglePlayback: () {
+        if (controller == null) return;
+        if (snapshot.playing) {
+          unawaited(controller.pause());
+        } else {
+          unawaited(controller.play());
+        }
+      },
+      onOpen: _openTtsFullPlayer,
+      onClose: _closeTtsPlayer,
+    );
+  }
+
+  String _ttsStatusText(NovelTtsPlaybackSnapshot snapshot) {
+    if (_ttsPreparing) return 'Synthesizing';
+    return switch (snapshot.state) {
+      NovelTtsPlaybackState.idle => 'Idle',
+      NovelTtsPlaybackState.preparing => 'Preparing',
+      NovelTtsPlaybackState.buffering =>
+        'Buffer ${snapshot.bufferedDuration.inSeconds}s',
+      NovelTtsPlaybackState.playing => 'Playing',
+      NovelTtsPlaybackState.paused => 'Paused',
+      NovelTtsPlaybackState.completed => 'Completed',
+      NovelTtsPlaybackState.failed => 'Failed',
+    };
+  }
+
+  void _openTtsFullPlayer() {
+    final controller = _ttsController;
+    if (controller == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.82,
+        child: NovelTtsFullPlayer(controller: controller),
+      ),
+    );
+  }
+
+  void _closeTtsPlayer() {
+    final session = novelTtsBufferedSession;
+    novelTtsBufferedSession = null;
+    unawaited(session?.dispose());
+    if (mounted) setState(() => _ttsMiniPlayerVisible = false);
+  }
+
+  Future<void> _showNovelTtsStart() async {
+    final settingsRepository = TtsSettingsRepository();
+    var settings = await settingsRepository.load();
+    var profile = settings.currentProfile;
+    if (!mounted) return;
+    if (profile == null) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => NovelTtsSettingsPage(repository: settingsRepository),
+        ),
+      );
+      settings = await settingsRepository.load();
+      profile = settings.currentProfile;
+      if (!mounted || profile == null) return;
+    }
+    final selectedProfile = profile;
+    final mode = await showModalBottomSheet<NovelTtsStartMode>(
+      context: context,
+      builder: (context) => NovelTtsStartSheet(
+        currentPage: _currentPage,
+        hasSelectedPosition: true,
+      ),
+    );
+    if (mode == null || !mounted) return;
+    final controller = ensureNovelTtsPlaybackController();
+    final audio = novelTtsAudioHandler;
+    if (controller == null || audio == null) {
+      BotToast.showText(
+        text: 'Novel narration is not supported on this platform',
+      );
+      return;
+    }
+    _attachTtsController(controller);
+    await controller.setSpeed(settings.localPlaybackSpeed);
+    final document = NovelTtsDocument.fromSpans(
+      widget.id.toString(),
+      _novelStore.spans,
+    );
+    final startPage = mode == NovelTtsStartMode.firstPage ? 1 : _currentPage;
+    var startTextOffset = 0;
+    if (mode == NovelTtsStartMode.currentPosition) {
+      final pageText = document.pages[startPage - 1].displayText;
+      final scrollPosition = _controller?.hasClients == true
+          ? _controller!.position
+          : null;
+      final ratio =
+          scrollPosition == null || scrollPosition.maxScrollExtent <= 0
+          ? 0.0
+          : (scrollPosition.pixels / scrollPosition.maxScrollExtent).clamp(
+              0.0,
+              1.0,
+            );
+      startTextOffset = (pageText.length * ratio).round();
+    }
+    final cacheRoot = await getTemporaryDirectory();
+    final secrets = await settingsRepository.readSecrets(selectedProfile);
+    final pronunciationRules = await PronunciationDictionaryRepository().load();
+    final engine = NovelTtsSynthesisEngine(
+      executor: DioTtsHttpExecutor(),
+      cacheDirectory: Directory(Path.join(cacheRoot.path, 'novel_tts_cache')),
+      targetLength: settings.targetLength,
+      maxLength: settings.maxLength,
+      maxCacheBytes: settings.maxCacheMegabytes * 1024 * 1024,
+    );
+    await novelTtsBufferedSession?.dispose();
+    novelTtsBufferedSession = null;
+    final session = NovelTtsBufferedSession(
+      audio: audio,
+      playbackController: controller,
+      policy: TtsBufferPolicy(
+        startup: Duration(seconds: settings.startupBufferSeconds),
+        target: Duration(seconds: settings.targetBufferSeconds),
+      ),
+    );
+    novelTtsBufferedSession = session;
+    setState(() {
+      _ttsMiniPlayerVisible = true;
+      _ttsPreparing = true;
+    });
+    Stream<NovelTtsSynthesisItem> narration(
+      TtsGenerationGuard guard,
+      TtsGenerationToken token,
+    ) async* {
+      var currentStore = _novelStore;
+      var currentDocument = document;
+      var currentStartPage = startPage;
+      var currentStartOffset = startTextOffset;
+      final continuation = TtsContinuationPlanner(widget.id.toString());
+      while (true) {
+        final novel = currentStore.novel!;
+        yield* engine.synthesizeIncrementally(
+          document: currentDocument,
+          profile: selectedProfile,
+          rules: pronunciationRules,
+          context: PronunciationContext(
+            novelId: novel.id.toString(),
+            seriesId: novel.series.id?.toString(),
+            authorId: novel.user.id.toString(),
+          ),
+          title: novel.title,
+          author: novel.user.name,
+          secrets: secrets,
+          startPage: currentStartPage,
+          startTextOffset: currentStartOffset,
+          guard: guard,
+          token: token,
+        );
+        if (!settings.autoNextNovel) break;
+        final next =
+            currentStore.novelTextResponse?.seriesNavigation?.nextNovel;
+        if (!continuation.acceptNext(
+          next == null
+              ? null
+              : TtsNextNovel(id: next.id.toString(), viewable: next.viewable),
+        )) {
+          break;
+        }
+        final nextStore = NovelStore(next!.id, null);
+        try {
+          await nextStore.fetch();
+        } catch (error, stackTrace) {
+          LPrinter.d(error);
+          LPrinter.d(stackTrace);
+          break;
+        }
+        if (nextStore.errorMessage != null ||
+            nextStore.novel == null ||
+            nextStore.spans.isEmpty) {
+          break;
+        }
+        currentStore = nextStore;
+        currentDocument = NovelTtsDocument.fromSpans(
+          next.id.toString(),
+          nextStore.spans,
+        );
+        currentStartPage = 1;
+        currentStartOffset = 0;
+      }
+    }
+
+    try {
+      await session.consumeGenerated(narration);
+    } on TtsSynthesisCancelled {
+      // Explicit stop/restart invalidates in-flight results without user error.
+    } catch (error, stackTrace) {
+      LPrinter.d(error);
+      LPrinter.d(stackTrace);
+      if (mounted) BotToast.showText(text: 'TTS failed: $error');
+    } finally {
+      if (mounted) setState(() => _ttsPreparing = false);
+    }
   }
 
   Widget _buildReaderBlock(
@@ -459,6 +712,26 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
             }
             await SupportorPlugin.start(selectionText);
             ContextMenuController.removeAny();
+          },
+        ),
+      );
+    }
+    if (_selectedText.trim().isNotEmpty) {
+      buttonItems.add(
+        ContextMenuButtonItem(
+          label: 'Add pronunciation',
+          onPressed: () {
+            final selectedText = _selectedText.trim();
+            ContextMenuController.removeAny();
+            Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) => PronunciationDictionaryPage(
+                  initialSurface: selectedText,
+                  initialScope: PronunciationScope.novel,
+                  initialScopeId: widget.id.toString(),
+                ),
+              ),
+            );
           },
         ),
       );
@@ -836,6 +1109,15 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               ),
               buildListTile(
                 _novelStore.novelTextResponse!.seriesNavigation?.nextNovel,
+              ),
+              ListTile(
+                title: const Text('Novel text to speech'),
+                subtitle: const Text('Start or restart narration'),
+                leading: const Icon(Icons.record_voice_over),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  unawaited(_showNovelTtsStart());
+                },
               ),
               if (Platform.isAndroid)
                 ListTile(

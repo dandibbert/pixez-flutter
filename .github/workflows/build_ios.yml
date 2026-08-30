@@ -1,11 +1,17 @@
 name: Build IOS
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   pull_request:
   push:
     branches:
       - master
+      - experiment/novel-tts-base
+      - feature/novel-tts-plan
 
 jobs:
   Build_IOS:

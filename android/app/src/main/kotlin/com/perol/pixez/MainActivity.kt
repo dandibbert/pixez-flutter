@@ -50,7 +50,7 @@ import com.perol.pixez.plugin.exist
 import com.perol.pixez.plugin.save
 import com.waynejo.androidndkgif.GifEncoder
 import io.flutter.Log
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.Dispatchers
@@ -59,7 +59,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.*
 
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
     private val CHANNEL = "com.perol.dev/save"
     private val ENCODE_CHANNEL = "samples.flutter.dev/battery"
     private val APP_WIDGET_CHANNEL = "com.perol.dev/app_widget"

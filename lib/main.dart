@@ -33,6 +33,11 @@ import 'package:pixez/er/illust_cacher.dart';
 import 'package:pixez/fluent/fluentui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/history/novel_history_store.dart';
+import 'package:pixez/page/novel/tts/playback/novel_tts_audio_handler.dart';
+import 'package:pixez/page/novel/tts/playback/novel_tts_playback_controller.dart';
+import 'package:pixez/page/novel/tts/playback/novel_tts_live_activity.dart';
+import 'package:pixez/page/novel/tts/playback/novel_tts_system_presenter.dart';
+import 'package:pixez/page/novel/tts/session/novel_tts_buffered_session.dart';
 import 'package:pixez/page/splash/splash_page.dart';
 import 'package:pixez/page/splash/splash_store.dart';
 import 'package:pixez/paths_plugin.dart';
@@ -63,11 +68,39 @@ final BookTagStore bookTagStore = BookTagStore();
 final SplashStore splashStore = SplashStore();
 final Fetcher fetcher = new Fetcher();
 final FullScreenStore fullScreenStore = FullScreenStore();
+NovelTtsAudioHandler? novelTtsAudioHandler;
+NovelTtsPlaybackController? novelTtsPlaybackController;
+NovelTtsBufferedSession? novelTtsBufferedSession;
+NovelTtsSystemPresenter? novelTtsSystemPresenter;
+
+NovelTtsPlaybackController? ensureNovelTtsPlaybackController() {
+  if (!(Platform.isAndroid ||
+      Platform.isIOS ||
+      Platform.isMacOS ||
+      Platform.isWindows ||
+      Platform.isLinux)) {
+    return null;
+  }
+  final handler = novelTtsAudioHandler ??= NovelTtsAudioHandler.create();
+  final controller = novelTtsPlaybackController ??= NovelTtsPlaybackController(
+    handler,
+  );
+  if (Platform.isIOS) {
+    novelTtsSystemPresenter ??= NovelTtsSystemPresenter(
+      controller: controller,
+      liveActivity: MethodChannelNovelTtsLiveActivity(),
+    );
+  }
+  return controller;
+}
 
 main(List<String> args) async {
   await Rhttp.init();
   await MmapCache.init();
   WidgetsFlutterBinding.ensureInitialized();
+  if (NovelTtsAudioService.supported) {
+    novelTtsAudioHandler = await NovelTtsAudioService.initialize();
+  }
 
   if (Platform.isWindows || Platform.isLinux) {
     // sqflite ffi init
