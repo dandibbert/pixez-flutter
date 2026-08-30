@@ -1,5 +1,6 @@
 package com.perol.pixez.plugin
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -7,7 +8,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.PowerManager
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -16,17 +21,23 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class NovelTtsNowPlayingPlugin {
     companion object {
         private const val CHANNEL = "com.perol.dev/novel_tts"
-        private const val NOTIFICATION_CHANNEL = "pixez_novel_tts"
-        private const val NOTIFICATION_ID = 42101
+        const val NOTIFICATION_CHANNEL = "pixez_novel_tts"
+        const val NOTIFICATION_ID = 42101
         private const val ACTION_PLAY = "com.perol.pixez.tts.PLAY"
         private const val ACTION_PAUSE = "com.perol.pixez.tts.PAUSE"
         private const val ACTION_NEXT = "com.perol.pixez.tts.NEXT"
         private const val ACTION_PREV = "com.perol.pixez.tts.PREV"
         private const val ACTION_STOP = "com.perol.pixez.tts.STOP"
+
+        @Volatile
+        var foregroundNotification: Notification? = null
 
         fun bindChannel(context: Context, flutterEngine: FlutterEngine) {
             val plugin = NovelTtsNowPlayingPlugin()
@@ -53,6 +64,9 @@ class NovelTtsNowPlayingPlugin {
     private var appContext: Context? = null
     private var channel: MethodChannel? = null
     private var mediaSession: MediaSessionCompat? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var keepAlivePlayer: MediaPlayer? = null
 
     fun attach(context: Context, flutterEngine: FlutterEngine) {
         appContext = context
@@ -69,6 +83,18 @@ class NovelTtsNowPlayingPlugin {
                     update(args)
                     result.success(null)
                 }
+
+                "keepAlive" -> {
+                    keepAlive()
+                    result.success(null)
+                }
+
+                "endKeepAlive" -> {
+                    endKeepAlive()
+                    result.success(null)
+                }
+
+                "beginBackgroundTask", "endBackgroundTask" -> result.success(null)
 
                 "stop" -> {
                     stop()
@@ -97,6 +123,36 @@ class NovelTtsNowPlayingPlugin {
             }
         }
         update(args)
+        keepAlive()
+    }
+
+    private fun keepAlive() {
+        val context = appContext ?: return
+        acquireLocks(context)
+        startSilentPlayer(context)
+        val intent = Intent(context, NovelTtsPlaybackService::class.java)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun endKeepAlive() {
+        val context = appContext ?: return
+        keepAlivePlayer?.stop()
+        keepAlivePlayer?.release()
+        keepAlivePlayer = null
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
+        if (wifiLock?.isHeld == true) {
+            wifiLock?.release()
+        }
+        context.stopService(Intent(context, NovelTtsPlaybackService::class.java))
     }
 
     private fun update(args: Map<*, *>) {
@@ -139,9 +195,11 @@ class NovelTtsNowPlayingPlugin {
 
     private fun stop() {
         val context = appContext ?: return
+        endKeepAlive()
         mediaSession?.isActive = false
         mediaSession?.release()
         mediaSession = null
+        foregroundNotification = null
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
     }
 
@@ -181,7 +239,75 @@ class NovelTtsNowPlayingPlugin {
             )
             .addAction(android.R.drawable.ic_media_next, "Next", action(context, ACTION_NEXT, 3))
             .build()
+        foregroundNotification = notification
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+    }
+
+    private fun acquireLocks(context: Context) {
+        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (wakeLock == null) {
+            wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pixez:novel_tts").apply {
+                setReferenceCounted(false)
+            }
+        }
+        if (wakeLock?.isHeld != true) {
+            wakeLock?.acquire(6 * 60 * 60 * 1000L)
+        }
+        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        if (wifiLock == null) {
+            @Suppress("DEPRECATION")
+            wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "pixez:novel_tts").apply {
+                setReferenceCounted(false)
+            }
+        }
+        if (wifiLock?.isHeld != true) {
+            wifiLock?.acquire()
+        }
+    }
+
+    private fun startSilentPlayer(context: Context) {
+        if (keepAlivePlayer != null) {
+            keepAlivePlayer?.start()
+            return
+        }
+        val file = File(context.cacheDir, "novel_tts_silence.wav")
+        if (!file.exists()) {
+            file.writeBytes(silenceWav())
+        }
+        keepAlivePlayer = MediaPlayer().apply {
+            setDataSource(file.absolutePath)
+            isLooping = true
+            setVolume(0.01f, 0.01f)
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build(),
+            )
+            prepare()
+            start()
+        }
+    }
+
+    private fun silenceWav(): ByteArray {
+        val sampleRate = 8000
+        val dataSize = sampleRate * 2
+        val buffer = ByteBuffer.allocate(44 + dataSize).order(ByteOrder.LITTLE_ENDIAN)
+        buffer.put("RIFF".toByteArray())
+        buffer.putInt(36 + dataSize)
+        buffer.put("WAVE".toByteArray())
+        buffer.put("fmt ".toByteArray())
+        buffer.putInt(16)
+        buffer.putShort(1)
+        buffer.putShort(1)
+        buffer.putInt(sampleRate)
+        buffer.putInt(sampleRate * 2)
+        buffer.putShort(2)
+        buffer.putShort(16)
+        buffer.put("data".toByteArray())
+        buffer.putInt(dataSize)
+        buffer.put(ByteArray(dataSize))
+        return buffer.array()
     }
 
     private fun action(context: Context, action: String, requestCode: Int): PendingIntent {

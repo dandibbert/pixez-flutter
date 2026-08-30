@@ -52,6 +52,18 @@ class NovelTtsNowPlaying {
     return _invoke('update', info.toMap());
   }
 
+  Future<void> keepAlive(bool enabled) {
+    return _invoke(enabled ? 'keepAlive' : 'endKeepAlive', const {});
+  }
+
+  Future<void> beginBackgroundTask() {
+    return _invoke('beginBackgroundTask', const {});
+  }
+
+  Future<void> endBackgroundTask() {
+    return _invoke('endBackgroundTask', const {});
+  }
+
   Future<void> stop() {
     return _invoke('stop', const {});
   }

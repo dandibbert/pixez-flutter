@@ -273,6 +273,61 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('prefetches the next series chapter while the current clip plays', () async {
+    final synth = _FakeSynth();
+    final audio = _FakeAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_series');
+    final navigated = <NovelTtsNavigate>[];
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 4,
+      ),
+      cacheDir: () async => dir,
+    );
+    controller.onNavigate = navigated.add;
+    controller.onLoadChapter = (id) async {
+      expect(id, 22);
+      return const NovelTtsChapter(
+        novelId: 22,
+        title: 'Next chapter',
+        author: 'Author',
+        pageTexts: ['下一章第一句用来测试拆分的。'],
+        nextSeriesId: 33,
+      );
+    };
+
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。',
+      nextSeriesId: 22,
+    );
+    expect(controller.status, NovelTtsStatus.playing);
+    expect(synth.texts, contains('这是第一句用来测试拆分的。'));
+    expect(synth.texts, contains('下一章第一句用来测试拆分的。'));
+    expect(audio.files, hasLength(2));
+
+    await controller.skip(direction: 'next');
+    expect(controller.session?.novelId, 22);
+    expect(controller.session?.title, 'Next chapter');
+    expect(controller.subtitle, '下一章第一句用来测试拆分的。');
+    expect(navigated.single.kind, NovelTtsNavigateKind.series);
+    expect(navigated.single.seriesNovelId, 22);
+    expect(navigated.single.keepPlaying, isTrue);
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
   testWidgets('settings page switches the three voice libraries', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -321,7 +376,7 @@ void main() {
       chunks: ['当前字幕'],
     );
     controller.clips = const [
-      NovelTtsClip(page: 1, chunkIndex: 0, text: '当前字幕'),
+      NovelTtsClip(novelId: 1, page: 1, chunkIndex: 0, text: '当前字幕'),
     ];
     controller.status = NovelTtsStatus.playing;
     controller.clipIndex = 0;

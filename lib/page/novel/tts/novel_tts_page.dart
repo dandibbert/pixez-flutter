@@ -184,6 +184,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
             key: novelTtsAutoContinueKey,
             contentPadding: EdgeInsets.zero,
             title: Text(i18n.novel_tts_auto_continue),
+            subtitle: Text(i18n.novel_tts_lock_screen_hint),
             value: _settings.autoContinue,
             onChanged: (value) =>
                 _persist(_draft().copyWith(autoContinue: value)),

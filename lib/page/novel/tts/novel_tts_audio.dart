@@ -85,7 +85,7 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
     _armed = true;
     _lastIndex = 0;
     final playlist = ConcatenatingAudioSource(
-      useLazyPreparation: true,
+      useLazyPreparation: false,
       children: [for (final path in paths) AudioSource.file(path)],
     );
     _playlist = playlist;

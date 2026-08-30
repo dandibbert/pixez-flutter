@@ -435,6 +435,7 @@
   "novel_tts_split_chars": "拆分字數",
   "novel_tts_split_chars_hint": "依此字數切段，但會盡量停在句子結尾",
   "novel_tts_auto_continue": "自動跳轉下一頁 / 系列下一篇",
+  "novel_tts_lock_screen_hint": "閱讀器裡鎖屏會繼續自動合成與播放，退到桌面可能會停。",
   "novel_tts_microsoft_key": "訂閱金鑰",
   "novel_tts_microsoft_region": "區域",
   "novel_tts_microsoft_voice": "語音名稱",

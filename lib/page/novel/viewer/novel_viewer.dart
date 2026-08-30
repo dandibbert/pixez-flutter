@@ -74,6 +74,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   bool supportTranslate = false;
   bool _ttsResumeChecked = false;
   bool _ttsDrivingPage = false;
+  final Map<int, NovelStore> _prefetchedTtsStores = {};
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
 
@@ -95,7 +96,10 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     });
     _tts = NovelTtsController.instance;
     _tts.onNavigate = _onTtsNavigate;
-    _novelStore.fetch();
+    _tts.onLoadChapter = _loadTtsChapter;
+    if (_novelStore.novelTextResponse == null) {
+      _novelStore.fetch();
+    }
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
     super.initState();
     initMethod();
@@ -107,6 +111,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     _offsetDisposer?.call();
     if (identical(_tts.onNavigate, _onTtsNavigate)) {
       _tts.onNavigate = null;
+    }
+    if (identical(_tts.onLoadChapter, _loadTtsChapter)) {
+      _tts.onLoadChapter = null;
     }
     if (_novelStore.positionBooked) {
       _novelStore.bookPosition(_currentPage.toDouble());
@@ -148,11 +155,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     }
   }
 
-  void _openSeriesNovel(int id) {
+  void _openSeriesNovel(int id, {NovelStore? store}) {
     Navigator.of(context, rootNavigator: true).pushReplacement(
       MaterialPageRoute(
-        builder: (BuildContext context) =>
-            NovelViewerPage(id: id, novelStore: NovelStore(id, null)),
+        builder: (BuildContext context) => NovelViewerPage(
+          id: id,
+          novelStore: store ?? NovelStore(id, null),
+        ),
       ),
     );
   }
@@ -162,6 +171,15 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       return;
     }
     _ttsResumeChecked = true;
+    if (_tts.isActive && _tts.session?.novelId == widget.id) {
+      final page = _tts.session?.page;
+      if (page != null && page != _currentPage) {
+        _ttsDrivingPage = true;
+        _goToPage(page);
+        _ttsDrivingPage = false;
+      }
+      return;
+    }
     if (!_tts.takePendingResume(widget.id)) {
       return;
     }
@@ -183,8 +201,40 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     }
     if (navigate.kind == NovelTtsNavigateKind.series &&
         navigate.seriesNovelId != null) {
-      _openSeriesNovel(navigate.seriesNovelId!);
+      _openSeriesNovel(
+        navigate.seriesNovelId!,
+        store: _prefetchedTtsStores.remove(navigate.seriesNovelId),
+      );
     }
+  }
+
+  Future<NovelTtsChapter?> _loadTtsChapter(int id) async {
+    final store = _prefetchedTtsStores[id] ?? NovelStore(id, null);
+    if (store.novel == null || store.spans.isEmpty) {
+      await store.fetch();
+    }
+    final novel = store.novel;
+    if (novel == null || store.spans.isEmpty) {
+      return null;
+    }
+    _prefetchedTtsStores[id] = store;
+    final pages = NovelReaderSplitCache().pages(store.spans);
+    final navigation = store.novelTextResponse?.seriesNavigation;
+    return NovelTtsChapter(
+      novelId: id,
+      title: novel.title,
+      author: novel.user.name,
+      pageTexts: [
+        for (var i = 0; i < pages.length; i++) novelTtsTextFromPages(pages, i),
+      ],
+      coverUrl: novel.imageUrls.medium,
+      prevSeriesId: navigation?.prevNovel?.viewable == true
+          ? navigation!.prevNovel!.id
+          : null,
+      nextSeriesId: navigation?.nextNovel?.viewable == true
+          ? navigation!.nextNovel!.id
+          : null,
+    );
   }
 
   Future<void> _startTts({bool fromEnd = false}) async {

@@ -433,6 +433,7 @@
   "novel_tts_split_chars": "Split length",
   "novel_tts_split_chars_hint": "Aim for this many characters, but keep sentence endings",
   "novel_tts_auto_continue": "Continue across pages and series chapters",
+  "novel_tts_lock_screen_hint": "Locking the screen keeps synthesizing and playing. Leaving the app may stop it.",
   "novel_tts_microsoft_key": "Subscription key",
   "novel_tts_microsoft_region": "Region",
   "novel_tts_microsoft_voice": "Voice name",

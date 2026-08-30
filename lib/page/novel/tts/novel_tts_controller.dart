@@ -37,14 +37,36 @@ class NovelTtsNavigate {
 
 class NovelTtsClip {
   const NovelTtsClip({
+    required this.novelId,
     required this.page,
     required this.chunkIndex,
     required this.text,
   });
 
+  final int novelId;
   final int page;
   final int chunkIndex;
   final String text;
+}
+
+class NovelTtsChapter {
+  const NovelTtsChapter({
+    required this.novelId,
+    required this.title,
+    required this.author,
+    required this.pageTexts,
+    this.coverUrl,
+    this.prevSeriesId,
+    this.nextSeriesId,
+  });
+
+  final int novelId;
+  final String title;
+  final String author;
+  final String? coverUrl;
+  final List<String> pageTexts;
+  final int? prevSeriesId;
+  final int? nextSeriesId;
 }
 
 class NovelTtsSession {
@@ -133,9 +155,14 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   StreamSubscription<void>? _completionSub;
   StreamSubscription<int>? _clipSub;
   final Map<String, Future<Uint8List>> _inflight = {};
+  final Map<int, NovelTtsChapter> _chapters = {};
   final Set<int> _queuedClips = {};
+  final Set<int> _loadedSeriesIds = {};
   int _generation = 0;
   int _queueStartClip = 0;
+  int? _prefetchingSeriesId;
+  var _fillingQueue = false;
+  var _fillAgain = false;
   Timer? _nowPlayingTimer;
 
   NovelTtsStatus status = NovelTtsStatus.idle;
@@ -146,6 +173,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   int? pendingResumeNovelId;
   bool pendingResumeFromEnd = false;
   void Function(NovelTtsNavigate navigate)? onNavigate;
+  Future<NovelTtsChapter?> Function(int novelId)? onLoadChapter;
 
   int get chunkIndex {
     if (clips.isEmpty) {
@@ -204,7 +232,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     final texts = pageTexts == null || pageTexts.isEmpty
         ? [pageText]
         : pageTexts;
-    final built = _clipsFromPages(texts, loaded.clampedSplitChars);
+    final built = _clipsFromPages(texts, loaded.clampedSplitChars, novelId);
     if (built.isEmpty) {
       status = NovelTtsStatus.error;
       errorMessage = 'empty';
@@ -213,6 +241,21 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     }
     _generation++;
     pendingResumeNovelId = null;
+    _chapters
+      ..clear()
+      ..[novelId] = NovelTtsChapter(
+        novelId: novelId,
+        title: title,
+        author: author,
+        pageTexts: texts,
+        coverUrl: coverUrl,
+        prevSeriesId: prevSeriesId,
+        nextSeriesId: nextSeriesId,
+      );
+    _loadedSeriesIds
+      ..clear()
+      ..add(novelId);
+    _prefetchingSeriesId = null;
     clips = built;
     session = NovelTtsSession(
       novelId: novelId,
@@ -231,6 +274,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     clipIndex = _indexOf(page: page, chunkIndex: startChunk);
     errorMessage = null;
     await _ensureAudioSession();
+    await _nowPlaying.keepAlive(true);
     await _playFrom(clipIndex);
   }
 
@@ -243,6 +287,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
       unawaited(_ensureAudioSession());
+      unawaited(_nowPlaying.keepAlive(true));
       unawaited(_publishNowPlaying());
       unawaited(_fillQueue());
     }
@@ -285,7 +330,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
     final pageClips = [
       for (var i = 0; i < chunks.length; i++)
-        NovelTtsClip(page: page, chunkIndex: i, text: chunks[i]),
+        NovelTtsClip(
+          novelId: current.novelId,
+          page: page,
+          chunkIndex: i,
+          text: chunks[i],
+        ),
     ];
     clips = [
       for (final clip in clips)
@@ -345,7 +395,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> stop() async {
     _generation++;
     pendingResumeNovelId = null;
+    _prefetchingSeriesId = null;
+    _chapters.clear();
+    _loadedSeriesIds.clear();
     await _audio.stop();
+    await _nowPlaying.keepAlive(false);
+    await _nowPlaying.endBackgroundTask();
     await _nowPlaying.stop();
     _nowPlayingTimer?.cancel();
     status = NovelTtsStatus.idle;
@@ -428,6 +483,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       await _playFrom(clipIndex + 1);
       return;
     }
+    await _maybePrefetchSeries();
+    if (clipIndex + 1 < clips.length) {
+      await _playFrom(clipIndex + 1);
+      return;
+    }
     await skip(direction: 'next');
   }
 
@@ -495,25 +555,105 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _fillQueue() async {
+    if (_fillingQueue) {
+      _fillAgain = true;
+      return;
+    }
+    _fillingQueue = true;
+    try {
+      do {
+        _fillAgain = false;
+        await _enqueueAhead();
+        if (await _maybePrefetchSeries()) {
+          await _enqueueAhead();
+        }
+      } while (_fillAgain && isActive);
+    } finally {
+      _fillingQueue = false;
+    }
+  }
+
+  Future<void> _enqueueAhead() async {
     if (clips.isEmpty || !isActive) {
       return;
     }
-    final ahead = settings.prefetchCount.clamp(2, 8);
+    final ahead = settings.prefetchCount.clamp(3, 12);
+    final needed = <int>[];
     for (var i = 1; i <= ahead; i++) {
       final next = clipIndex + i;
-      if (next >= clips.length || _queuedClips.contains(next)) {
-        continue;
+      if (next >= clips.length) {
+        break;
       }
-      try {
-        final file = await _fileForClip(next);
-        if (!isActive || _queuedClips.contains(next)) {
-          return;
-        }
-        _queuedClips.add(next);
-        await _audio.enqueue(file.path);
-      } catch (_) {
+      if (!_queuedClips.contains(next)) {
+        needed.add(next);
+      }
+    }
+    if (needed.isEmpty) {
+      return;
+    }
+    final files = await Future.wait([
+      for (final index in needed) _tryFileForClip(index),
+    ]);
+    for (var i = 0; i < needed.length; i++) {
+      final file = files[i];
+      if (file == null || !isActive) {
         return;
       }
+      if (_queuedClips.contains(needed[i])) {
+        continue;
+      }
+      _queuedClips.add(needed[i]);
+      await _audio.enqueue(file.path);
+    }
+  }
+
+  Future<bool> _maybePrefetchSeries() async {
+    if (!settings.autoContinue || !isActive) {
+      return false;
+    }
+    final ahead = settings.prefetchCount.clamp(3, 12);
+    if (clips.isEmpty || clips.length - clipIndex > ahead) {
+      return false;
+    }
+    final last = clips.last;
+    final chapter = _chapters[last.novelId];
+    final nextId = chapter?.nextSeriesId ?? session?.nextSeriesId;
+    if (nextId == null ||
+        _loadedSeriesIds.contains(nextId) ||
+        _prefetchingSeriesId == nextId) {
+      return false;
+    }
+    final loader = onLoadChapter;
+    if (loader == null) {
+      return false;
+    }
+    _prefetchingSeriesId = nextId;
+    await _nowPlaying.beginBackgroundTask();
+    try {
+      final loaded = await loader(nextId);
+      if (loaded == null || !isActive) {
+        return false;
+      }
+      final extra = _clipsFromPages(
+        loaded.pageTexts,
+        settings.clampedSplitChars,
+        loaded.novelId,
+      );
+      if (extra.isEmpty) {
+        return false;
+      }
+      _chapters[loaded.novelId] = loaded;
+      _loadedSeriesIds.add(loaded.novelId);
+      clips = [...clips, ...extra];
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      if (_prefetchingSeriesId == nextId) {
+        _prefetchingSeriesId = null;
+      }
+      await _nowPlaying.endBackgroundTask();
     }
   }
 
@@ -524,6 +664,33 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
+    if (clip.novelId != current.novelId) {
+      final chapter = _chapters[clip.novelId];
+      session = NovelTtsSession(
+        novelId: clip.novelId,
+        title: chapter?.title ?? current.title,
+        author: chapter?.author ?? current.author,
+        coverUrl: chapter?.coverUrl ?? current.coverUrl,
+        page: clip.page,
+        totalPages: chapter?.pageTexts.length ?? current.totalPages,
+        chunks: [
+          for (final item in clips)
+            if (item.novelId == clip.novelId && item.page == clip.page)
+              item.text,
+        ],
+        prevSeriesId: chapter?.prevSeriesId,
+        nextSeriesId: chapter?.nextSeriesId,
+      );
+      onNavigate?.call(
+        NovelTtsNavigate(
+          kind: NovelTtsNavigateKind.series,
+          seriesNovelId: clip.novelId,
+          page: clip.page,
+          keepPlaying: keepPlaying,
+        ),
+      );
+      return;
+    }
     if (clip.page == current.page) {
       return;
     }
@@ -531,7 +698,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       page: clip.page,
       chunks: [
         for (final item in clips)
-          if (item.page == clip.page) item.text,
+          if (item.novelId == clip.novelId && item.page == clip.page) item.text,
       ],
     );
     onNavigate?.call(
@@ -543,13 +710,23 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
   }
 
-  List<NovelTtsClip> _clipsFromPages(List<String> pages, int splitChars) {
+  List<NovelTtsClip> _clipsFromPages(
+    List<String> pages,
+    int splitChars, [
+    int? novelId,
+  ]) {
+    final id = novelId ?? session?.novelId ?? 0;
     final result = <NovelTtsClip>[];
     for (var page = 0; page < pages.length; page++) {
       final chunks = splitNovelTtsText(pages[page], maxChars: splitChars);
       for (var i = 0; i < chunks.length; i++) {
         result.add(
-          NovelTtsClip(page: page + 1, chunkIndex: i, text: chunks[i]),
+          NovelTtsClip(
+            novelId: id,
+            page: page + 1,
+            chunkIndex: i,
+            text: chunks[i],
+          ),
         );
       }
     }
@@ -571,6 +748,14 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     return 0;
   }
 
+  Future<File?> _tryFileForClip(int index) async {
+    try {
+      return await _fileForClip(index);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<File> _fileForClip(int index) async {
     final text = clips[index].text;
     final bytes = await _audioBytes(text);
@@ -580,7 +765,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   Future<Uint8List> _audioBytes(String text) {
     final key = _cacheKey(text);
     return _inflight.putIfAbsent(key, () async {
-      return _synthesizer.synthesize(settings, text);
+      await _nowPlaying.beginBackgroundTask();
+      try {
+        return await _synthesizer.synthesize(settings, text);
+      } finally {
+        await _nowPlaying.endBackgroundTask();
+      }
     });
   }
 
