@@ -26,6 +26,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pixez/component/app_keyboard_shortcuts.dart';
+import 'package:pixez/component/perf_probe.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/er/fetcher.dart';
 import 'package:pixez/er/illust_cacher.dart';
@@ -222,6 +223,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       child = _buildMaskBuilder(context, child);
                     child = botToastBuilder(context, child);
                     I18n.context = context;
+                    if (userSetting.perfProbe) {
+                      child = PerfProbe(child: child);
+                    }
                     return AppKeyboardShortcuts(
                       onEscape: Platform.isMacOS
                           ? () {

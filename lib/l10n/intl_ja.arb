@@ -371,6 +371,12 @@
   "novel_font_default": "デフォルト",
   "novel_font_import": "フォントファイルを読み込む",
   "novel_font_search": "インストール済みフォントを検索",
+  "novel_background": "背景",
+  "novel_background_system": "アプリに合わせる",
+  "novel_background_paper": "ホワイト",
+  "novel_background_sepia": "セピア",
+  "novel_background_dark": "ダーク",
+  "novel_background_black": "ブラック",
   "novel_font_import_failed": "フォントファイルを読み込めませんでした",
   "novel_font_imported": "読み込み済み",
   "novel_filter_search_mode": "検索対象",
@@ -399,5 +405,7 @@
   "novel_filter_matching": "一致条件",
   "novel_filter_translated_tags": "翻訳タグ結果を含める",
   "novel_filter_merge_keyword": "通常キーワード結果を統合",
-  "novel_filter_reset": "リセット"
+  "novel_filter_reset": "リセット",
+  "perf_probe": "パフォーマンス表示",
+  "perf_probe_summary": "フレーム・通信・メモリを重ねて表示し、発熱や電池消費を調べます"
 }

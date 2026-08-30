@@ -396,6 +396,12 @@
   "novel_font_default": "預設",
   "novel_font_import": "從檔案匯入字型",
   "novel_font_search": "搜尋已安裝字型",
+  "novel_background": "閱讀背景",
+  "novel_background_system": "跟隨應用",
+  "novel_background_paper": "紙白",
+  "novel_background_sepia": "護眼",
+  "novel_background_dark": "深色",
+  "novel_background_black": "純黑",
   "novel_font_import_failed": "無法匯入該字型檔案",
   "novel_font_imported": "已匯入",
   "novel_filter_search_mode": "搜尋類型",
@@ -424,5 +430,7 @@
   "novel_filter_matching": "匹配",
   "novel_filter_translated_tags": "包含翻譯標籤結果",
   "novel_filter_merge_keyword": "合併關鍵詞結果",
-  "novel_filter_reset": "重設"
+  "novel_filter_reset": "重設",
+  "perf_probe": "效能診斷",
+  "perf_probe_summary": "浮層顯示影格、網路與記憶體，用於排查發燙或耗電"
 }
