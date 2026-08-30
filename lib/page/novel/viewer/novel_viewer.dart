@@ -18,8 +18,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bot_toast/bot_toast.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:path_provider/path_provider.dart';
@@ -48,6 +50,7 @@ import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
+import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/saf_plugin.dart';
@@ -75,6 +78,10 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   bool supportTranslate = false;
   bool _ttsResumeChecked = false;
   bool _ttsDrivingPage = false;
+  int _ttsUiClip = -1;
+  NovelTtsStatus? _ttsUiStatus;
+  int? _ttsUiPage;
+  final Map<int, GlobalKey> _ttsBlockKeys = {};
   final Map<int, NovelStore> _prefetchedTtsStores = {};
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
@@ -98,6 +105,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     _tts = NovelTtsController.instance;
     _tts.onNavigate = _onTtsNavigate;
     _tts.onLoadChapter = _loadTtsChapter;
+    _tts.addListener(_onTtsProgress);
     if (_novelStore.novelTextResponse == null) {
       _novelStore.fetch();
     }
@@ -110,6 +118,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _offsetDisposer?.call();
+    _tts.removeListener(_onTtsProgress);
     if (identical(_tts.onNavigate, _onTtsNavigate)) {
       _tts.onNavigate = null;
     }
@@ -145,6 +154,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   void _goToPage(int page) {
     final next = clampNovelPage(page, _totalPages);
+    if (next != _currentPage) {
+      _ttsBlockKeys.clear();
+    }
     setState(() {
       _currentPage = next;
     });
@@ -209,6 +221,117 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     }
   }
 
+  void _onTtsProgress() {
+    if (!mounted) {
+      return;
+    }
+    final clip = _tts.clipIndex;
+    final status = _tts.status;
+    final page = _tts.session?.page;
+    if (clip == _ttsUiClip && status == _ttsUiStatus && page == _ttsUiPage) {
+      return;
+    }
+    final clipMoved = clip != _ttsUiClip || page != _ttsUiPage;
+    _ttsUiClip = clip;
+    _ttsUiStatus = status;
+    _ttsUiPage = page;
+    void apply() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+      if (clipMoved && _tts.isActive && _tts.session?.novelId == widget.id) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _scrollToTtsClip();
+          }
+        });
+      }
+    }
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      apply();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    }
+  }
+
+  void _revealTtsClip() {
+    if (_tts.session?.novelId != widget.id) {
+      return;
+    }
+    final page = _tts.session?.page;
+    if (page != null && page != _currentPage) {
+      _ttsDrivingPage = true;
+      _goToPage(page);
+      _ttsDrivingPage = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToTtsClip(force: true);
+        }
+      });
+      return;
+    }
+    _scrollToTtsClip(force: true);
+  }
+
+  void _scrollToTtsClip({bool force = false}) {
+    if (_tts.session?.novelId != widget.id ||
+        _tts.session?.page != _currentPage) {
+      return;
+    }
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
+    final pages = _pages;
+    if (pages.isEmpty) {
+      return;
+    }
+    final pageIndex = clampNovelPage(_currentPage, pages.length) - 1;
+    final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
+    if (blocks.isEmpty) {
+      return;
+    }
+    final index = novelTtsBlockIndexForChunk(
+      blocks: blocks,
+      chunkIndex: _tts.chunkIndex,
+      splitChars: _tts.settings.clampedSplitChars,
+    );
+    final box = _ttsBlockKeys[index]?.currentContext?.findRenderObject();
+    final viewportTop = _articleViewportTop();
+    if (box is RenderBox && box.attached && viewportTop != null) {
+      final top = box.localToGlobal(Offset.zero).dy;
+      final bottom = top + box.size.height;
+      final viewBottom = viewportTop + controller.position.viewportDimension;
+      if (!force && bottom > viewportTop + 8 && top < viewBottom - 8) {
+        return;
+      }
+      final target = (controller.offset + (top - viewportTop) - 24).clamp(
+        controller.position.minScrollExtent,
+        controller.position.maxScrollExtent,
+      );
+      controller.animateTo(
+        target,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    if (controller.position.maxScrollExtent <= 0) {
+      return;
+    }
+    final target =
+        controller.position.maxScrollExtent * (index / blocks.length);
+    controller.animateTo(
+      target.clamp(
+        controller.position.minScrollExtent,
+        controller.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
+  }
+
   Future<NovelTtsChapter?> _loadTtsChapter(int id) async {
     final store = _prefetchedTtsStores[id] ?? NovelStore(id, null);
     if (store.novel == null || store.spans.isEmpty) {
@@ -265,8 +388,63 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       nextSeriesId: navigation?.nextNovel?.viewable == true
           ? navigation!.nextNovel!.id
           : null,
-      startChunk: fromEnd ? 1 << 20 : 0,
+      startChunk: fromEnd ? 1 << 20 : _visibleStartChunk(page),
     );
+  }
+
+  int _visibleStartChunk(int page) {
+    final pages = _pages;
+    if (pages.isEmpty) {
+      return 0;
+    }
+    final pageIndex = clampNovelPage(page, pages.length) - 1;
+    final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
+    if (blocks.isEmpty) {
+      return 0;
+    }
+    final viewportTop = _articleViewportTop();
+    var blockIndex = 0;
+    if (viewportTop != null) {
+      blockIndex = novelTtsFirstVisibleBlockIndex(
+        keys: [
+          for (var i = 0; i < blocks.length; i++)
+            _ttsBlockKeys.putIfAbsent(i, GlobalKey.new),
+        ],
+        viewportTop: viewportTop,
+      );
+    } else {
+      final controller = _controller;
+      if (controller != null &&
+          controller.hasClients &&
+          controller.position.maxScrollExtent > 0) {
+        blockIndex =
+            (controller.offset /
+                    controller.position.maxScrollExtent *
+                    (blocks.length - 1))
+                .round()
+                .clamp(0, blocks.length - 1);
+      }
+    }
+    return novelTtsChunkIndexForBlock(
+      blocks: blocks,
+      blockIndex: blockIndex,
+      splitChars: _tts.settings.clampedSplitChars,
+    );
+  }
+
+  double? _articleViewportTop() {
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) {
+      return null;
+    }
+    final context =
+        controller.position.context.notificationContext ??
+        controller.position.context.storageContext;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) {
+      return null;
+    }
+    return box.localToGlobal(Offset.zero).dy;
   }
 
   Future<void> _attachTtsPage({bool fromEnd = false}) async {
@@ -447,6 +625,16 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pageIndex = clampNovelPage(_currentPage, totalPages) - 1;
     final pageSpans = pages.isEmpty ? <NovelSpansData>[] : pages[pageIndex];
     final blocks = _splitCache.blocks(pageSpans, pageIndex);
+    final followClip = _tts.isActive &&
+        _tts.session?.novelId == widget.id &&
+        _tts.session?.page == _currentPage;
+    final clipHighlights = followClip
+        ? novelTtsHighlightsForClip(
+            blocks: blocks,
+            chunkIndex: _tts.chunkIndex,
+            splitChars: _tts.settings.clampedSplitChars,
+          )
+        : const <NovelTtsSpanHighlight>[];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     final navState = resolveNovelPageNavState(
       currentPage: clampNovelPage(_currentPage, totalPages),
@@ -472,14 +660,21 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
             ListenableBuilder(
               listenable: _tts,
               builder: (context, _) {
-                final listening =
-                    _tts.isActive && _tts.session?.novelId == widget.id;
+                final mine = _tts.session?.novelId == widget.id;
+                final paused = mine && _tts.status == NovelTtsStatus.paused;
+                final listening = mine && _tts.isActive && !paused;
                 return IconButton(
-                  tooltip: listening
+                  tooltip: paused
+                      ? I18n.of(context).novel_tts_resume
+                      : listening
                       ? I18n.of(context).novel_tts_pause
                       : I18n.of(context).novel_tts_play,
                   icon: Icon(
-                    listening ? Icons.pause_circle_outline : Icons.headphones,
+                    paused
+                        ? Icons.play_circle_outline
+                        : listening
+                        ? Icons.pause_circle_outline
+                        : Icons.headphones,
                   ),
                   onPressed: _toggleTts,
                 );
@@ -523,7 +718,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           controller: _controller,
           itemCount: blocks.length,
           itemBuilder: (context, index) {
-            return _buildReaderBlock(context, blocks[index], style);
+            return _buildReaderBlock(
+              context,
+              blocks[index],
+              style,
+              index: index,
+              highlights: clipHighlights,
+            );
           },
         ),
       ),
@@ -544,6 +745,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           return NovelTtsBar(
             controller: _tts,
             onOpenSettings: () => openNovelTtsSettings(context),
+            onSubtitleTap: _revealTtsClip,
           );
         },
       ),
@@ -553,26 +755,34 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   Widget _buildReaderBlock(
     BuildContext context,
     NovelReaderBlock block,
-    TextStyle style,
-  ) {
+    TextStyle style, {
+    required int index,
+    required List<NovelTtsSpanHighlight> highlights,
+  }) {
     if (block.isBlank) {
       return SizedBox(height: style.fontSize ?? 16);
     }
+    final scheme = Theme.of(context).colorScheme;
+    final highlightColor = scheme.primaryContainer.withValues(alpha: 0.7);
+    final key = _ttsBlockKeys.putIfAbsent(index, GlobalKey.new);
     return Padding(
+      key: key,
       padding: const EdgeInsets.only(bottom: 10),
       child: Text.rich(
         TextSpan(
           style: style,
           children: [
-            for (final span in block.spans)
-              novelSpansGenerator.novelSpansDatatoInlineSpan(
+            for (var spanIndex = 0; spanIndex < block.spans.length; spanIndex++)
+              _ttsInlineSpan(
                 context,
-                span,
-                onJumpToPage: _goToPage,
-                onOpenNovel: (id) {
-                  Leader.push(context, NovelViewerPage(id: id));
-                },
+                block.spans[spanIndex],
                 style: style,
+                highlightColor: highlightColor,
+                highlight: novelTtsHighlightForSpan(
+                  highlights: highlights,
+                  blockIndex: index,
+                  spanIndex: spanIndex,
+                ),
               ),
           ],
         ),
@@ -580,6 +790,27 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           applyHeightToLastDescent: true,
         ),
       ),
+    );
+  }
+
+  InlineSpan _ttsInlineSpan(
+    BuildContext context,
+    NovelSpansData span, {
+    required TextStyle style,
+    required Color highlightColor,
+    required NovelTtsSpanHighlight? highlight,
+  }) {
+    return novelSpansGenerator.novelSpansDatatoInlineSpan(
+      context,
+      span,
+      onJumpToPage: _goToPage,
+      onOpenNovel: (id) {
+        Leader.push(context, NovelViewerPage(id: id));
+      },
+      style: style,
+      ttsHighlightColor: highlightColor,
+      highlightStart: highlight?.start ?? 0,
+      highlightEnd: highlight?.end ?? 0,
     );
   }
 

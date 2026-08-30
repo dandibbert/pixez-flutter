@@ -16,10 +16,12 @@ class NovelTtsBar extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onOpenSettings,
+    this.onSubtitleTap,
   });
 
   final NovelTtsController controller;
   final VoidCallback onOpenSettings;
+  final VoidCallback? onSubtitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -56,12 +58,19 @@ class NovelTtsBar extends StatelessWidget {
             if (subtitle.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  subtitle,
+                child: InkWell(
                   key: novelTtsSubtitleKey,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  onTap: onSubtitleTap,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      subtitle,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
                 ),
               ),
             if (statusLabel.isNotEmpty)
@@ -84,7 +93,8 @@ class NovelTtsBar extends StatelessWidget {
                   onPressed: () => controller.skip(direction: 'prev'),
                   icon: const Icon(Icons.skip_previous),
                 ),
-                if (controller.status == NovelTtsStatus.playing)
+                if (controller.status == NovelTtsStatus.playing ||
+                    controller.status == NovelTtsStatus.synthesizing)
                   IconButton(
                     key: novelTtsPauseButtonKey,
                     tooltip: i18n.novel_tts_pause,
@@ -94,7 +104,9 @@ class NovelTtsBar extends StatelessWidget {
                 else
                   IconButton(
                     key: novelTtsPlayButtonKey,
-                    tooltip: i18n.novel_tts_play,
+                    tooltip: controller.status == NovelTtsStatus.paused
+                        ? i18n.novel_tts_resume
+                        : i18n.novel_tts_play,
                     onPressed: controller.status == NovelTtsStatus.paused
                         ? controller.resume
                         : null,
