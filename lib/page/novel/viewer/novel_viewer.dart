@@ -176,7 +176,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _ttsDrivingPage = true;
       _goToPage(navigate.page!);
       _ttsDrivingPage = false;
-      _attachTtsPage(fromEnd: navigate.fromEnd);
+      if (!navigate.keepPlaying) {
+        _attachTtsPage(fromEnd: navigate.fromEnd);
+      }
       return;
     }
     if (navigate.kind == NovelTtsNavigateKind.series &&
@@ -193,6 +195,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pages = _pages;
     final totalPages = pages.isEmpty ? 1 : pages.length;
     final page = clampNovelPage(_currentPage, totalPages);
+    final pageTexts = [
+      for (var i = 0; i < totalPages; i++) novelTtsTextFromPages(pages, i),
+    ];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     await _tts.start(
       novelId: widget.id,
@@ -200,7 +205,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       author: novel.user.name,
       page: page,
       totalPages: totalPages,
-      pageText: novelTtsTextFromPages(pages, page - 1),
+      pageText: pageTexts[page - 1],
+      pageTexts: pageTexts,
       coverUrl: novel.imageUrls.medium,
       prevSeriesId: navigation?.prevNovel?.viewable == true
           ? navigation!.prevNovel!.id

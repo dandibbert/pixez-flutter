@@ -16,7 +16,7 @@ class NovelTtsSettings {
     this.provider = NovelTtsProvider.custom,
     this.splitChars = defaultSplitChars,
     this.autoContinue = true,
-    this.prefetchCount = 2,
+    this.prefetchCount = 4,
     this.microsoftKey = '',
     this.microsoftRegion = 'eastasia',
     this.microsoftVoice = 'zh-CN-XiaoxiaoNeural',
@@ -176,7 +176,7 @@ class NovelTtsSettings {
       splitChars:
           (json['splitChars'] as num?)?.toInt() ?? defaultSplitChars,
       autoContinue: json['autoContinue'] as bool? ?? true,
-      prefetchCount: (json['prefetchCount'] as num?)?.toInt() ?? 2,
+      prefetchCount: (json['prefetchCount'] as num?)?.toInt() ?? 4,
       microsoftKey: json['microsoftKey'] as String? ?? '',
       microsoftRegion: json['microsoftRegion'] as String? ?? 'eastasia',
       microsoftVoice:

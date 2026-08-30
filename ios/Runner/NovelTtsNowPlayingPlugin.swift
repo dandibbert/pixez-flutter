@@ -71,7 +71,7 @@ struct NovelTtsNowPlayingPlugin {
     private static func activateSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playback, mode: .spokenAudio, options: [])
+            try session.setCategory(.playback, mode: .default, options: [])
             try session.setActive(true)
         } catch {
             try? session.setCategory(.playback)

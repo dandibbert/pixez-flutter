@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -230,6 +231,48 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('keeps synthesizing later pages while the current clip plays', () async {
+    final synth = _FakeSynth();
+    final audio = _FakeAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_pages');
+    final navigated = <NovelTtsNavigate>[];
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 4,
+      ),
+      cacheDir: () async => dir,
+    );
+    controller.onNavigate = navigated.add;
+
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 2,
+      pageText: '这是第一页用来测试拆分的。',
+      pageTexts: const ['这是第一页用来测试拆分的。', '这是第二页用来测试拆分的。'],
+    );
+    expect(controller.subtitle, '这是第一页用来测试拆分的。');
+    expect(synth.texts, contains('这是第二页用来测试拆分的。'));
+    expect(audio.files, hasLength(2));
+
+    await controller.skip(direction: 'next');
+    expect(controller.session?.page, 2);
+    expect(controller.subtitle, '这是第二页用来测试拆分的。');
+    expect(navigated.single.kind, NovelTtsNavigateKind.page);
+    expect(navigated.single.keepPlaying, isTrue);
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
   testWidgets('settings page switches the three voice libraries', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -277,8 +320,11 @@ void main() {
       totalPages: 2,
       chunks: ['当前字幕'],
     );
+    controller.clips = const [
+      NovelTtsClip(page: 1, chunkIndex: 0, text: '当前字幕'),
+    ];
     controller.status = NovelTtsStatus.playing;
-    controller.chunkIndex = 0;
+    controller.clipIndex = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -311,14 +357,52 @@ class _FakeSynth implements NovelTtsSynthesizer {
 }
 
 class _FakeAudio implements NovelTtsAudioPlayer {
+  final files = <String>[];
+  var index = 0;
+  final _clipIndex = StreamController<int>.broadcast();
+
   @override
   final Stream<void> onComplete = const Stream.empty();
+
+  @override
+  Stream<int> get onClipIndex => _clipIndex.stream;
 
   @override
   void listen() {}
 
   @override
-  Future<void> playFile(String path) async {}
+  Future<void> playFile(String path) => playFiles([path]);
+
+  @override
+  Future<void> playFiles(List<String> paths) async {
+    files
+      ..clear()
+      ..addAll(paths);
+    index = 0;
+  }
+
+  @override
+  Future<void> enqueue(String path) async {
+    files.add(path);
+  }
+
+  @override
+  Future<bool> seekNext() async {
+    if (index + 1 >= files.length) {
+      return false;
+    }
+    index++;
+    return true;
+  }
+
+  @override
+  Future<bool> seekPrevious() async {
+    if (index <= 0) {
+      return false;
+    }
+    index--;
+    return true;
+  }
 
   @override
   Future<void> pause() async {}
@@ -336,5 +420,7 @@ class _FakeAudio implements NovelTtsAudioPlayer {
   Future<Duration?> get position async => Duration.zero;
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    await _clipIndex.close();
+  }
 }
