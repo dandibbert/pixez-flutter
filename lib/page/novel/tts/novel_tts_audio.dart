@@ -99,7 +99,9 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
       await _player.setAudioSource(playlist, preload: true);
       _replacing = false;
       _armed = true;
-      await _player.play();
+      // play() completes only when the clip ends or is paused. Awaiting it
+      // would block pause/resume and keep the UI stuck on synthesizing.
+      unawaited(_player.play());
     } catch (_) {
       _armed = false;
       _replacing = false;

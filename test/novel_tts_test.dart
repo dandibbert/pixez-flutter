@@ -429,17 +429,26 @@ void main() {
       novelTtsBlockIndexForClip(blocks: blocks, clipText: '第一段先写在这里。'),
       0,
     );
+    final spoken = [
+      NovelReaderBlock.spans([
+        NovelSpansData(NovelSpansType.normal, '这是第一句用来测试拆分的。'),
+      ]),
+      NovelReaderBlock.spans([
+        NovelSpansData(NovelSpansType.normal, '这是第二句用来测试拆分的。'),
+      ]),
+    ];
     expect(
       novelTtsChunkIndexForBlock(
-        blocks: [
-          NovelReaderBlock.spans([
-            NovelSpansData(NovelSpansType.normal, '这是第一句用来测试拆分的。'),
-          ]),
-          NovelReaderBlock.spans([
-            NovelSpansData(NovelSpansType.normal, '这是第二句用来测试拆分的。'),
-          ]),
-        ],
+        blocks: spoken,
         blockIndex: 1,
+        splitChars: 20,
+      ),
+      1,
+    );
+    expect(
+      novelTtsBlockIndexForChunk(
+        blocks: spoken,
+        chunkIndex: 1,
         splitChars: 20,
       ),
       1,
@@ -478,7 +487,7 @@ void main() {
     gate.complete();
     await started;
     expect(controller.status, NovelTtsStatus.paused);
-    expect(audio.paused, 1);
+    expect(audio.paused, greaterThanOrEqualTo(1));
     await controller.resume();
     expect(controller.status, NovelTtsStatus.playing);
     expect(audio.resumed, 1);

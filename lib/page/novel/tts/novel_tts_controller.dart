@@ -400,17 +400,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> pause() async {
-    if (status == NovelTtsStatus.synthesizing) {
-      _holdAfterReady = true;
-      status = NovelTtsStatus.paused;
-      _rememberBookmark();
-      await _publishNowPlaying();
-      notifyListeners();
+    if (status != NovelTtsStatus.playing &&
+        status != NovelTtsStatus.synthesizing) {
       return;
     }
-    if (status != NovelTtsStatus.playing) {
-      return;
-    }
+    _holdAfterReady = true;
     await _audio.pause();
     status = NovelTtsStatus.paused;
     _rememberBookmark();
@@ -422,14 +416,13 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (status != NovelTtsStatus.paused) {
       return;
     }
-    if (_holdAfterReady && !_audioReady) {
-      _holdAfterReady = false;
+    _holdAfterReady = false;
+    if (!_audioReady) {
       status = NovelTtsStatus.synthesizing;
       await _publishNowPlaying();
       notifyListeners();
       return;
     }
-    _holdAfterReady = false;
     await _audio.resume();
     status = NovelTtsStatus.playing;
     await _publishNowPlaying();

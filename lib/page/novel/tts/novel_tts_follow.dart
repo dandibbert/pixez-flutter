@@ -89,3 +89,38 @@ int novelTtsChunkIndexForBlock({
   }
   return chunks.length - 1;
 }
+
+/// Inverse of [novelTtsChunkIndexForBlock].
+int novelTtsBlockIndexForChunk({
+  required List<NovelReaderBlock> blocks,
+  required int chunkIndex,
+  required int splitChars,
+}) {
+  if (blocks.isEmpty) {
+    return 0;
+  }
+  final pageText = novelTtsTextFromBlocks(blocks);
+  final chunks = splitNovelTtsText(pageText, maxChars: splitChars);
+  if (chunks.isEmpty) {
+    return 0;
+  }
+  final index = chunkIndex.clamp(0, chunks.length - 1);
+  var prefix = 0;
+  for (var i = 0; i < index; i++) {
+    prefix += chunks[i].length;
+  }
+  var consumed = 0;
+  var lastSpoken = 0;
+  for (var i = 0; i < blocks.length; i++) {
+    final piece = novelTtsTextFromSpans(blocks[i].spans);
+    if (piece.isEmpty) {
+      continue;
+    }
+    lastSpoken = i;
+    consumed += piece.length;
+    if (consumed > prefix) {
+      return i;
+    }
+  }
+  return lastSpoken;
+}

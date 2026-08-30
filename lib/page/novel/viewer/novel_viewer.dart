@@ -273,14 +273,41 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     if (blocks.isEmpty) {
       return;
     }
-    final index = novelTtsBlockIndexForClip(
+    final index = novelTtsBlockIndexForChunk(
       blocks: blocks,
-      clipText: _tts.subtitle,
+      chunkIndex: _tts.chunkIndex,
+      splitChars: _tts.settings.clampedSplitChars,
     );
-    final max = controller.position.maxScrollExtent;
-    final target = max * (index / blocks.length);
+    final box = _ttsBlockKeys[index]?.currentContext?.findRenderObject();
+    final viewportTop = _articleViewportTop();
+    if (box is RenderBox && box.attached && viewportTop != null) {
+      final top = box.localToGlobal(Offset.zero).dy;
+      final bottom = top + box.size.height;
+      final viewBottom = viewportTop + controller.position.viewportDimension;
+      if (bottom > viewportTop + 8 && top < viewBottom - 8) {
+        return;
+      }
+      final target = (controller.offset + (top - viewportTop) - 24).clamp(
+        controller.position.minScrollExtent,
+        controller.position.maxScrollExtent,
+      );
+      controller.animateTo(
+        target,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    if (controller.position.maxScrollExtent <= 0) {
+      return;
+    }
+    final target =
+        controller.position.maxScrollExtent * (index / blocks.length);
     controller.animateTo(
-      target.clamp(controller.position.minScrollExtent, max),
+      target.clamp(
+        controller.position.minScrollExtent,
+        controller.position.maxScrollExtent,
+      ),
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeOut,
     );
@@ -583,7 +610,11 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         _tts.session?.novelId == widget.id &&
         _tts.session?.page == _currentPage;
     final followBlock = followClip
-        ? novelTtsBlockIndexForClip(blocks: blocks, clipText: _tts.subtitle)
+        ? novelTtsBlockIndexForChunk(
+            blocks: blocks,
+            chunkIndex: _tts.chunkIndex,
+            splitChars: _tts.settings.clampedSplitChars,
+          )
         : -1;
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     final navState = resolveNovelPageNavState(
