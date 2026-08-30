@@ -469,6 +469,8 @@ class _ProfileEditorState extends State<_ProfileEditor> {
           TextField(
             controller: apiKey,
             obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
             decoration: const InputDecoration(
               labelText: 'API key',
               helperText: 'Leave blank to keep the existing secure value',
@@ -484,6 +486,8 @@ class _ProfileEditorState extends State<_ProfileEditor> {
           TextField(
             controller: secretValues,
             obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
             decoration: const InputDecoration(
               labelText: 'New named secret values',
               helperText: 'name=value; other=value — blank keeps stored values',
