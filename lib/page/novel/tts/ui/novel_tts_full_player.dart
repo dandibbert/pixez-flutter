@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/playback/novel_tts_playback_controller.dart';
 
 class NovelTtsFullPlayer extends StatelessWidget {
@@ -9,6 +10,7 @@ class NovelTtsFullPlayer extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: controller,
     builder: (context, _) {
+      final l10n = I18n.of(context);
       final snapshot = controller.snapshot;
       final item = snapshot.currentItem;
       return SafeArea(
@@ -24,7 +26,7 @@ class NovelTtsFullPlayer extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item?.title ?? 'Novel narration',
+                          item?.title ?? l10n.tts_narration_title,
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         if (item != null) Text(item.author),
@@ -32,7 +34,7 @@ class NovelTtsFullPlayer extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Close',
+                    tooltip: l10n.tts_close,
                     onPressed:
                         onClose ?? () => Navigator.maybeOf(context)?.pop(),
                     icon: const Icon(Icons.close),
@@ -41,14 +43,22 @@ class NovelTtsFullPlayer extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               Text(
-                item?.displayText ?? 'Preparing narration…',
+                item?.displayText ?? l10n.tts_preparing_narration,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
               if (item != null)
                 Text(
-                  'Page ${item.pageNumber} · Part ${item.chunkIndex + 1}/${item.chunkCount}',
+                  l10n.tts_page +
+                      ' ' +
+                      item.pageNumber.toString() +
+                      ' · ' +
+                      l10n.tts_part +
+                      ' ' +
+                      (item.chunkIndex + 1).toString() +
+                      '/' +
+                      item.chunkCount.toString(),
                 ),
               Slider(
                 value: snapshot.progress,
@@ -65,7 +75,7 @@ class NovelTtsFullPlayer extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    tooltip: 'Previous',
+                    tooltip: l10n.tts_previous,
                     onPressed: item == null
                         ? null
                         : () => controller.skipTo(
@@ -85,10 +95,12 @@ class NovelTtsFullPlayer extends StatelessWidget {
                     icon: Icon(
                       snapshot.playing ? Icons.pause : Icons.play_arrow,
                     ),
-                    label: Text(snapshot.playing ? 'Pause' : 'Play'),
+                    label: Text(
+                      snapshot.playing ? l10n.tts_pause : l10n.tts_play,
+                    ),
                   ),
                   IconButton(
-                    tooltip: 'Next',
+                    tooltip: l10n.next,
                     onPressed: item == null
                         ? null
                         : () => controller.skipTo(
@@ -105,7 +117,7 @@ class NovelTtsFullPlayer extends StatelessWidget {
               _NovelTtsSpeedControl(controller: controller),
               const SizedBox(height: 16),
               Text(
-                _stateLabel(snapshot),
+                _stateLabel(context, snapshot),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -114,17 +126,22 @@ class NovelTtsFullPlayer extends StatelessWidget {
       );
     },
   );
-  String _stateLabel(NovelTtsPlaybackSnapshot snapshot) =>
-      switch (snapshot.state) {
-        NovelTtsPlaybackState.idle => 'Idle',
-        NovelTtsPlaybackState.preparing => 'Preparing audio',
-        NovelTtsPlaybackState.buffering =>
-          'Buffering ${snapshot.bufferedDuration.inSeconds}s',
-        NovelTtsPlaybackState.playing => 'Playing',
-        NovelTtsPlaybackState.paused => 'Paused',
-        NovelTtsPlaybackState.completed => 'Completed',
-        NovelTtsPlaybackState.failed => 'Playback failed',
-      };
+  String _stateLabel(BuildContext context, NovelTtsPlaybackSnapshot snapshot) {
+    final l10n = I18n.of(context);
+    return switch (snapshot.state) {
+      NovelTtsPlaybackState.idle => l10n.tts_state_idle,
+      NovelTtsPlaybackState.preparing => l10n.tts_state_preparing,
+      NovelTtsPlaybackState.buffering =>
+        l10n.tts_state_buffering +
+            ' ' +
+            snapshot.bufferedDuration.inSeconds.toString() +
+            's',
+      NovelTtsPlaybackState.playing => l10n.tts_state_playing,
+      NovelTtsPlaybackState.paused => l10n.tts_state_paused,
+      NovelTtsPlaybackState.completed => l10n.tts_state_completed,
+      NovelTtsPlaybackState.failed => l10n.tts_state_failed,
+    };
+  }
 }
 
 class _NovelTtsSpeedControl extends StatefulWidget {

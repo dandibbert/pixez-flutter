@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_mini_player.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
 
@@ -9,6 +10,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: NovelReaderScaffold(
             header: const SizedBox(key: Key('header'), height: 40),
@@ -29,7 +33,9 @@ void main() {
       ),
     );
 
-    final playerBottom = tester.getBottomRight(find.byType(NovelTtsMiniPlayer)).dy;
+    final playerBottom = tester
+        .getBottomRight(find.byType(NovelTtsMiniPlayer))
+        .dy;
     final navTop = tester.getTopLeft(find.byKey(const Key('pageNav'))).dy;
     expect(playerBottom, lessThanOrEqualTo(navTop));
     expect(find.text('行方'), findsOneWidget);

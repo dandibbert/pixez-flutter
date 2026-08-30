@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pixez/page/novel/tts/data/tts_settings_repository.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_settings_page.dart';
 import 'package:pixez/page/novel/tts/ui/pronunciation_dictionary_page.dart';
+import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
 class UiSecrets implements TtsSecretStore {
   @override
@@ -21,6 +22,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: NovelTtsSettingsPage(
           repository: TtsSettingsRepository(secretStore: UiSecrets()),
         ),
@@ -38,6 +42,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: NovelTtsSettingsPage(
           repository: TtsSettingsRepository(secretStore: UiSecrets()),
         ),
@@ -46,19 +53,76 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('tts-add-profile')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('microsoftAzure'));
+    await tester.tap(find.text('Microsoft Azure'));
     await tester.pumpAndSettle();
-    expect(find.text('openAiCompatible'), findsOneWidget);
-    await tester.tap(find.text('customHttp'));
+    expect(find.text('OpenAI-compatible'), findsOneWidget);
+    await tester.tap(find.text('Custom HTTP'));
     await tester.pumpAndSettle();
     expect(find.text('HTTP method'), findsOneWidget);
-    expect(find.text('Named secret keys'), findsOneWidget);
-    expect(find.text('New named secret values'), findsOneWidget);
-    expect(find.text('Validate body as JSON'), findsOneWidget);
     await tester.tap(find.text('POST'));
     await tester.pumpAndSettle();
     expect(find.text('GET'), findsOneWidget);
     expect(find.text('PUT'), findsOneWidget);
+    await tester.tap(find.text('POST').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Validate body as JSON'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Validate body as JSON'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Named secret keys'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Named secret keys'), findsOneWidget);
+  });
+
+  testWidgets('settings are usable and localized on a narrow Chinese phone', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsSettingsPage(
+          repository: TtsSettingsRepository(secretStore: UiSecrets()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('语音服务配置'), findsOneWidget);
+    expect(find.text('分段与缓冲'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('tts-add-profile')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('添加 TTS 配置'), findsOneWidget);
+    expect(find.byKey(const Key('tts-profile-name')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('tts-profile-save')));
+    await tester.pump();
+    expect(find.text('请填写此项'), findsOneWidget);
+    expect(find.text('添加 TTS 配置'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('tts-profile-name')),
+      '我的 Azure',
+    );
+    await tester.tap(find.byKey(const Key('tts-profile-save')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('我的 Azure'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('pronunciation editor previews stable display and spoken text', (
@@ -66,6 +130,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: PronunciationRuleEditor(initialSurface: '行方')),
       ),
     );
@@ -74,8 +141,8 @@ void main() {
       'ゆくえ',
     );
     await tester.pump();
-    expect(find.text('Display: 行方'), findsOneWidget);
-    expect(find.text('Spoken: ゆくえ'), findsOneWidget);
+    expect(find.text('显示文本: 行方'), findsOneWidget);
+    expect(find.text('朗读文本: ゆくえ'), findsOneWidget);
     expect(find.textContaining('<sub alias="ゆくえ">行方</sub>'), findsOneWidget);
   });
 }

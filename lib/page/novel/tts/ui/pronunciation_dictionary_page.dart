@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/data/pronunciation_dictionary_repository.dart';
 import 'package:pixez/page/novel/tts/pronunciation/pronunciation_engine.dart';
 
@@ -61,46 +62,67 @@ class _PronunciationDictionaryPageState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Pronunciation dictionary')),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () => _edit(),
-      icon: const Icon(Icons.add),
-      label: const Text('Add pronunciation'),
-    ),
-    body: loading
-        ? const Center(child: CircularProgressIndicator())
-        : rules.isEmpty
-        ? const Center(child: Text('No pronunciation rules yet.'))
-        : ListView.builder(
-            itemCount: rules.length,
-            itemBuilder: (context, index) {
-              final rule = rules[index];
-              return ListTile(
-                leading: Switch(
-                  value: rule.enabled,
-                  onChanged: (value) async {
-                    await repository.upsert(rule.copyWith(enabled: value));
-                    await _load();
-                  },
-                ),
-                title: Text('${rule.surface} → ${rule.reading}'),
-                subtitle: Text(
-                  '${rule.scope.name}${rule.scopeId == null ? '' : ' · ${rule.scopeId}'} · priority ${rule.priority}${rule.overridePixivRuby ? ' · overrides Pixiv ruby' : ''}',
-                ),
-                onTap: () => _edit(rule),
-                trailing: IconButton(
-                  tooltip: 'Delete',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () async {
-                    await repository.delete(rule.id);
-                    await _load();
-                  },
-                ),
-              );
-            },
-          ),
-  );
+  Widget build(BuildContext context) {
+    final l10n = I18n.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.tts_pronunciation_dictionary)),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _edit(),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.tts_pronunciation_add),
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : rules.isEmpty
+          ? Center(child: Text(l10n.tts_pronunciation_empty))
+          : ListView.builder(
+              itemCount: rules.length,
+              itemBuilder: (context, index) {
+                final rule = rules[index];
+                return ListTile(
+                  leading: Switch(
+                    value: rule.enabled,
+                    onChanged: (value) async {
+                      await repository.upsert(rule.copyWith(enabled: value));
+                      await _load();
+                    },
+                  ),
+                  title: Text('${rule.surface} → ${rule.reading}'),
+                  subtitle: Text(
+                    _scopeLabel(context, rule.scope) +
+                        (rule.scopeId == null ? '' : ' · ' + rule.scopeId!) +
+                        ' · ' +
+                        l10n.tts_priority +
+                        ' ' +
+                        rule.priority.toString() +
+                        (rule.overridePixivRuby
+                            ? ' · ' + l10n.tts_override_pixiv_ruby
+                            : ''),
+                  ),
+                  onTap: () => _edit(rule),
+                  trailing: IconButton(
+                    tooltip: l10n.delete,
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      await repository.delete(rule.id);
+                      await _load();
+                    },
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+String _scopeLabel(BuildContext context, PronunciationScope scope) {
+  final l10n = I18n.of(context);
+  return switch (scope) {
+    PronunciationScope.global => l10n.tts_scope_global,
+    PronunciationScope.novel => l10n.tts_scope_novel,
+    PronunciationScope.series => l10n.tts_scope_series,
+    PronunciationScope.author => l10n.tts_scope_author,
+  };
 }
 
 class PronunciationRuleEditor extends StatefulWidget {
@@ -165,6 +187,7 @@ class _PronunciationRuleEditorState extends State<PronunciationRuleEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = I18n.of(context);
     final draft = _draft();
     final projection = draft == null
         ? null
@@ -192,61 +215,70 @@ class _PronunciationRuleEditorState extends State<PronunciationRuleEditor> {
           children: [
             Text(
               widget.initial == null
-                  ? 'Add pronunciation'
-                  : 'Edit pronunciation',
+                  ? l10n.tts_pronunciation_add
+                  : l10n.tts_pronunciation_edit,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
             TextField(
               key: const Key('pronunciation-surface'),
               controller: surface,
-              decoration: const InputDecoration(labelText: 'Written text'),
+              decoration: InputDecoration(labelText: l10n.tts_written_text),
               onChanged: (_) => setState(() {}),
             ),
             TextField(
               key: const Key('pronunciation-reading'),
               controller: reading,
-              decoration: const InputDecoration(labelText: 'Spoken reading'),
+              decoration: InputDecoration(labelText: l10n.tts_spoken_reading),
               onChanged: (_) => setState(() {}),
             ),
             DropdownButtonFormField<PronunciationScope>(
               initialValue: scope,
-              decoration: const InputDecoration(labelText: 'Scope'),
+              decoration: InputDecoration(labelText: l10n.tts_scope),
               items: [
                 for (final value in PronunciationScope.values)
-                  DropdownMenuItem(value: value, child: Text(value.name)),
+                  DropdownMenuItem(
+                    value: value,
+                    child: Text(_scopeLabel(context, value)),
+                  ),
               ],
               onChanged: (value) => setState(() => scope = value!),
             ),
             if (scope != PronunciationScope.global)
               TextField(
                 controller: scopeId,
-                decoration: InputDecoration(labelText: '${scope.name} ID'),
+                decoration: InputDecoration(labelText: l10n.tts_scope_id),
                 onChanged: (_) => setState(() {}),
               ),
             TextField(
               controller: priority,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Priority'),
+              decoration: InputDecoration(labelText: l10n.tts_priority),
               onChanged: (_) => setState(() {}),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Enabled'),
+              title: Text(l10n.tts_enabled),
               value: enabled,
               onChanged: (value) => setState(() => enabled = value),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Override overlapping Pixiv ruby'),
+              title: Text(l10n.tts_override_pixiv_ruby),
               value: overrideRuby,
               onChanged: (value) => setState(() => overrideRuby = value),
             ),
             const Divider(),
-            Text('Display: ${projection?.displayText ?? '—'}'),
-            Text('Spoken: ${projection?.spokenText ?? '—'}'),
             Text(
-              'SSML: ${projection?.ssml ?? '—'}',
+              l10n.tts_display_preview +
+                  ': ' +
+                  (projection?.displayText ?? '—'),
+            ),
+            Text(
+              l10n.tts_spoken_preview + ': ' + (projection?.spokenText ?? '—'),
+            ),
+            Text(
+              l10n.tts_ssml_preview + ': ' + (projection?.ssml ?? '—'),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
@@ -256,14 +288,14 @@ class _PronunciationRuleEditorState extends State<PronunciationRuleEditor> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: draft == null
                       ? null
                       : () => Navigator.pop(context, draft),
-                  child: const Text('Save'),
+                  child: Text(l10n.save),
                 ),
               ],
             ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pixez/page/novel/tts/data/tts_settings_repository.dart';
@@ -54,4 +56,56 @@ void main() {
       });
     },
   );
+
+  test('malformed persisted settings fall back to safe defaults', () async {
+    SharedPreferences.setMockInitialValues({
+      TtsSettingsRepository.preferencesKey: '{not-json',
+    });
+    final repo = TtsSettingsRepository(secretStore: MemorySecrets());
+
+    final loaded = await repo.load();
+
+    expect(loaded.profiles, isEmpty);
+    expect(loaded.targetLength, 220);
+    expect(loaded.localPlaybackSpeed, 1);
+  });
+
+  test('legacy scalar values and named secrets are sanitized', () async {
+    SharedPreferences.setMockInitialValues({
+      TtsSettingsRepository.preferencesKey: jsonEncode({
+        'profiles': [
+          {
+            'id': 'legacy',
+            'name': 'Legacy',
+            'enabled': true,
+            'provider': {'kind': 'microsoftAzure', 'region': 'japaneast'},
+            'voice': 'voice',
+            'speed': 1,
+            'pitch': 0,
+            'language': 'ja-JP',
+            'format': 'mp3',
+            'providerOptions': {
+              'secretNames': [1, 'tenant_token', null],
+            },
+          },
+        ],
+        'targetLength': -10,
+        'maxLength': 'bad',
+        'startupBufferSeconds': 0,
+        'targetBufferSeconds': 180,
+        'maxCacheMegabytes': -1,
+        'localPlaybackSpeed': 9,
+      }),
+    });
+    final repo = TtsSettingsRepository(secretStore: MemorySecrets());
+
+    final loaded = await repo.load();
+
+    expect(loaded.targetLength, 220);
+    expect(loaded.maxLength, 360);
+    expect(loaded.startupBufferSeconds, 90);
+    expect(loaded.maxCacheMegabytes, 512);
+    expect(loaded.localPlaybackSpeed, 2);
+    await expectLater(repo.readSecrets(loaded.profiles.single), completes);
+  });
 }

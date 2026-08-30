@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pixez/i18n.dart';
 
 class NovelTtsMiniPlayer extends StatelessWidget {
   const NovelTtsMiniPlayer({
@@ -24,6 +25,7 @@ class NovelTtsMiniPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = I18n.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: scheme.surfaceContainerHigh,
@@ -35,7 +37,7 @@ class NovelTtsMiniPlayer extends StatelessWidget {
           child: Row(
             children: [
               IconButton.filledTonal(
-                tooltip: playing ? 'Pause TTS' : 'Play TTS',
+                tooltip: playing ? l10n.tts_pause_tts : l10n.tts_play_tts,
                 onPressed: onTogglePlayback,
                 icon: buffering
                     ? const SizedBox.square(
@@ -51,7 +53,9 @@ class NovelTtsMiniPlayer extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      displayText.isEmpty ? 'Preparing narration…' : displayText,
+                      displayText.isEmpty
+                          ? l10n.tts_preparing_narration
+                          : displayText,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium,
@@ -69,9 +73,12 @@ class NovelTtsMiniPlayer extends StatelessWidget {
                         ),
                         Text(
                           statusText,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: buffering ? scheme.tertiary : scheme.primary,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: buffering
+                                    ? scheme.tertiary
+                                    : scheme.primary,
+                              ),
                         ),
                       ],
                     ),
@@ -79,7 +86,7 @@ class NovelTtsMiniPlayer extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Close TTS',
+                tooltip: l10n.tts_close_tts,
                 onPressed: onClose,
                 icon: const Icon(Icons.close, size: 20),
               ),

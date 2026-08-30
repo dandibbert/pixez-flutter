@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/page/novel/tts/playback/novel_tts_playback_controller.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_full_player.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_start_sheet.dart';
@@ -35,14 +36,17 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: NovelTtsStartSheet(currentPage: 3, hasSelectedPosition: true),
         ),
       ),
     );
-    expect(find.text('Start from first page'), findsOneWidget);
-    expect(find.text('Start from page 3'), findsOneWidget);
-    expect(find.text('Start from current position'), findsOneWidget);
+    expect(find.text('从第一页开始'), findsOneWidget);
+    expect(find.text('从此页开始 3'), findsOneWidget);
+    expect(find.text('从当前位置开始'), findsOneWidget);
   });
   testWidgets('full player shows displayText and queue position', (
     tester,
@@ -65,6 +69,9 @@ void main() {
     ]);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: NovelTtsFullPlayer(controller: controller)),
       ),
     );

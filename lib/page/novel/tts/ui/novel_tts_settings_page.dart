@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/data/tts_settings_repository.dart';
 import 'package:pixez/page/novel/tts/model/tts_profile.dart';
 import 'package:pixez/page/novel/tts/ui/pronunciation_dictionary_page.dart';
@@ -31,13 +32,10 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
   }
 
   Future<void> _editProfile([TtsProfile? profile]) async {
-    final draft = await showDialog<_ProfileDraft>(
-      context: context,
-      builder: (context) => Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640, maxHeight: 760),
-          child: _ProfileEditor(initial: profile),
-        ),
+    final draft = await Navigator.of(context).push<_ProfileDraft>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _ProfileEditor(initial: profile),
       ),
     );
     if (draft == null) return;
@@ -79,26 +77,25 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
   );
   @override
   Widget build(BuildContext context) {
+    final l10n = I18n.of(context);
     final value = settings;
     if (value == null)
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     return Scaffold(
-      appBar: AppBar(title: const Text('Novel text to speech')),
+      appBar: AppBar(title: Text(l10n.tts_title)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Provider profiles',
+            l10n.tts_provider_profiles,
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const Text(
-            'Credentials are saved in secure platform storage and are never written to profile JSON.',
-          ),
+          Text(l10n.tts_credentials_secure_hint),
           for (final profile in value.profiles)
             Card(
               child: ListTile(
                 leading: IconButton(
-                  tooltip: 'Use this profile',
+                  tooltip: l10n.tts_use_profile,
                   onPressed: profile.enabled
                       ? () =>
                             _save(value.copyWith(currentProfileId: profile.id))
@@ -111,7 +108,7 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
                 ),
                 title: Text(profile.name),
                 subtitle: Text(
-                  '${profile.provider.kind.name} · ${profile.voice}',
+                  '${_providerLabel(context, profile.provider.kind)} · ${profile.voice}',
                 ),
                 onTap: () => _editProfile(profile),
                 trailing: Switch(
@@ -135,17 +132,15 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
               key: const Key('tts-add-profile'),
               onPressed: () => _editProfile(),
               icon: const Icon(Icons.add),
-              label: const Text('Add provider profile'),
+              label: Text(l10n.tts_add_provider_profile),
             ),
           ),
           const Divider(height: 32),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.record_voice_over),
-            title: const Text('Pronunciation dictionary'),
-            subtitle: const Text(
-              'Global, author, series and novel scoped readings',
-            ),
+            title: Text(l10n.tts_pronunciation_dictionary),
+            subtitle: Text(l10n.tts_pronunciation_scope_summary),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -156,49 +151,54 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
           ),
           const Divider(height: 32),
           Text(
-            'Segmentation and buffering',
+            l10n.tts_segmentation_buffering,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           _IntSetting(
-            label: 'Target graphemes',
+            label: l10n.tts_target_graphemes,
+            step: 10,
             value: value.targetLength,
             onChanged: (v) => _save(value.copyWith(targetLength: v)),
           ),
           _IntSetting(
-            label: 'Maximum graphemes',
+            label: l10n.tts_maximum_graphemes,
+            step: 10,
             value: value.maxLength,
             onChanged: (v) => _save(value.copyWith(maxLength: v)),
           ),
           _IntSetting(
-            label: 'Startup buffer seconds',
+            label: l10n.tts_startup_buffer_seconds,
+            step: 10,
             value: value.startupBufferSeconds,
             onChanged: (v) => _save(value.copyWith(startupBufferSeconds: v)),
           ),
           _IntSetting(
-            label: 'Target buffer seconds',
+            label: l10n.tts_target_buffer_seconds,
+            step: 10,
             value: value.targetBufferSeconds,
             onChanged: (v) => _save(value.copyWith(targetBufferSeconds: v)),
           ),
           _IntSetting(
-            label: 'Maximum cache MB',
+            label: l10n.tts_maximum_cache_mb,
+            step: 64,
             value: value.maxCacheMegabytes,
             onChanged: (v) => _save(value.copyWith(maxCacheMegabytes: v)),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Continue across newpage markers'),
+            title: Text(l10n.tts_continue_newpage),
             value: value.autoNextPage,
             onChanged: (v) => _save(value.copyWith(autoNextPage: v)),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Continue to next series novel'),
+            title: Text(l10n.tts_continue_next_novel),
             value: value.autoNextNovel,
             onChanged: (v) => _save(value.copyWith(autoNextNovel: v)),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Local playback speed'),
+            title: Text(l10n.tts_local_playback_speed),
             subtitle: Slider(
               min: .5,
               max: 2,
@@ -215,28 +215,58 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
   }
 }
 
+String _providerLabel(BuildContext context, TtsProviderKind kind) {
+  final l10n = I18n.of(context);
+  return switch (kind) {
+    TtsProviderKind.microsoftAzure => l10n.tts_provider_azure,
+    TtsProviderKind.openAiCompatible => l10n.tts_provider_openai,
+    TtsProviderKind.customHttp => l10n.tts_provider_custom,
+  };
+}
+
 class _IntSetting extends StatelessWidget {
   const _IntSetting({
     required this.label,
     required this.value,
+    required this.step,
     required this.onChanged,
   });
   final String label;
   final int value;
+  final int step;
   final ValueChanged<int> onChanged;
+
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
     title: Text(label),
-    trailing: SizedBox(
-      width: 96,
-      child: TextFormField(
-        initialValue: value.toString(),
-        keyboardType: TextInputType.number,
-        onFieldSubmitted: (text) {
-          final parsed = int.tryParse(text);
-          if (parsed != null && parsed > 0) onChanged(parsed);
-        },
+    trailing: DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: value > step ? () => onChanged(value - step) : null,
+            icon: const Icon(Icons.remove),
+          ),
+          SizedBox(
+            width: 48,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: () => onChanged(value + step),
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
     ),
   );
@@ -256,6 +286,7 @@ class _ProfileEditor extends StatefulWidget {
 }
 
 class _ProfileEditorState extends State<_ProfileEditor> {
+  final formKey = GlobalKey<FormState>();
   late TtsProviderKind kind =
       widget.initial?.provider.kind ?? TtsProviderKind.microsoftAzure;
   late CustomHttpMethod method =
@@ -293,11 +324,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
   );
   late final apiKey = TextEditingController();
   late final secretNames = TextEditingController(
-    text:
-        ((widget.initial?.providerOptions['secretNames'] as List?)
-                    ?.cast<String>() ??
-                const <String>[])
-            .join(', '),
+    text: _initialSecretNames().join(', '),
   );
   late final secretValues = TextEditingController();
   late final format = TextEditingController(
@@ -312,6 +339,34 @@ class _ProfileEditorState extends State<_ProfileEditor> {
   late final pitch = TextEditingController(
     text: (widget.initial?.pitch ?? 0).toString(),
   );
+  List<String> _initialSecretNames() {
+    final raw = widget.initial?.providerOptions['secretNames'];
+    return raw is Iterable ? raw.whereType<String>().toList() : const [];
+  }
+
+  @override
+  void dispose() {
+    for (final controller in [
+      name,
+      voice,
+      model,
+      endpoint,
+      path,
+      body,
+      headers,
+      apiKey,
+      secretNames,
+      secretValues,
+      format,
+      language,
+      speed,
+      pitch,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   String _endpoint() {
     final p = widget.initial?.provider;
     return switch (p) {
@@ -396,172 +451,229 @@ class _ProfileEditorState extends State<_ProfileEditor> {
     );
   }
 
+  void _submit() {
+    if (!(formKey.currentState?.validate() ?? false)) return;
+    final profile = _profile();
+    if (profile == null) return;
+    Navigator.pop(context, _ProfileDraft(profile, _secretValues()));
+  }
+
+  String? _required(String? value) {
+    return value == null || value.trim().isEmpty
+        ? I18n.of(context).tts_required_field
+        : null;
+  }
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(20),
-    child: SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            widget.initial == null ? 'Add TTS profile' : 'Edit TTS profile',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          DropdownButtonFormField<TtsProviderKind>(
-            initialValue: kind,
-            decoration: const InputDecoration(labelText: 'Provider'),
-            items: [
-              for (final k in TtsProviderKind.values)
-                DropdownMenuItem(value: k, child: Text(k.name)),
-            ],
-            onChanged: (v) => setState(() => kind = v!),
-          ),
-          TextField(
-            controller: name,
-            decoration: const InputDecoration(labelText: 'Profile name'),
-            onChanged: (_) => setState(() {}),
-          ),
-          TextField(
-            controller: voice,
-            decoration: const InputDecoration(labelText: 'Voice'),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (kind != TtsProviderKind.microsoftAzure)
-            TextField(
-              controller: model,
-              decoration: const InputDecoration(labelText: 'Model'),
-            ),
-          TextField(
-            controller: endpoint,
-            decoration: InputDecoration(
-              labelText: kind == TtsProviderKind.microsoftAzure
-                  ? 'Azure region'
-                  : 'Endpoint / base URL',
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (kind == TtsProviderKind.openAiCompatible)
-            TextField(
-              controller: path,
-              decoration: const InputDecoration(labelText: 'Speech path'),
-            ),
-          if (kind == TtsProviderKind.customHttp) ...[
-            DropdownButtonFormField<CustomHttpMethod>(
-              initialValue: method,
-              decoration: const InputDecoration(labelText: 'HTTP method'),
-              items: [
-                for (final m in CustomHttpMethod.values)
-                  DropdownMenuItem(value: m, child: Text(m.name.toUpperCase())),
+  Widget build(BuildContext context) {
+    final l10n = I18n.of(context);
+    const gap = SizedBox(height: 12);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.initial == null
+              ? l10n.tts_add_profile_title
+              : l10n.tts_edit_profile_title,
+        ),
+      ),
+      body: SafeArea(
+        child: Form(
+          key: formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              DropdownButtonFormField<TtsProviderKind>(
+                initialValue: kind,
+                decoration: InputDecoration(labelText: l10n.tts_provider),
+                items: [
+                  for (final providerKind in TtsProviderKind.values)
+                    DropdownMenuItem(
+                      value: providerKind,
+                      child: Text(_providerLabel(context, providerKind)),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => kind = value);
+                },
+              ),
+              gap,
+              TextFormField(
+                key: const Key('tts-profile-name'),
+                controller: name,
+                decoration: InputDecoration(labelText: l10n.tts_profile_name),
+                validator: _required,
+              ),
+              gap,
+              TextFormField(
+                controller: voice,
+                decoration: InputDecoration(labelText: l10n.tts_voice),
+                validator: _required,
+              ),
+              if (kind != TtsProviderKind.microsoftAzure) ...[
+                gap,
+                TextFormField(
+                  controller: model,
+                  decoration: InputDecoration(labelText: l10n.tts_model),
+                ),
               ],
-              onChanged: (v) => setState(() => method = v!),
-            ),
-            TextField(
-              controller: headers,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Header templates (one Name: value per line)',
-              ),
-            ),
-            TextField(
-              controller: body,
-              maxLines: 5,
-              decoration: const InputDecoration(labelText: 'Body template'),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Validate body as JSON'),
-              value: bodyIsJson,
-              onChanged: (value) => setState(() => bodyIsJson = value),
-            ),
-          ],
-          TextField(
-            controller: apiKey,
-            obscureText: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'API key',
-              helperText: 'Leave blank to keep the existing secure value',
-            ),
-          ),
-          TextField(
-            controller: secretNames,
-            decoration: const InputDecoration(
-              labelText: 'Named secret keys',
-              helperText: 'Comma-separated names for {{secret:name}} templates',
-            ),
-          ),
-          TextField(
-            controller: secretValues,
-            obscureText: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'New named secret values',
-              helperText: 'name=value; other=value — blank keeps stored values',
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: format,
-                  decoration: const InputDecoration(labelText: 'Audio format'),
+              gap,
+              TextFormField(
+                controller: endpoint,
+                decoration: InputDecoration(
+                  labelText: kind == TtsProviderKind.microsoftAzure
+                      ? l10n.tts_azure_region
+                      : l10n.tts_endpoint_base_url,
                 ),
+                validator: _required,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: language,
-                  decoration: const InputDecoration(labelText: 'Language'),
+              if (kind == TtsProviderKind.openAiCompatible) ...[
+                gap,
+                TextFormField(
+                  controller: path,
+                  decoration: InputDecoration(labelText: l10n.tts_speech_path),
+                  validator: _required,
                 ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: speed,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Synthesis speed',
+              ],
+              if (kind == TtsProviderKind.customHttp) ...[
+                gap,
+                DropdownButtonFormField<CustomHttpMethod>(
+                  initialValue: method,
+                  decoration: InputDecoration(labelText: l10n.tts_http_method),
+                  items: [
+                    for (final httpMethod in CustomHttpMethod.values)
+                      DropdownMenuItem(
+                        value: httpMethod,
+                        child: Text(httpMethod.name.toUpperCase()),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => method = value);
+                  },
+                ),
+                gap,
+                TextFormField(
+                  controller: headers,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: l10n.tts_header_templates,
+                    alignLabelWithHint: true,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: pitch,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Pitch'),
+                gap,
+                TextFormField(
+                  controller: body,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    labelText: l10n.tts_body_template,
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.tts_validate_json),
+                  value: bodyIsJson,
+                  onChanged: (value) => setState(() => bodyIsJson = value),
+                ),
+              ],
+              gap,
+              TextFormField(
+                controller: apiKey,
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: l10n.tts_api_key,
+                  helperText: l10n.tts_api_key_helper,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
+              gap,
+              TextFormField(
+                controller: secretNames,
+                decoration: InputDecoration(
+                  labelText: l10n.tts_named_secret_keys,
+                  helperText: l10n.tts_named_secret_keys_helper,
+                ),
+              ),
+              gap,
+              TextFormField(
+                controller: secretValues,
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: l10n.tts_named_secret_values,
+                  helperText: l10n.tts_named_secret_values_helper,
+                ),
+              ),
+              gap,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: format,
+                      decoration: InputDecoration(
+                        labelText: l10n.tts_audio_format,
+                      ),
+                      validator: _required,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: language,
+                      decoration: InputDecoration(labelText: l10n.tts_language),
+                      validator: _required,
+                    ),
+                  ),
+                ],
+              ),
+              gap,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: speed,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: l10n.tts_synthesis_speed,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: pitch,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      decoration: InputDecoration(labelText: l10n.tts_pitch),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                key: const Key('tts-profile-save'),
+                onPressed: _submit,
+                child: Text(l10n.save),
+              ),
+              const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _profile() == null
-                    ? null
-                    : () => Navigator.pop(
-                        context,
-                        _ProfileDraft(_profile()!, _secretValues()),
-                      ),
-                child: const Text('Save'),
+                child: Text(l10n.cancel),
               ),
             ],
           ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
