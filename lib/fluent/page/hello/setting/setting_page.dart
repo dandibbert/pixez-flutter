@@ -261,7 +261,7 @@ class _SettingPageState extends State<SettingPage> {
               ),
             ),
             ListTile(
-              leading: Icon(FluentIcons.headphones),
+              leading: Icon(FluentIcons.play),
               title: Text(I18n.of(context).novel_tts_settings),
               subtitle: Text(I18n.of(context).novel_tts_settings_subtitle),
               trailing: Icon(FluentIcons.chevron_right),
@@ -269,7 +269,7 @@ class _SettingPageState extends State<SettingPage> {
                 context,
                 const NovelTtsPage(),
                 title: Text(I18n.of(context).novel_tts_settings),
-                icon: Icon(FluentIcons.headphones),
+                icon: Icon(FluentIcons.play),
               ),
             ),
             ListTile(
