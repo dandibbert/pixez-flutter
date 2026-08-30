@@ -455,6 +455,61 @@ void main() {
     );
   });
 
+  test('highlights the spoken sentence, not the whole paragraph', () {
+    final oneBlock = [
+      NovelReaderBlock.spans([
+        NovelSpansData(
+          NovelSpansType.normal,
+          '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+        ),
+      ]),
+    ];
+    final first = novelTtsHighlightsForClip(
+      blocks: oneBlock,
+      chunkIndex: 0,
+      splitChars: 20,
+    );
+    final second = novelTtsHighlightsForClip(
+      blocks: oneBlock,
+      chunkIndex: 1,
+      splitChars: 20,
+    );
+    expect(first, hasLength(1));
+    expect(first.single.blockIndex, 0);
+    expect(first.single.start, 0);
+    expect(first.single.end, '这是第一句用来测试拆分的。'.length);
+    expect(second.single.start, '这是第一句用来测试拆分的。'.length);
+    expect(second.single.end, '这是第一句用来测试拆分的。这是第二句用来测试拆分的。'.length);
+  });
+
+  test('maps a clip across a dropped paragraph break', () {
+    final blocks = [
+      NovelReaderBlock.spans([
+        NovelSpansData(NovelSpansType.normal, '第一句。\n'),
+      ]),
+      NovelReaderBlock.spans([
+        NovelSpansData(NovelSpansType.normal, '第二句。'),
+      ]),
+    ];
+    expect(
+      novelTtsBlockIndexForChunk(
+        blocks: blocks,
+        chunkIndex: 1,
+        splitChars: 6,
+      ),
+      1,
+    );
+    final highlights = novelTtsHighlightsForClip(
+      blocks: blocks,
+      chunkIndex: 1,
+      splitChars: 6,
+    );
+    expect(highlights, isNotEmpty);
+    expect(highlights.first.blockIndex, 1);
+    expect(highlights.first.start, 0);
+    expect(highlights.first.end, '第二句。'.length);
+  });
+
   test('can pause while synthesizing and resume afterwards', () async {
     final gate = Completer<void>();
     final synth = _GatedSynth(gate.future);
@@ -491,6 +546,43 @@ void main() {
     await controller.resume();
     expect(controller.status, NovelTtsStatus.playing);
     expect(audio.resumed, 1);
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('pause updates status before the player finishes pausing', () async {
+    final pauseGate = Completer<void>();
+    final audio = _HangingPauseAudio(pauseGate.future);
+    final dir = await Directory.systemTemp.createTemp('novel_tts_pause_ui');
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '暂停测试用的句子。',
+    );
+    expect(controller.status, NovelTtsStatus.playing);
+
+    final paused = controller.pause();
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.status, NovelTtsStatus.paused);
+    pauseGate.complete();
+    await paused;
+    expect(controller.status, NovelTtsStatus.paused);
 
     controller.dispose();
     await dir.delete(recursive: true);
@@ -699,6 +791,52 @@ void main() {
     expect(find.text('当前字幕'), findsOneWidget);
     controller.dispose();
   });
+
+  testWidgets('tapping the player subtitle notifies the host', (tester) async {
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+      ),
+      cacheDir: () async => Directory.systemTemp,
+    );
+    controller.session = const NovelTtsSession(
+      novelId: 1,
+      title: 'Story',
+      author: 'A',
+      page: 1,
+      totalPages: 2,
+      chunks: ['当前字幕'],
+    );
+    controller.clips = const [
+      NovelTtsClip(novelId: 1, page: 1, chunkIndex: 0, text: '当前字幕'),
+    ];
+    controller.status = NovelTtsStatus.playing;
+    var taps = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: NovelTtsBar(
+            controller: controller,
+            onOpenSettings: () {},
+            onSubtitleTap: () => taps++,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(novelTtsSubtitleKey));
+    await tester.pump();
+    expect(taps, 1);
+    controller.dispose();
+  });
 }
 
 class _FakeSynth implements NovelTtsSynthesizer {
@@ -778,6 +916,18 @@ class _ReenteringAudio implements NovelTtsAudioPlayer {
   Future<void> dispose() async {
     await _completed.close();
     await _clipIndex.close();
+  }
+}
+
+class _HangingPauseAudio extends _FakeAudio {
+  _HangingPauseAudio(this._gate);
+
+  final Future<void> _gate;
+
+  @override
+  Future<void> pause() async {
+    paused++;
+    await _gate;
   }
 }
 

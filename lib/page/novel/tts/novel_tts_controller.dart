@@ -177,6 +177,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   var _fillingQueue = false;
   var _fillAgain = false;
   var _holdAfterReady = false;
+  var _userPaused = false;
   var _audioReady = false;
   var _advanceDepth = 0;
   Timer? _nowPlayingTimer;
@@ -298,7 +299,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
     errorMessage = null;
     _holdAfterReady = false;
+    _userPaused = false;
     _audioReady = false;
+    await _audio.stop();
     await _ensureAudioSession();
     await _nowPlaying.keepAlive(true);
     await _playFrom(clipIndex);
@@ -404,9 +407,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         status != NovelTtsStatus.synthesizing) {
       return;
     }
+    _userPaused = true;
     _holdAfterReady = true;
-    await _audio.pause();
     status = NovelTtsStatus.paused;
+    notifyListeners();
+    await _audio.pause();
     _rememberBookmark();
     await _publishNowPlaying();
     notifyListeners();
@@ -416,6 +421,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (status != NovelTtsStatus.paused) {
       return;
     }
+    _userPaused = false;
     _holdAfterReady = false;
     if (!_audioReady) {
       status = NovelTtsStatus.synthesizing;
@@ -435,6 +441,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     pendingResumeNovelId = null;
     _prefetchingSeriesId = null;
     _holdAfterReady = false;
+    _userPaused = false;
     _audioReady = false;
     _chapters.clear();
     _loadedSeriesIds.clear();
@@ -457,6 +464,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
+    _userPaused = false;
+    _holdAfterReady = false;
     if (direction == 'next' && await _audio.seekNext()) {
       final next = clipIndex + 1;
       if (next < clips.length && clipIndex < next) {
@@ -518,6 +527,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _onQueueComplete() async {
     if (status == NovelTtsStatus.idle ||
         status == NovelTtsStatus.paused ||
+        _userPaused ||
         _advanceDepth > 0) {
       return;
     }
@@ -589,7 +599,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
       _audioReady = true;
-      if (_holdAfterReady) {
+      if (_userPaused || _holdAfterReady) {
         await _audio.pause();
         _holdAfterReady = false;
         status = NovelTtsStatus.paused;

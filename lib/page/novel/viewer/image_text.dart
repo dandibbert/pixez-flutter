@@ -302,17 +302,24 @@ class NovelSpansGenerator {
     void Function(int page)? onJumpToPage,
     void Function(int novelId)? onOpenNovel,
     TextStyle? style,
+    Color? ttsHighlightColor,
+    int highlightStart = 0,
+    int highlightEnd = 0,
   }) {
     if (data.type == NovelSpansType.newPage) {
       return const WidgetSpan(child: SizedBox.shrink());
     } else if (data.type == NovelSpansType.chapter) {
-      return TextSpan(
-        text: data.text,
-        style: (style ?? const TextStyle()).copyWith(
-          fontSize: ((style?.fontSize ?? 16) * 1.35),
-          fontWeight: FontWeight.w700,
-          height: 1.4,
-        ),
+      final chapterStyle = (style ?? const TextStyle()).copyWith(
+        fontSize: ((style?.fontSize ?? 16) * 1.35),
+        fontWeight: FontWeight.w700,
+        height: 1.4,
+      );
+      return _ttsHighlightedTextSpan(
+        data.text,
+        chapterStyle,
+        ttsHighlightColor,
+        highlightStart,
+        highlightEnd,
       );
     } else if (data.type == NovelSpansType.jump) {
       final page = int.tryParse(data.text);
@@ -329,10 +336,14 @@ class NovelSpansGenerator {
     } else if (data.type == NovelSpansType.rb) {
       final ruby = parseNovelRubyPayload(data.text);
       final baseStyle = style ?? DefaultTextStyle.of(context).style;
+      final highlighted =
+          ttsHighlightColor != null && highlightEnd > highlightStart;
       return novelRubySpan(
         base: ruby.base,
         ruby: ruby.ruby,
-        style: baseStyle,
+        style: highlighted
+            ? baseStyle.copyWith(backgroundColor: ttsHighlightColor)
+            : baseStyle,
       );
     } else if (data.type == NovelSpansType.jumpUri) {
       return TextSpan(
@@ -389,6 +400,46 @@ class NovelSpansGenerator {
     } else if (data.type == NovelSpansType.uploadedImage) {
       return UploadedImageSpan(data.text);
     }
-    return TextSpan(text: data.text);
+    return _ttsHighlightedTextSpan(
+      data.text,
+      style,
+      ttsHighlightColor,
+      highlightStart,
+      highlightEnd,
+    );
   }
+}
+
+InlineSpan _ttsHighlightedTextSpan(
+  String text,
+  TextStyle? style,
+  Color? color,
+  int start,
+  int end,
+) {
+  if (color == null || text.isEmpty) {
+    return TextSpan(text: text, style: style);
+  }
+  final from = start.clamp(0, text.length);
+  final to = end.clamp(from, text.length);
+  if (from >= to) {
+    return TextSpan(text: text, style: style);
+  }
+  if (from == 0 && to == text.length) {
+    return TextSpan(
+      text: text,
+      style: (style ?? const TextStyle()).copyWith(backgroundColor: color),
+    );
+  }
+  return TextSpan(
+    style: style,
+    children: [
+      if (from > 0) TextSpan(text: text.substring(0, from)),
+      TextSpan(
+        text: text.substring(from, to),
+        style: TextStyle(backgroundColor: color),
+      ),
+      if (to < text.length) TextSpan(text: text.substring(to)),
+    ],
+  );
 }

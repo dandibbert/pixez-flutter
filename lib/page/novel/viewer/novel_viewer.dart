@@ -255,7 +255,26 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     }
   }
 
-  void _scrollToTtsClip() {
+  void _revealTtsClip() {
+    if (_tts.session?.novelId != widget.id) {
+      return;
+    }
+    final page = _tts.session?.page;
+    if (page != null && page != _currentPage) {
+      _ttsDrivingPage = true;
+      _goToPage(page);
+      _ttsDrivingPage = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToTtsClip(force: true);
+        }
+      });
+      return;
+    }
+    _scrollToTtsClip(force: true);
+  }
+
+  void _scrollToTtsClip({bool force = false}) {
     if (_tts.session?.novelId != widget.id ||
         _tts.session?.page != _currentPage) {
       return;
@@ -284,7 +303,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       final top = box.localToGlobal(Offset.zero).dy;
       final bottom = top + box.size.height;
       final viewBottom = viewportTop + controller.position.viewportDimension;
-      if (bottom > viewportTop + 8 && top < viewBottom - 8) {
+      if (!force && bottom > viewportTop + 8 && top < viewBottom - 8) {
         return;
       }
       final target = (controller.offset + (top - viewportTop) - 24).clamp(
@@ -609,13 +628,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final followClip = _tts.isActive &&
         _tts.session?.novelId == widget.id &&
         _tts.session?.page == _currentPage;
-    final followBlock = followClip
-        ? novelTtsBlockIndexForChunk(
+    final clipHighlights = followClip
+        ? novelTtsHighlightsForClip(
             blocks: blocks,
             chunkIndex: _tts.chunkIndex,
             splitChars: _tts.settings.clampedSplitChars,
           )
-        : -1;
+        : const <NovelTtsSpanHighlight>[];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     final navState = resolveNovelPageNavState(
       currentPage: clampNovelPage(_currentPage, totalPages),
@@ -704,7 +723,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               blocks[index],
               style,
               index: index,
-              highlighted: index == followBlock,
+              highlights: clipHighlights,
             );
           },
         ),
@@ -726,6 +745,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           return NovelTtsBar(
             controller: _tts,
             onOpenSettings: () => openNovelTtsSettings(context),
+            onSubtitleTap: _revealTtsClip,
           );
         },
       ),
@@ -737,49 +757,60 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     NovelReaderBlock block,
     TextStyle style, {
     required int index,
-    required bool highlighted,
+    required List<NovelTtsSpanHighlight> highlights,
   }) {
     if (block.isBlank) {
       return SizedBox(height: style.fontSize ?? 16);
     }
     final scheme = Theme.of(context).colorScheme;
+    final highlightColor = scheme.primaryContainer.withValues(alpha: 0.7);
     final key = _ttsBlockKeys.putIfAbsent(index, GlobalKey.new);
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: highlighted
-              ? scheme.primaryContainer.withValues(alpha: 0.45)
-              : null,
-          borderRadius: BorderRadius.circular(6),
+      child: Text.rich(
+        TextSpan(
+          style: style,
+          children: [
+            for (var spanIndex = 0; spanIndex < block.spans.length; spanIndex++)
+              _ttsInlineSpan(
+                context,
+                block.spans[spanIndex],
+                style: style,
+                highlightColor: highlightColor,
+                highlight: novelTtsHighlightForSpan(
+                  highlights: highlights,
+                  blockIndex: index,
+                  spanIndex: spanIndex,
+                ),
+              ),
+          ],
         ),
-        child: Padding(
-          padding: highlighted
-              ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
-              : EdgeInsets.zero,
-          child: Text.rich(
-            TextSpan(
-              style: style,
-              children: [
-                for (final span in block.spans)
-                  novelSpansGenerator.novelSpansDatatoInlineSpan(
-                    context,
-                    span,
-                    onJumpToPage: _goToPage,
-                    onOpenNovel: (id) {
-                      Leader.push(context, NovelViewerPage(id: id));
-                    },
-                    style: style,
-                  ),
-              ],
-            ),
-            textHeightBehavior: const TextHeightBehavior(
-              applyHeightToLastDescent: true,
-            ),
-          ),
+        textHeightBehavior: const TextHeightBehavior(
+          applyHeightToLastDescent: true,
         ),
       ),
+    );
+  }
+
+  InlineSpan _ttsInlineSpan(
+    BuildContext context,
+    NovelSpansData span, {
+    required TextStyle style,
+    required Color highlightColor,
+    required NovelTtsSpanHighlight? highlight,
+  }) {
+    return novelSpansGenerator.novelSpansDatatoInlineSpan(
+      context,
+      span,
+      onJumpToPage: _goToPage,
+      onOpenNovel: (id) {
+        Leader.push(context, NovelViewerPage(id: id));
+      },
+      style: style,
+      ttsHighlightColor: highlightColor,
+      highlightStart: highlight?.start ?? 0,
+      highlightEnd: highlight?.end ?? 0,
     );
   }
 

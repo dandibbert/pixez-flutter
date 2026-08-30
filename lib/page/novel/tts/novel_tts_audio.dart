@@ -44,6 +44,7 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
   ConcatenatingAudioSource? _playlist;
   var _armed = false;
   var _replacing = false;
+  var _wantPause = false;
   var _lastIndex = 0;
 
   @override
@@ -101,7 +102,11 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
       _armed = true;
       // play() completes only when the clip ends or is paused. Awaiting it
       // would block pause/resume and keep the UI stuck on synthesizing.
-      unawaited(_player.play());
+      if (_wantPause) {
+        await _player.pause();
+      } else {
+        unawaited(_playUntilPaused());
+      }
     } catch (_) {
       _armed = false;
       _replacing = false;
@@ -151,6 +156,7 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
 
   @override
   Future<void> pause() async {
+    _wantPause = true;
     try {
       await _player.pause();
     } catch (_) {}
@@ -158,13 +164,13 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
 
   @override
   Future<void> resume() async {
-    try {
-      await _player.play();
-    } catch (_) {}
+    _wantPause = false;
+    unawaited(_playUntilPaused());
   }
 
   @override
   Future<void> stop() async {
+    _wantPause = false;
     _armed = false;
     _replacing = true;
     _playlist = null;
@@ -204,6 +210,17 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
     try {
       await _player.dispose();
     } catch (_) {}
+  }
+
+  Future<void> _playUntilPaused() async {
+    try {
+      await _player.play();
+    } catch (_) {}
+    if (_wantPause) {
+      try {
+        await _player.pause();
+      } catch (_) {}
+    }
   }
 
   Future<void> _rebuildPlayer() async {
