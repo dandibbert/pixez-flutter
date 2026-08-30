@@ -87,11 +87,14 @@ NovelTtsReading? parseNovelTtsReadingLine(String line) {
   }
   final eq = trimmed.indexOf('=');
   final tab = trimmed.indexOf('\t');
+  final colon = trimmed.indexOf(':');
   var split = -1;
   if (eq > 0 && (tab < 0 || eq < tab)) {
     split = eq;
   } else if (tab > 0) {
     split = tab;
+  } else if (colon > 0 && !trimmed.substring(colon + 1).startsWith('/')) {
+    split = colon;
   } else {
     final slash = trimmed.indexOf('/');
     if (slash > 0) {

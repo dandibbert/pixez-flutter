@@ -12,6 +12,7 @@ import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
 import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
+import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
@@ -360,6 +361,46 @@ void main() {
     expect(NovelTtsSettings.load().provider, NovelTtsProvider.openai);
   });
 
+  testWidgets('custom voice settings use chips and unclipped advanced fields', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const NovelTtsPage(
+          initial: NovelTtsSettings(
+            customUrl: 'https://host/tts?t=',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(ExpansionTile), findsNothing);
+    await tester.tap(find.byKey(novelTtsInsertTextChipKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey)).controller?.text,
+      contains('{text}'),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddHeaderKey));
+    await tester.pumpAndSettle();
+
+    final headerName = tester.getRect(find.byKey(novelTtsHeaderNameFieldKey));
+    expect(headerName.height, greaterThan(48));
+    await tester.enterText(find.byKey(novelTtsHeaderNameFieldKey), 'Authorization');
+    await tester.enterText(find.byKey(novelTtsHeaderValueFieldKey), 'Bearer tok');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(NovelTtsSettings.load().customHeaders, 'Authorization: Bearer tok');
+  });
+
   test('applies longer pronunciation marks before shorter ones', () {
     const readings = [
       NovelTtsReading(surface: '行', reading: 'こう'),
@@ -378,6 +419,31 @@ void main() {
         const NovelTtsReading(surface: '行先', reading: 'ゆきさき'),
       ],
     );
+    expect(
+      parseNovelTtsReadingLines('悟:さとる\nAuthorization=skip'),
+      [
+        const NovelTtsReading(surface: '悟', reading: 'さとる'),
+        const NovelTtsReading(surface: 'Authorization', reading: 'skip'),
+      ],
+    );
+    expect(parseNovelTtsReadingLine('今日きょう'), isNull);
+  });
+
+  test('parses request headers with colon or equals', () {
+    expect(
+      parseNovelTtsHeaderLines('Authorization: Bearer tok\nX-Voice=alloy\n'),
+      {
+        'Authorization': 'Bearer tok',
+        'X-Voice': 'alloy',
+      },
+    );
+    expect(
+      serializeNovelTtsHeaderLines({'Authorization': 'Bearer tok'}),
+      'Authorization: Bearer tok',
+    );
+    expect(formatMicrosoftRatePercent(-10), '-10%');
+    expect(parseMicrosoftRatePercent('+20%'), 20);
+    expect(languageFromMicrosoftVoice('ja-JP-NanamiNeural'), 'ja-JP');
   });
 
   test('controller synthesizes the marked reading, not the written form', () async {
