@@ -5,9 +5,11 @@ import 'package:pixez/page/novel/tts/synthesis/novel_tts_synthesis_engine.dart';
 class NovelTtsBufferedSession {
   NovelTtsBufferedSession({
     required this.audio,
+    this.playbackController,
     this.policy = const TtsBufferPolicy(),
   });
   final NovelTtsAudioPort audio;
+  final NovelTtsPlaybackController? playbackController;
   final TtsBufferPolicy policy;
   final TtsGenerationGuard _guard = TtsGenerationGuard();
   Duration bufferedDuration = Duration.zero;
@@ -26,16 +28,25 @@ class NovelTtsBufferedSession {
       if (!_guard.accepts(token)) return;
       final item = _playbackItem(synthesized);
       if (!_loaded) {
-        await audio.load([item]);
+        if (playbackController != null) {
+          await playbackController!.load([item]);
+        } else {
+          await audio.load([item]);
+        }
         _loaded = true;
       } else {
-        await audio.append(item);
+        if (playbackController != null) {
+          await playbackController!.append(item);
+        } else {
+          await audio.append(item);
+        }
       }
       if (!_guard.accepts(token)) return;
       bufferedDuration += item.duration;
+      playbackController?.updateBufferedDuration(bufferedDuration);
       final decision = policy.evaluate(bufferedDuration, starting: true);
       if (autoPlay && !_started && decision.canStart) {
-        await audio.play();
+        await (playbackController?.play() ?? audio.play());
         _started = true;
       }
     }
@@ -56,7 +67,8 @@ class NovelTtsBufferedSession {
     bufferedDuration = Duration.zero;
     _loaded = false;
     _started = false;
-    await audio.stop();
+    playbackController?.updateBufferedDuration(Duration.zero);
+    await (playbackController?.stop() ?? audio.stop());
   }
 
   NovelTtsPlaybackItem _playbackItem(NovelTtsSynthesisItem item) =>

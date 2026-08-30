@@ -100,6 +100,50 @@ class NovelTtsSynthesisEngine {
   final PronunciationEngine _pronunciation;
   final TtsAtomicCacheWriter _writer;
 
+  Stream<NovelTtsSynthesisItem> synthesizeIncrementally({
+    required NovelTtsDocument document,
+    required TtsProfile profile,
+    required List<PronunciationRule> rules,
+    required PronunciationContext context,
+    required String title,
+    required String author,
+    Map<String, String> secrets = const {},
+    int startPage = 1,
+    int startTextOffset = 0,
+    TtsGenerationGuard? guard,
+    TtsGenerationToken? token,
+  }) async* {
+    if (startPage < 1 || startPage > document.pages.length) {
+      throw RangeError.range(startPage, 1, document.pages.length, 'startPage');
+    }
+    for (final page in document.pages.where(
+      (page) => page.pageNumber >= startPage,
+    )) {
+      _ensureCurrent(guard, token);
+      final pageDocument = NovelTtsDocument(
+        novelId: document.novelId,
+        pages: [page],
+      );
+      final items = await synthesize(
+        document: pageDocument,
+        profile: profile,
+        rules: rules,
+        context: context,
+        title: title,
+        author: author,
+        secrets: secrets,
+        startPage: 1,
+        startTextOffset: page.pageNumber == startPage ? startTextOffset : 0,
+        guard: guard,
+        token: token,
+      );
+      for (final item in items) {
+        _ensureCurrent(guard, token);
+        yield item;
+      }
+    }
+  }
+
   Future<List<NovelTtsSynthesisItem>> synthesize({
     required NovelTtsDocument document,
     required TtsProfile profile,
@@ -109,34 +153,51 @@ class NovelTtsSynthesisEngine {
     required String author,
     Map<String, String> secrets = const {},
     int startPage = 1,
+    int startTextOffset = 0,
     TtsGenerationGuard? guard,
     TtsGenerationToken? token,
   }) async {
     if (startPage < 1 || startPage > document.pages.length)
       throw RangeError.range(startPage, 1, document.pages.length, 'startPage');
     final result = <NovelTtsSynthesisItem>[];
+    var firstSelectedPage = true;
     for (final page in document.pages.where(
       (page) => page.pageNumber >= startPage,
     )) {
       _ensureCurrent(guard, token);
-      final pageProjection = _pronunciation.apply(
+      final requestedOffset = firstSelectedPage ? startTextOffset : 0;
+      firstSelectedPage = false;
+      final pageOffset = _safeStartOffset(
         page.displayText,
+        requestedOffset,
+        page.ruby,
+      );
+      final pageText = page.displayText.substring(pageOffset);
+      final pageRuby = page.ruby
+          .where((item) => item.start >= pageOffset)
+          .map(
+            (item) => PronunciationRuby(
+              start: item.start - pageOffset,
+              end: item.end - pageOffset,
+              reading: item.reading,
+            ),
+          )
+          .toList(growable: false);
+      if (pageText.isEmpty) continue;
+      final pageProjection = _pronunciation.apply(
+        pageText,
         rules,
         context,
-        ruby: page.ruby,
+        ruby: pageRuby,
       );
-      final segments =
-          NaturalTextSegmenter(
-            targetLength: targetLength,
-            maxLength: maxLength,
-          ).split(
-            page.displayText,
-            protectedRanges: pageProjection.protectedRanges,
-          );
+      final segments = NaturalTextSegmenter(
+        targetLength: targetLength,
+        maxLength: maxLength,
+      ).split(pageText, protectedRanges: pageProjection.protectedRanges);
       for (var index = 0; index < segments.length; index++) {
         _ensureCurrent(guard, token);
         final segment = segments[index];
-        final ruby = page.ruby
+        final ruby = pageRuby
             .where(
               (item) => item.start >= segment.start && item.end <= segment.end,
             )
@@ -204,6 +265,24 @@ class NovelTtsSynthesisEngine {
       }
     }
     return List.unmodifiable(result);
+  }
+
+  int _safeStartOffset(
+    String text,
+    int requested,
+    List<PronunciationRuby> ruby,
+  ) {
+    if (requested <= 0) return 0;
+    if (requested >= text.length) return text.length;
+    var offset = 0;
+    for (final grapheme in text.characters) {
+      offset += grapheme.length;
+      if (offset >= requested) break;
+    }
+    for (final item in ruby) {
+      if (offset > item.start && offset < item.end) return item.end;
+    }
+    return offset;
   }
 
   Future<bool> _validFile(File file) async {
