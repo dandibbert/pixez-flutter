@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
@@ -10,6 +11,12 @@ const Key novelTtsProviderCustomKey = Key('novelTtsProviderCustom');
 const Key novelTtsSplitCharsFieldKey = Key('novelTtsSplitCharsField');
 const Key novelTtsAutoContinueKey = Key('novelTtsAutoContinue');
 const Key novelTtsCustomUrlFieldKey = Key('novelTtsCustomUrlField');
+const Key novelTtsReadingsSectionKey = Key('novelTtsReadingsSection');
+const Key novelTtsAddReadingKey = Key('novelTtsAddReading');
+const Key novelTtsBulkReadingKey = Key('novelTtsBulkReading');
+const Key novelTtsReadingSurfaceFieldKey = Key('novelTtsReadingSurface');
+const Key novelTtsReadingValueFieldKey = Key('novelTtsReadingValue');
+const Key novelTtsReadingSaveKey = Key('novelTtsReadingSave');
 
 class NovelTtsPage extends StatefulWidget {
   const NovelTtsPage({super.key, this.initial});
@@ -121,82 +128,104 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     );
   }
 
+  Future<void> _setReadings(List<NovelTtsReading> readings) {
+    return _persist(_draft().copyWith(readings: readings));
+  }
+
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.of(context);
     return Scaffold(
       key: novelTtsSettingsPageKey,
       appBar: AppBar(title: Text(i18n.novel_tts_settings)),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        children: [
-          Text(
-            i18n.novel_tts_provider,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+          _Section(
+            title: i18n.novel_tts_section_voice,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ProviderChip(
-                  key: novelTtsProviderMicrosoftKey,
-                  selected: _settings.provider == NovelTtsProvider.microsoft,
-                  label: i18n.novel_tts_provider_microsoft,
-                  onTap: () => _persist(
-                    _draft().copyWith(provider: NovelTtsProvider.microsoft),
-                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ProviderChip(
+                      key: novelTtsProviderMicrosoftKey,
+                      selected: _settings.provider == NovelTtsProvider.microsoft,
+                      label: i18n.novel_tts_provider_microsoft,
+                      onTap: () => _persist(
+                        _draft().copyWith(provider: NovelTtsProvider.microsoft),
+                      ),
+                    ),
+                    _ProviderChip(
+                      key: novelTtsProviderOpenaiKey,
+                      selected: _settings.provider == NovelTtsProvider.openai,
+                      label: i18n.novel_tts_provider_openai,
+                      onTap: () => _persist(
+                        _draft().copyWith(provider: NovelTtsProvider.openai),
+                      ),
+                    ),
+                    _ProviderChip(
+                      key: novelTtsProviderCustomKey,
+                      selected: _settings.provider == NovelTtsProvider.custom,
+                      label: i18n.novel_tts_provider_custom,
+                      onTap: () => _persist(
+                        _draft().copyWith(provider: NovelTtsProvider.custom),
+                      ),
+                    ),
+                  ],
                 ),
-                _ProviderChip(
-                  key: novelTtsProviderOpenaiKey,
-                  selected: _settings.provider == NovelTtsProvider.openai,
-                  label: i18n.novel_tts_provider_openai,
-                  onTap: () => _persist(
-                    _draft().copyWith(provider: NovelTtsProvider.openai),
+                const SizedBox(height: 16),
+                if (_settings.provider == NovelTtsProvider.microsoft)
+                  ..._microsoftFields(i18n),
+                if (_settings.provider == NovelTtsProvider.openai)
+                  ..._openaiFields(i18n),
+                if (_settings.provider == NovelTtsProvider.custom)
+                  ..._customFields(i18n),
+              ],
+            ),
+          ),
+          _Section(
+            title: i18n.novel_tts_section_playback,
+            child: Column(
+              children: [
+                TextField(
+                  key: novelTtsSplitCharsFieldKey,
+                  controller: _splitChars,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: i18n.novel_tts_split_chars,
+                    helperText: i18n.novel_tts_split_chars_hint,
+                    border: const OutlineInputBorder(),
                   ),
+                  onEditingComplete: () => _persist(_draft()),
+                  onSubmitted: (_) => _persist(_draft()),
                 ),
-                _ProviderChip(
-                  key: novelTtsProviderCustomKey,
-                  selected: _settings.provider == NovelTtsProvider.custom,
-                  label: i18n.novel_tts_provider_custom,
-                  onTap: () => _persist(
-                    _draft().copyWith(provider: NovelTtsProvider.custom),
-                  ),
+                SwitchListTile(
+                  key: novelTtsAutoContinueKey,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(i18n.novel_tts_auto_continue),
+                  subtitle: Text(i18n.novel_tts_lock_screen_hint),
+                  value: _settings.autoContinue,
+                  onChanged: (value) =>
+                      _persist(_draft().copyWith(autoContinue: value)),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            key: novelTtsSplitCharsFieldKey,
-            controller: _splitChars,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: i18n.novel_tts_split_chars,
-              helperText: i18n.novel_tts_split_chars_hint,
-              border: const OutlineInputBorder(),
+          _Section(
+            key: novelTtsReadingsSectionKey,
+            title: i18n.novel_tts_section_readings,
+            child: _ReadingsEditor(
+              readings: _settings.readings,
+              onChanged: _setReadings,
             ),
-            onEditingComplete: () => _persist(_draft()),
-            onSubmitted: (_) => _persist(_draft()),
           ),
-          SwitchListTile(
-            key: novelTtsAutoContinueKey,
-            contentPadding: EdgeInsets.zero,
-            title: Text(i18n.novel_tts_auto_continue),
-            subtitle: Text(i18n.novel_tts_lock_screen_hint),
-            value: _settings.autoContinue,
-            onChanged: (value) =>
-                _persist(_draft().copyWith(autoContinue: value)),
-          ),
-          const SizedBox(height: 8),
-          if (_settings.provider == NovelTtsProvider.microsoft)
-            ..._microsoftFields(i18n),
-          if (_settings.provider == NovelTtsProvider.openai)
-            ..._openaiFields(i18n),
-          if (_settings.provider == NovelTtsProvider.custom)
-            ..._customFields(i18n),
         ],
+        ),
       ),
     );
   }
@@ -255,21 +284,33 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       ),
       const SizedBox(height: 12),
       _box(_customVoice, i18n.novel_tts_custom_voice),
-      _box(_customHeaders, i18n.novel_tts_custom_headers, minLines: 2),
-      _box(_customBody, i18n.novel_tts_custom_body, minLines: 3),
-      _box(_customContentType, i18n.novel_tts_custom_content_type),
-      Text(
-        i18n.novel_tts_custom_variables,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-      Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text(
-          '{text} {voice} {voiceName} {lang} {speed} {model}',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontFamily: 'monospace',
+      ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(i18n.novel_tts_advanced),
+        children: [
+          _box(_customHeaders, i18n.novel_tts_custom_headers, minLines: 2),
+          _box(_customBody, i18n.novel_tts_custom_body, minLines: 3),
+          _box(_customContentType, i18n.novel_tts_custom_content_type),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              i18n.novel_tts_custom_variables,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '{text} {voice} {voiceName} {lang} {speed} {model}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     ];
   }
@@ -294,6 +335,275 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
         onEditingComplete: () => _persist(_draft()),
         onSubmitted: (_) => _persist(_draft()),
       ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({super.key, required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: scheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadingsEditor extends StatelessWidget {
+  const _ReadingsEditor({required this.readings, required this.onChanged});
+
+  final List<NovelTtsReading> readings;
+  final ValueChanged<List<NovelTtsReading>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = I18n.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          i18n.novel_tts_readings_hint,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        if (readings.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              i18n.novel_tts_readings_empty,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        else
+          ...[
+            for (var i = 0; i < readings.length; i++)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(readings[i].surface),
+                subtitle: Text(readings[i].reading),
+                onTap: () => _edit(context, index: i),
+                trailing: IconButton(
+                  tooltip: i18n.novel_tts_reading_delete,
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () {
+                    final next = [...readings]..removeAt(i);
+                    onChanged(next);
+                  },
+                ),
+              ),
+          ],
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.tonalIcon(
+              key: novelTtsAddReadingKey,
+              onPressed: () => _edit(context),
+              icon: const Icon(Icons.add),
+              label: Text(i18n.novel_tts_reading_add),
+            ),
+            OutlinedButton(
+              key: novelTtsBulkReadingKey,
+              onPressed: () => _bulk(context),
+              child: Text(i18n.novel_tts_reading_bulk),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _edit(BuildContext context, {int? index}) async {
+    final saved = await showDialog<NovelTtsReading>(
+      context: context,
+      builder: (context) {
+        return _ReadingDialog(initial: index == null ? null : readings[index]);
+      },
+    );
+    if (saved == null) {
+      return;
+    }
+    final next = [...readings];
+    if (index == null) {
+      next.add(saved);
+    } else {
+      next[index] = saved;
+    }
+    onChanged(next);
+  }
+
+  Future<void> _bulk(BuildContext context) async {
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (context) => const _BulkReadingDialog(),
+    );
+    if (raw == null) {
+      return;
+    }
+    final parsed = parseNovelTtsReadingLines(raw);
+    if (parsed.isEmpty) {
+      return;
+    }
+    onChanged([...readings, ...parsed]);
+  }
+}
+
+class _ReadingDialog extends StatefulWidget {
+  const _ReadingDialog({this.initial});
+
+  final NovelTtsReading? initial;
+
+  @override
+  State<_ReadingDialog> createState() => _ReadingDialogState();
+}
+
+class _ReadingDialogState extends State<_ReadingDialog> {
+  late final TextEditingController _surface;
+  late final TextEditingController _reading;
+
+  @override
+  void initState() {
+    super.initState();
+    _surface = TextEditingController(text: widget.initial?.surface ?? '');
+    _reading = TextEditingController(text: widget.initial?.reading ?? '');
+  }
+
+  @override
+  void dispose() {
+    _surface.dispose();
+    _reading.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = I18n.of(context);
+    return AlertDialog(
+      title: Text(
+        widget.initial == null
+            ? i18n.novel_tts_reading_add
+            : i18n.novel_tts_reading_edit,
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: novelTtsReadingSurfaceFieldKey,
+              controller: _surface,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: i18n.novel_tts_reading_surface,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: novelTtsReadingValueFieldKey,
+              controller: _reading,
+              decoration: InputDecoration(
+                labelText: i18n.novel_tts_reading_value,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(i18n.cancel),
+        ),
+        FilledButton(
+          key: novelTtsReadingSaveKey,
+          onPressed: () {
+            final next = NovelTtsReading(
+              surface: _surface.text,
+              reading: _reading.text,
+            ).trimmed();
+            if (!next.isValid) {
+              return;
+            }
+            Navigator.of(context).pop(next);
+          },
+          child: Text(i18n.novel_tts_reading_save),
+        ),
+      ],
+    );
+  }
+}
+
+class _BulkReadingDialog extends StatefulWidget {
+  const _BulkReadingDialog();
+
+  @override
+  State<_BulkReadingDialog> createState() => _BulkReadingDialogState();
+}
+
+class _BulkReadingDialogState extends State<_BulkReadingDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = I18n.of(context);
+    return AlertDialog(
+      title: Text(i18n.novel_tts_reading_bulk),
+      content: TextField(
+        controller: _controller,
+        minLines: 6,
+        maxLines: 12,
+        decoration: InputDecoration(
+          hintText: i18n.novel_tts_reading_bulk_hint,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(i18n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(i18n.novel_tts_reading_save),
+        ),
+      ],
     );
   }
 }
