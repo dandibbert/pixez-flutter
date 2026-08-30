@@ -14,29 +14,59 @@ class PerfCounters {
   static int responses = 0;
   static int errors = 0;
 
+  /// Image traffic runs through its own Dio, so it is counted separately.
+  /// A quiet API count says nothing about the radio if thumbnails are still
+  /// streaming.
+  static int imageRequests = 0;
+  static int imageErrors = 0;
+
+  /// Speech synthesis talks to its provider over its own `HttpClient`, so it
+  /// is invisible to both Dio counters above.
+  static int ttsRequests = 0;
+
+  /// Downloads run in their own isolate, which no probe on this isolate can
+  /// see. These read the queue the main isolate hands it.
+  static int Function()? downloadQueued;
+  static int Function()? downloadRunning;
+
   static void reset() {
     requests = 0;
     responses = 0;
     errors = 0;
+    imageRequests = 0;
+    imageErrors = 0;
+    ttsRequests = 0;
   }
 }
 
 class PerfCountingInterceptor extends Interceptor {
+  const PerfCountingInterceptor({this.images = false});
+
+  final bool images;
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    PerfCounters.requests++;
+    if (images) {
+      PerfCounters.imageRequests++;
+    } else {
+      PerfCounters.requests++;
+    }
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    PerfCounters.responses++;
+    if (!images) PerfCounters.responses++;
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    PerfCounters.errors++;
+    if (images) {
+      PerfCounters.imageErrors++;
+    } else {
+      PerfCounters.errors++;
+    }
     handler.next(err);
   }
 }
@@ -61,7 +91,13 @@ class PerfSample {
     required this.requests,
     required this.totalRequests,
     required this.errors,
+    required this.imageRequests,
+    required this.totalImageRequests,
+    required this.downloadQueued,
+    required this.downloadRunning,
+    required this.ttsRequests,
     required this.lagMs,
+    required this.cpuMicros,
     required this.liveImages,
     required this.imageCacheMb,
     required this.rssMb,
@@ -84,7 +120,17 @@ class PerfSample {
   final int requests;
   final int totalRequests;
   final int errors;
+  final int imageRequests;
+  final int totalImageRequests;
+  final int downloadQueued;
+  final int downloadRunning;
+  final int ttsRequests;
   final double lagMs;
+
+  /// How long a fixed amount of arithmetic took. Nothing else on this isolate
+  /// competes with it, so when this climbs the SoC is loaded or throttling —
+  /// which is how work on threads Dart cannot see shows up.
+  final int cpuMicros;
   final int liveImages;
   final double imageCacheMb;
   final double rssMb;
@@ -117,12 +163,16 @@ class PerfSample {
       'frames ${frames.toString().padLeft(3)}/${window.inSeconds}s '
           '${n(fps)}fps @${refreshRate.round()}Hz  $activityLabel',
       'duty   ${dutyPercent.round()}% of ${historyWindow.inSeconds}s'
-          '   touch $pointerEvents'
+          '  touch $pointerEvents'
           '${drawsUntouched ? '  << UNTOUCHED' : ''}',
       'build  avg ${n(avgBuildMs)}  max ${n(maxBuildMs)} ms',
       'raster avg ${n(avgRasterMs)}  max ${n(maxRasterMs)} ms',
-      'net    $requests req ($totalRequests all) $errors err  lag ${n(lagMs)}ms',
-      'images $liveImages live ${n(imageCacheMb)}MB  rss ${n(rssMb)}MB',
+      'api    $requests req ($totalRequests all) $errors err',
+      'img    $imageRequests req ($totalImageRequests all)'
+          '  $liveImages live ${n(imageCacheMb)}MB',
+      'dl     $downloadQueued queued  $downloadRunning running'
+          '   tts $ttsRequests req',
+      'lag ${n(lagMs)}ms  cpu ${cpuMicros}us  rss ${n(rssMb)}MB',
     ];
   }
 }
@@ -157,9 +207,11 @@ class _PerfProbeState extends State<PerfProbe> {
   double _rasterMax = 0;
   int _requestsAtWindowStart = 0;
   int _errorsAtWindowStart = 0;
+  int _imageRequestsAtWindowStart = 0;
   int _pointerEvents = 0;
   final List<int> _frameHistory = <int>[];
   double _lagMs = 0;
+  int _cpuMicros = 0;
   Timer? _ticker;
   Timer? _lagTimer;
   DateTime _lagScheduledFor = DateTime.now();
@@ -213,6 +265,21 @@ class _PerfProbeState extends State<PerfProbe> {
     }
   }
 
+  /// Times a fixed amount of arithmetic. On an unloaded, cool device this is
+  /// stable; when other threads saturate the SoC or it starts throttling, the
+  /// same work takes measurably longer. That is the only handle Dart has on
+  /// load it cannot otherwise observe.
+  void _measureCpu() {
+    final watch = Stopwatch()..start();
+    var accumulator = 0;
+    for (var i = 1; i <= 50000; i++) {
+      accumulator += i % 7;
+    }
+    watch.stop();
+    // Reading the sum keeps the loop from being optimised away.
+    _cpuMicros = accumulator == 0 ? 0 : watch.elapsedMicroseconds;
+  }
+
   double _refreshRate() {
     try {
       final rate = WidgetsBinding
@@ -231,6 +298,7 @@ class _PerfProbeState extends State<PerfProbe> {
     if (!mounted) return;
     final frames = _frames;
     final refreshRate = _refreshRate();
+    _measureCpu();
 
     final historyLength =
         (widget.historyWindow.inMilliseconds / widget.window.inMilliseconds)
@@ -262,7 +330,13 @@ class _PerfProbeState extends State<PerfProbe> {
       requests: PerfCounters.requests - _requestsAtWindowStart,
       totalRequests: PerfCounters.requests,
       errors: PerfCounters.errors - _errorsAtWindowStart,
+      imageRequests: PerfCounters.imageRequests - _imageRequestsAtWindowStart,
+      totalImageRequests: PerfCounters.imageRequests,
+      downloadQueued: PerfCounters.downloadQueued?.call() ?? 0,
+      downloadRunning: PerfCounters.downloadRunning?.call() ?? 0,
+      ttsRequests: PerfCounters.ttsRequests,
       lagMs: _lagMs,
+      cpuMicros: _cpuMicros,
       liveImages: imageCache.liveImageCount,
       imageCacheMb: imageCache.currentSizeBytes / (1024 * 1024),
       rssMb: _rssMb(),
@@ -275,6 +349,7 @@ class _PerfProbeState extends State<PerfProbe> {
     _pointerEvents = 0;
     _requestsAtWindowStart = PerfCounters.requests;
     _errorsAtWindowStart = PerfCounters.errors;
+    _imageRequestsAtWindowStart = PerfCounters.imageRequests;
     setState(() => _sample = sample);
   }
 

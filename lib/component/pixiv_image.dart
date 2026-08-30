@@ -20,6 +20,7 @@ import 'package:dio_compatibility_layer/dio_compatibility_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager_dio/flutter_cache_manager_dio.dart';
 
+import 'package:pixez/component/perf_probe.dart';
 import 'package:pixez/component/pixiv_image_status.dart';
 import 'package:pixez/er/hoster.dart';
 import 'package:pixez/er/illust_cacher.dart';
@@ -120,6 +121,7 @@ class PixivImage extends StatefulWidget {
       return;
     }
     final dio = Dio();
+    dio.interceptors.add(const PerfCountingInterceptor(images: true));
     dio.interceptors.add(
       PixivImageSourceInterceptor(
         networkMode: () => userSetting.networkMode,

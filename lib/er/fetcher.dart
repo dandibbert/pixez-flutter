@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_cache_manager_dio/flutter_cache_manager_dio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pixez/component/perf_probe.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/er/hoster.dart';
 import 'package:pixez/er/lprinter.dart';
@@ -96,6 +97,11 @@ class Fetcher {
 
   start(String pictureSource) async {
     if (receivePort.isBroadcast) return;
+    // Downloads run in another isolate that no probe on the UI isolate can
+    // see; expose the queue it is fed from so an idle-looking app that is
+    // still pulling files is visible.
+    PerfCounters.downloadQueued = () => queue.length;
+    PerfCounters.downloadRunning = () => urlPool.length;
     await taskPersistProvider.open();
     await taskPersistProvider.getAllAccount();
     LPrinter.d("Fetcher start");
