@@ -429,6 +429,21 @@ void main() {
       novelTtsBlockIndexForClip(blocks: blocks, clipText: '第一段先写在这里。'),
       0,
     );
+    expect(
+      novelTtsChunkIndexForBlock(
+        blocks: [
+          NovelReaderBlock.spans([
+            NovelSpansData(NovelSpansType.normal, '这是第一句用来测试拆分的。'),
+          ]),
+          NovelReaderBlock.spans([
+            NovelSpansData(NovelSpansType.normal, '这是第二句用来测试拆分的。'),
+          ]),
+        ],
+        blockIndex: 1,
+        splitChars: 20,
+      ),
+      1,
+    );
   });
 
   test('can pause while synthesizing and resume afterwards', () async {
@@ -513,6 +528,18 @@ void main() {
     );
     expect(controller.clipIndex, 1);
     expect(controller.subtitle, '这是第二句用来测试拆分的。');
+
+    await controller.start(
+      novelId: 7,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+      startChunk: 0,
+    );
+    expect(controller.clipIndex, 0);
+    expect(controller.subtitle, '这是第一句用来测试拆分的。');
 
     await controller.start(
       novelId: 7,

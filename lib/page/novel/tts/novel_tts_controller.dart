@@ -237,7 +237,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     String? coverUrl,
     int? prevSeriesId,
     int? nextSeriesId,
-    int startChunk = 0,
+    int? startChunk,
   }) async {
     final loaded = settings;
     if (!loaded.isConfigured) {
@@ -292,11 +292,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
     clipIndex = _indexOf(
       page: page,
-      chunkIndex: _resumeChunk(
-        novelId: novelId,
-        page: page,
-        startChunk: startChunk,
-      ),
+      chunkIndex: startChunk ??
+          _bookmarkChunk(novelId: novelId, page: page) ??
+          0,
     );
     errorMessage = null;
     _holdAfterReady = false;
@@ -735,19 +733,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
   }
 
-  int _resumeChunk({
-    required int novelId,
-    required int page,
-    required int startChunk,
-  }) {
-    if (startChunk != 0) {
-      return startChunk;
-    }
+  int? _bookmarkChunk({required int novelId, required int page}) {
     final mark = bookmark;
     if (mark != null && mark.novelId == novelId && mark.page == page) {
       return mark.chunkIndex;
     }
-    return 0;
+    return null;
   }
 
   void _applyClip(int index, {bool keepPlaying = false}) {

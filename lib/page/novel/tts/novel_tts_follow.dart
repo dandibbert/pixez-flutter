@@ -1,3 +1,6 @@
+import 'package:flutter/rendering.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 
@@ -39,4 +42,50 @@ int novelTtsBlockIndexForClip({
     cursor = end;
   }
   return lastSpoken;
+}
+
+/// First block whose bottom edge sits below the article viewport top.
+int novelTtsFirstVisibleBlockIndex({
+  required List<GlobalKey> keys,
+  required double viewportTop,
+}) {
+  var fallback = 0;
+  for (var i = 0; i < keys.length; i++) {
+    final box = keys[i].currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) {
+      continue;
+    }
+    fallback = i;
+    final top = box.localToGlobal(Offset.zero).dy;
+    if (top + box.size.height > viewportTop + 12) {
+      return i;
+    }
+  }
+  return fallback;
+}
+
+/// Chunk index on the current page that covers [blockIndex].
+int novelTtsChunkIndexForBlock({
+  required List<NovelReaderBlock> blocks,
+  required int blockIndex,
+  required int splitChars,
+}) {
+  if (blocks.isEmpty) {
+    return 0;
+  }
+  final index = blockIndex.clamp(0, blocks.length - 1);
+  final pageText = novelTtsTextFromBlocks(blocks);
+  final chunks = splitNovelTtsText(pageText, maxChars: splitChars);
+  if (chunks.isEmpty) {
+    return 0;
+  }
+  final prefix = novelTtsTextFromBlocks(blocks.take(index));
+  var consumed = 0;
+  for (var i = 0; i < chunks.length; i++) {
+    consumed += chunks[i].length;
+    if (consumed > prefix.length) {
+      return i;
+    }
+  }
+  return chunks.length - 1;
 }

@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bot_toast/bot_toast.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -80,6 +81,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   int _ttsUiClip = -1;
   NovelTtsStatus? _ttsUiStatus;
   int? _ttsUiPage;
+  final Map<int, GlobalKey> _ttsBlockKeys = {};
   final Map<int, NovelStore> _prefetchedTtsStores = {};
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
@@ -152,6 +154,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   void _goToPage(int page) {
     final next = clampNovelPage(page, _totalPages);
+    if (next != _currentPage) {
+      _ttsBlockKeys.clear();
+    }
     setState(() {
       _currentPage = next;
     });
@@ -337,8 +342,63 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       nextSeriesId: navigation?.nextNovel?.viewable == true
           ? navigation!.nextNovel!.id
           : null,
-      startChunk: fromEnd ? 1 << 20 : 0,
+      startChunk: fromEnd ? 1 << 20 : _visibleStartChunk(page),
     );
+  }
+
+  int _visibleStartChunk(int page) {
+    final pages = _pages;
+    if (pages.isEmpty) {
+      return 0;
+    }
+    final pageIndex = clampNovelPage(page, pages.length) - 1;
+    final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
+    if (blocks.isEmpty) {
+      return 0;
+    }
+    final viewportTop = _articleViewportTop();
+    var blockIndex = 0;
+    if (viewportTop != null) {
+      blockIndex = novelTtsFirstVisibleBlockIndex(
+        keys: [
+          for (var i = 0; i < blocks.length; i++)
+            _ttsBlockKeys.putIfAbsent(i, GlobalKey.new),
+        ],
+        viewportTop: viewportTop,
+      );
+    } else {
+      final controller = _controller;
+      if (controller != null &&
+          controller.hasClients &&
+          controller.position.maxScrollExtent > 0) {
+        blockIndex =
+            (controller.offset /
+                    controller.position.maxScrollExtent *
+                    (blocks.length - 1))
+                .round()
+                .clamp(0, blocks.length - 1);
+      }
+    }
+    return novelTtsChunkIndexForBlock(
+      blocks: blocks,
+      blockIndex: blockIndex,
+      splitChars: _tts.settings.clampedSplitChars,
+    );
+  }
+
+  double? _articleViewportTop() {
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) {
+      return null;
+    }
+    final context =
+        controller.position.context.notificationContext ??
+        controller.position.context.storageContext;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) {
+      return null;
+    }
+    return box.localToGlobal(Offset.zero).dy;
   }
 
   Future<void> _attachTtsPage({bool fromEnd = false}) async {
@@ -612,6 +672,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               context,
               blocks[index],
               style,
+              index: index,
               highlighted: index == followBlock,
             );
           },
@@ -644,13 +705,16 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     BuildContext context,
     NovelReaderBlock block,
     TextStyle style, {
+    required int index,
     required bool highlighted,
   }) {
     if (block.isBlank) {
       return SizedBox(height: style.fontSize ?? 16);
     }
     final scheme = Theme.of(context).colorScheme;
+    final key = _ttsBlockKeys.putIfAbsent(index, GlobalKey.new);
     return Padding(
+      key: key,
       padding: const EdgeInsets.only(bottom: 10),
       child: DecoratedBox(
         decoration: BoxDecoration(

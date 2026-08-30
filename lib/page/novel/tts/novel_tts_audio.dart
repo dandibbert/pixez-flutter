@@ -36,7 +36,7 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
   JustAudioNovelTtsPlayer({AudioPlayer? player})
     : _player = player ?? AudioPlayer();
 
-  final AudioPlayer _player;
+  AudioPlayer _player;
   final StreamController<void> _completed = StreamController<void>.broadcast();
   final StreamController<int> _clipIndex = StreamController<int>.broadcast();
   StreamSubscription<PlayerState>? _stateSub;
@@ -56,7 +56,7 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
         _armed = false;
         _completed.add(null);
       }
-    });
+    }, onError: (_) {});
     _indexSub ??= _player.currentIndexStream.listen((index) {
       if (!_armed || _replacing || index == null) {
         return;
@@ -65,7 +65,7 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
         _lastIndex = index;
         _clipIndex.add(index);
       }
-    });
+    }, onError: (_) {});
   }
 
   @override
@@ -97,11 +97,17 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
     _lastIndex = 0;
     try {
       await _player.setAudioSource(playlist, preload: true);
+      _replacing = false;
+      _armed = true;
+      await _player.play();
+    } catch (_) {
+      _armed = false;
+      _replacing = false;
+      await _rebuildPlayer();
+      rethrow;
     } finally {
       _replacing = false;
     }
-    _armed = true;
-    await _player.play();
   }
 
   @override
@@ -110,32 +116,50 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
     if (!_armed || _replacing || playlist == null) {
       return;
     }
-    await playlist.add(AudioSource.file(path));
+    try {
+      await playlist.add(AudioSource.file(path));
+    } catch (_) {}
   }
 
   @override
   Future<bool> seekNext() async {
-    if (!_player.hasNext) {
+    try {
+      if (!_player.hasNext) {
+        return false;
+      }
+      await _player.seekToNext();
+      return true;
+    } catch (_) {
       return false;
     }
-    await _player.seekToNext();
-    return true;
   }
 
   @override
   Future<bool> seekPrevious() async {
-    if (!_player.hasPrevious) {
+    try {
+      if (!_player.hasPrevious) {
+        return false;
+      }
+      await _player.seekToPrevious();
+      return true;
+    } catch (_) {
       return false;
     }
-    await _player.seekToPrevious();
-    return true;
   }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    try {
+      await _player.pause();
+    } catch (_) {}
+  }
 
   @override
-  Future<void> resume() => _player.play();
+  Future<void> resume() async {
+    try {
+      await _player.play();
+    } catch (_) {}
+  }
 
   @override
   Future<void> stop() async {
@@ -144,23 +168,52 @@ class JustAudioNovelTtsPlayer implements NovelTtsAudioPlayer {
     _playlist = null;
     try {
       await _player.stop();
+    } catch (_) {
     } finally {
       _replacing = false;
     }
   }
 
   @override
-  Future<Duration?> get position async => _player.position;
+  Future<Duration?> get position async {
+    try {
+      return _player.position;
+    } catch (_) {
+      return Duration.zero;
+    }
+  }
 
   @override
-  Future<Duration?> get duration async => _player.duration;
+  Future<Duration?> get duration async {
+    try {
+      return _player.duration;
+    } catch (_) {
+      return Duration.zero;
+    }
+  }
 
   @override
   Future<void> dispose() async {
+    _armed = false;
     await _stateSub?.cancel();
     await _indexSub?.cancel();
     await _completed.close();
     await _clipIndex.close();
-    await _player.dispose();
+    try {
+      await _player.dispose();
+    } catch (_) {}
+  }
+
+  Future<void> _rebuildPlayer() async {
+    await _stateSub?.cancel();
+    await _indexSub?.cancel();
+    _stateSub = null;
+    _indexSub = null;
+    _playlist = null;
+    try {
+      await _player.dispose();
+    } catch (_) {}
+    _player = AudioPlayer();
+    listen();
   }
 }
