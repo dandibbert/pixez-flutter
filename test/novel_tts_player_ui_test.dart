@@ -45,9 +45,27 @@ void main() {
       ),
     );
     expect(find.text('从第一页开始'), findsOneWidget);
-    expect(find.text('从此页开始 3'), findsOneWidget);
+    expect(find.text('从第 3 页开始'), findsOneWidget);
     expect(find.text('从当前位置开始'), findsOneWidget);
   });
+  testWidgets('start sheet uses consistent Traditional Chinese', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        locale: Locale('zh', 'TW'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: NovelTtsStartSheet(currentPage: 3)),
+      ),
+    );
+
+    expect(find.text('小說語音朗讀'), findsOneWidget);
+    expect(find.text('從第 3 頁開始'), findsOneWidget);
+    expect(find.textContaining('朗读'), findsNothing);
+    expect(find.textContaining('开始'), findsNothing);
+  });
+
   testWidgets('full player shows displayText and queue position', (
     tester,
   ) async {

@@ -50,15 +50,11 @@ class NovelTtsFullPlayer extends StatelessWidget {
               const SizedBox(height: 16),
               if (item != null)
                 Text(
-                  l10n.tts_page +
-                      ' ' +
-                      item.pageNumber.toString() +
-                      ' · ' +
-                      l10n.tts_part +
-                      ' ' +
-                      (item.chunkIndex + 1).toString() +
-                      '/' +
-                      item.chunkCount.toString(),
+                  l10n.tts_page_part(
+                    item.chunkCount,
+                    item.pageNumber,
+                    item.chunkIndex + 1,
+                  ),
                 ),
               Slider(
                 value: snapshot.progress,
@@ -131,11 +127,9 @@ class NovelTtsFullPlayer extends StatelessWidget {
     return switch (snapshot.state) {
       NovelTtsPlaybackState.idle => l10n.tts_state_idle,
       NovelTtsPlaybackState.preparing => l10n.tts_state_preparing,
-      NovelTtsPlaybackState.buffering =>
-        l10n.tts_state_buffering +
-            ' ' +
-            snapshot.bufferedDuration.inSeconds.toString() +
-            's',
+      NovelTtsPlaybackState.buffering => l10n.tts_state_buffering_seconds(
+        snapshot.bufferedDuration.inSeconds,
+      ),
       NovelTtsPlaybackState.playing => l10n.tts_state_playing,
       NovelTtsPlaybackState.paused => l10n.tts_state_paused,
       NovelTtsPlaybackState.completed => l10n.tts_state_completed,

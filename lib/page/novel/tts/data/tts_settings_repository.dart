@@ -109,11 +109,20 @@ class TtsSettingsSnapshot {
       json['localPlaybackSpeed'],
       1,
     ).clamp(0.5, 2.0).toDouble();
+    final requestedProfileId = json['currentProfileId'] is String
+        ? json['currentProfileId'] as String
+        : null;
+    final requestedProfileIsUsable = profiles.any(
+      (profile) => profile.id == requestedProfileId && profile.enabled,
+    );
+    final fallbackProfileId = requestedProfileId == null
+        ? null
+        : profiles.where((profile) => profile.enabled).firstOrNull?.id;
     return TtsSettingsSnapshot(
       profiles: profiles,
-      currentProfileId: json['currentProfileId'] is String
-          ? json['currentProfileId'] as String
-          : null,
+      currentProfileId: requestedProfileIsUsable
+          ? requestedProfileId
+          : fallbackProfileId,
       targetLength: _positiveInt(json['targetLength'], 220),
       maxLength: _positiveInt(json['maxLength'], 360),
       startupBufferSeconds: _positiveInt(json['startupBufferSeconds'], 90),

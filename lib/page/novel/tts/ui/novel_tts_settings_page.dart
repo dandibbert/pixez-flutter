@@ -15,6 +15,7 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
   late final TtsSettingsRepository repository =
       widget.repository ?? TtsSettingsRepository();
   TtsSettingsSnapshot? settings;
+  Future<void> _saveTail = Future<void>.value();
   @override
   void initState() {
     super.initState();
@@ -26,10 +27,16 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
     if (mounted) setState(() => settings = value);
   }
 
-  Future<void> _save(TtsSettingsSnapshot value) async {
-    await repository.save(value);
+  Future<void> _save(TtsSettingsSnapshot value) {
     if (mounted) setState(() => settings = value);
+    final operation = _saveTail.then((_) => repository.save(value));
+    _saveTail = operation.catchError((Object _) {});
+    return operation;
   }
+
+  Future<void> _update(
+    TtsSettingsSnapshot Function(TtsSettingsSnapshot current) transform,
+  ) => _save(transform(settings!));
 
   Future<void> _editProfile([TtsProfile? profile]) async {
     final draft = await Navigator.of(context).push<_ProfileDraft>(
@@ -97,8 +104,10 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
                 leading: IconButton(
                   tooltip: l10n.tts_use_profile,
                   onPressed: profile.enabled
-                      ? () =>
-                            _save(value.copyWith(currentProfileId: profile.id))
+                      ? () => _update(
+                          (current) =>
+                              current.copyWith(currentProfileId: profile.id),
+                        )
                       : null,
                   icon: Icon(
                     value.currentProfileId == profile.id
@@ -113,16 +122,16 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
                 onTap: () => _editProfile(profile),
                 trailing: Switch(
                   value: profile.enabled,
-                  onChanged: (enabled) {
-                    final profiles = value.profiles
+                  onChanged: (enabled) => _update((current) {
+                    final profiles = current.profiles
                         .map(
                           (item) => item.id == profile.id
                               ? _enabled(item, enabled)
                               : item,
                         )
                         .toList();
-                    _save(value.copyWith(profiles: profiles));
-                  },
+                    return current.copyWith(profiles: profiles);
+                  }),
                 ),
               ),
             ),
@@ -158,43 +167,62 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
             label: l10n.tts_target_graphemes,
             step: 10,
             value: value.targetLength,
-            onChanged: (v) => _save(value.copyWith(targetLength: v)),
+            onChanged: (v) => _update(
+              (current) =>
+                  current.copyWith(targetLength: current.targetLength + v),
+            ),
           ),
           _IntSetting(
             label: l10n.tts_maximum_graphemes,
             step: 10,
             value: value.maxLength,
-            onChanged: (v) => _save(value.copyWith(maxLength: v)),
+            onChanged: (v) => _update(
+              (current) => current.copyWith(maxLength: current.maxLength + v),
+            ),
           ),
           _IntSetting(
             label: l10n.tts_startup_buffer_seconds,
             step: 10,
             value: value.startupBufferSeconds,
-            onChanged: (v) => _save(value.copyWith(startupBufferSeconds: v)),
+            onChanged: (v) => _update(
+              (current) => current.copyWith(
+                startupBufferSeconds: current.startupBufferSeconds + v,
+              ),
+            ),
           ),
           _IntSetting(
             label: l10n.tts_target_buffer_seconds,
             step: 10,
             value: value.targetBufferSeconds,
-            onChanged: (v) => _save(value.copyWith(targetBufferSeconds: v)),
+            onChanged: (v) => _update(
+              (current) => current.copyWith(
+                targetBufferSeconds: current.targetBufferSeconds + v,
+              ),
+            ),
           ),
           _IntSetting(
             label: l10n.tts_maximum_cache_mb,
             step: 64,
             value: value.maxCacheMegabytes,
-            onChanged: (v) => _save(value.copyWith(maxCacheMegabytes: v)),
+            onChanged: (v) => _update(
+              (current) => current.copyWith(
+                maxCacheMegabytes: current.maxCacheMegabytes + v,
+              ),
+            ),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.tts_continue_newpage),
             value: value.autoNextPage,
-            onChanged: (v) => _save(value.copyWith(autoNextPage: v)),
+            onChanged: (v) =>
+                _update((current) => current.copyWith(autoNextPage: v)),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.tts_continue_next_novel),
             value: value.autoNextNovel,
-            onChanged: (v) => _save(value.copyWith(autoNextNovel: v)),
+            onChanged: (v) =>
+                _update((current) => current.copyWith(autoNextNovel: v)),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -205,7 +233,8 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
               divisions: 15,
               label: '${value.localPlaybackSpeed.toStringAsFixed(1)}×',
               value: value.localPlaybackSpeed,
-              onChanged: (v) => _save(value.copyWith(localPlaybackSpeed: v)),
+              onChanged: (v) =>
+                  _update((current) => current.copyWith(localPlaybackSpeed: v)),
             ),
             trailing: Text('${value.localPlaybackSpeed.toStringAsFixed(1)}×'),
           ),
@@ -250,7 +279,7 @@ class _IntSetting extends StatelessWidget {
         children: [
           IconButton(
             visualDensity: VisualDensity.compact,
-            onPressed: value > step ? () => onChanged(value - step) : null,
+            onPressed: value > step ? () => onChanged(-step) : null,
             icon: const Icon(Icons.remove),
           ),
           SizedBox(
@@ -263,7 +292,7 @@ class _IntSetting extends StatelessWidget {
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
-            onPressed: () => onChanged(value + step),
+            onPressed: () => onChanged(step),
             icon: const Icon(Icons.add),
           ),
         ],

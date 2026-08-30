@@ -40,9 +40,7 @@ class NovelTtsStartSheet extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.menu_book),
-            title: Text(
-              l10n.tts_start_from_page + ' ' + currentPage.toString(),
-            ),
+            title: Text(l10n.tts_start_from_page(currentPage)),
             onTap: () => _select(context, NovelTtsStartMode.currentPage),
           ),
           if (hasSelectedPosition)

@@ -92,9 +92,7 @@ class _PronunciationDictionaryPageState
                     _scopeLabel(context, rule.scope) +
                         (rule.scopeId == null ? '' : ' · ' + rule.scopeId!) +
                         ' · ' +
-                        l10n.tts_priority +
-                        ' ' +
-                        rule.priority.toString() +
+                        l10n.tts_priority_summary(rule.priority) +
                         (rule.overridePixivRuby
                             ? ' · ' + l10n.tts_override_pixiv_ruby
                             : ''),

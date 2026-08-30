@@ -15,6 +15,21 @@ class UiSecrets implements TtsSecretStore {
   Future<void> write(String namespace, String name, String value) async {}
 }
 
+class RecordingSettingsRepository extends TtsSettingsRepository {
+  RecordingSettingsRepository() : super(secretStore: UiSecrets());
+
+  final saves = <TtsSettingsSnapshot>[];
+
+  @override
+  Future<TtsSettingsSnapshot> load() async => const TtsSettingsSnapshot();
+
+  @override
+  Future<void> save(TtsSettingsSnapshot snapshot) async {
+    saves.add(snapshot);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+  }
+}
+
 void main() {
   testWidgets('settings exposes profiles dictionary and duration controls', (
     tester,
@@ -77,6 +92,57 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     expect(find.text('Named secret keys'), findsOneWidget);
+  });
+
+  testWidgets('rapid setting changes merge against optimistic state', (
+    tester,
+  ) async {
+    final repository = RecordingSettingsRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsSettingsPage(repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Finder incrementFor(String label) => find.descendant(
+      of: find.ancestor(of: find.text(label), matching: find.byType(ListTile)),
+      matching: find.byIcon(Icons.add),
+    );
+
+    await tester.tap(incrementFor('Target graphemes'));
+    await tester.tap(incrementFor('Target graphemes'));
+    await tester.tap(incrementFor('Maximum graphemes'));
+    await tester.pumpAndSettle();
+
+    expect(repository.saves.last.targetLength, 240);
+    expect(repository.saves.last.maxLength, 370);
+  });
+
+  testWidgets('settings use consistent Traditional Chinese terminology', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh', 'TW'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsSettingsPage(
+          repository: TtsSettingsRepository(secretStore: UiSecrets()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('語音服務設定'), findsOneWidget);
+    expect(find.text('分段與緩衝'), findsOneWidget);
+    expect(find.textContaining('服务'), findsNothing);
+    expect(find.textContaining('目标'), findsNothing);
+    expect(find.textContaining('朗读'), findsNothing);
   });
 
   testWidgets('settings are usable and localized on a narrow Chinese phone', (

@@ -108,4 +108,37 @@ void main() {
     expect(loaded.localPlaybackSpeed, 2);
     await expectLater(repo.readSecrets(loaded.profiles.single), completes);
   });
+
+  test(
+    'selected corrupt profile falls back to a valid enabled profile',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        TtsSettingsRepository.preferencesKey: jsonEncode({
+          'profiles': [
+            {
+              'id': 'broken',
+              'name': 'Broken',
+              'enabled': true,
+              'provider': {'kind': 'unknown'},
+              'voice': 'voice',
+            },
+            {
+              'id': 'valid',
+              'name': 'Valid',
+              'enabled': true,
+              'provider': {'kind': 'microsoftAzure', 'region': 'japaneast'},
+              'voice': 'voice',
+            },
+          ],
+          'currentProfileId': 'broken',
+        }),
+      });
+      final repo = TtsSettingsRepository(secretStore: MemorySecrets());
+
+      final loaded = await repo.load();
+
+      expect(loaded.currentProfileId, 'valid');
+      expect(loaded.currentProfile?.name, 'Valid');
+    },
+  );
 }
