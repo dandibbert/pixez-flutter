@@ -41,6 +41,7 @@ import com.perol.pixez.plugin.CustomTab
 import com.perol.pixez.plugin.DeepLinkPlugin
 import com.perol.pixez.plugin.InstalledFontsPlugin
 import com.perol.pixez.plugin.JsEvalPlugin
+import com.perol.pixez.plugin.NovelTtsNowPlayingPlugin
 import com.perol.pixez.plugin.OpenSettinger
 import com.perol.pixez.plugin.Safer
 import com.perol.pixez.plugin.SecurePlugin
@@ -97,6 +98,7 @@ class MainActivity : FlutterActivity() {
         SecurePlugin(this).bindChannel(flutterEngine)
         SupporterPlugin().bindChannel(this, flutterEngine)
         InstalledFontsPlugin.bindChannel(flutterEngine)
+        NovelTtsNowPlayingPlugin.bindChannel(this, flutterEngine)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL

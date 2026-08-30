@@ -156,4 +156,5 @@ dependencies {
     implementation("androidx.browser:browser:1.9.0")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.documentfile:documentfile:1.1.0")
+    implementation("androidx.media:media:1.7.1")
 }

@@ -26,6 +26,7 @@ class NovelReaderScaffold extends StatelessWidget {
   final Widget? seriesBar;
   final Widget article;
   final Widget pageNav;
+  final Widget? player;
 
   const NovelReaderScaffold({
     super.key,
@@ -33,6 +34,7 @@ class NovelReaderScaffold extends StatelessWidget {
     required this.article,
     required this.pageNav,
     this.seriesBar,
+    this.player,
   });
 
   @override
@@ -43,6 +45,7 @@ class NovelReaderScaffold extends StatelessWidget {
         header,
         if (seriesBar != null) seriesBar!,
         Expanded(child: article),
+        if (player != null) player!,
         Material(color: scheme.surface, elevation: 8, child: pageNav),
       ],
     );

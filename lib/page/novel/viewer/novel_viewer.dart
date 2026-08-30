@@ -45,6 +45,9 @@ import 'package:pixez/page/novel/viewer/novel_reader_keys.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
+import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
+import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
+import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/saf_plugin.dart';
 import 'package:pixez/supportor_plugin.dart';
@@ -65,9 +68,12 @@ class NovelViewerPage extends StatefulWidget {
 class _NovelViewerPageState extends State<NovelViewerPage> {
   ScrollController? _controller;
   late NovelStore _novelStore;
+  late NovelTtsController _tts;
   ReactionDisposer? _offsetDisposer;
   int _currentPage = 1;
   bool supportTranslate = false;
+  bool _ttsResumeChecked = false;
+  bool _ttsDrivingPage = false;
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
 
@@ -87,6 +93,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     _offsetDisposer = reaction((_) => _novelStore.bookedOffset, (_) {
       _restoreBookedPage();
     });
+    _tts = NovelTtsController.instance;
+    _tts.onNavigate = _onTtsNavigate;
     _novelStore.fetch();
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
     super.initState();
@@ -97,6 +105,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _offsetDisposer?.call();
+    if (identical(_tts.onNavigate, _onTtsNavigate)) {
+      _tts.onNavigate = null;
+    }
     if (_novelStore.positionBooked) {
       _novelStore.bookPosition(_currentPage.toDouble());
     }
@@ -130,6 +141,11 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _currentPage = next;
     });
     _controller?.jumpTo(0);
+    if (!_ttsDrivingPage &&
+        _tts.isActive &&
+        _tts.session?.novelId == widget.id) {
+      _attachTtsPage();
+    }
   }
 
   void _openSeriesNovel(int id) {
@@ -139,6 +155,88 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
             NovelViewerPage(id: id, novelStore: NovelStore(id, null)),
       ),
     );
+  }
+
+  void _maybeResumeTts() {
+    if (_ttsResumeChecked || _novelStore.novel == null) {
+      return;
+    }
+    _ttsResumeChecked = true;
+    if (!_tts.takePendingResume(widget.id)) {
+      return;
+    }
+    _startTts(fromEnd: _tts.pendingResumeFromEnd);
+  }
+
+  void _onTtsNavigate(NovelTtsNavigate navigate) {
+    if (!mounted) {
+      return;
+    }
+    if (navigate.kind == NovelTtsNavigateKind.page && navigate.page != null) {
+      _ttsDrivingPage = true;
+      _goToPage(navigate.page!);
+      _ttsDrivingPage = false;
+      _attachTtsPage(fromEnd: navigate.fromEnd);
+      return;
+    }
+    if (navigate.kind == NovelTtsNavigateKind.series &&
+        navigate.seriesNovelId != null) {
+      _openSeriesNovel(navigate.seriesNovelId!);
+    }
+  }
+
+  Future<void> _startTts({bool fromEnd = false}) async {
+    final novel = _novelStore.novel;
+    if (novel == null) {
+      return;
+    }
+    final pages = _pages;
+    final totalPages = pages.isEmpty ? 1 : pages.length;
+    final page = clampNovelPage(_currentPage, totalPages);
+    final navigation = _novelStore.novelTextResponse?.seriesNavigation;
+    await _tts.start(
+      novelId: widget.id,
+      title: novel.title,
+      author: novel.user.name,
+      page: page,
+      totalPages: totalPages,
+      pageText: novelTtsTextFromPages(pages, page - 1),
+      coverUrl: novel.imageUrls.medium,
+      prevSeriesId: navigation?.prevNovel?.viewable == true
+          ? navigation!.prevNovel!.id
+          : null,
+      nextSeriesId: navigation?.nextNovel?.viewable == true
+          ? navigation!.nextNovel!.id
+          : null,
+      startChunk: fromEnd ? 1 << 20 : 0,
+    );
+  }
+
+  Future<void> _attachTtsPage({bool fromEnd = false}) async {
+    final pages = _pages;
+    final totalPages = pages.isEmpty ? 1 : pages.length;
+    final page = clampNovelPage(_currentPage, totalPages);
+    final navigation = _novelStore.novelTextResponse?.seriesNavigation;
+    await _tts.attachPage(
+      page: page,
+      totalPages: totalPages,
+      pageText: novelTtsTextFromPages(pages, page - 1),
+      prevSeriesId: navigation?.prevNovel?.viewable == true
+          ? navigation!.prevNovel!.id
+          : null,
+      nextSeriesId: navigation?.nextNovel?.viewable == true
+          ? navigation!.nextNovel!.id
+          : null,
+      fromEnd: fromEnd,
+    );
+  }
+
+  Future<void> _toggleTts() async {
+    if (_tts.isActive && _tts.session?.novelId == widget.id) {
+      await _tts.toggle();
+      return;
+    }
+    await _startTts();
   }
 
   void _handleNav(String direction) {
@@ -256,6 +354,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           if (_controller == null) {
             _controller = ScrollController();
           }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _maybeResumeTts();
+          });
           return Focus(
             autofocus: true,
             child: Scaffold(
@@ -301,6 +402,22 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListenableBuilder(
+              listenable: _tts,
+              builder: (context, _) {
+                final listening =
+                    _tts.isActive && _tts.session?.novelId == widget.id;
+                return IconButton(
+                  tooltip: listening
+                      ? I18n.of(context).novel_tts_pause
+                      : I18n.of(context).novel_tts_play,
+                  icon: Icon(
+                    listening ? Icons.pause_circle_outline : Icons.headphones,
+                  ),
+                  onPressed: _toggleTts,
+                );
+              },
+            ),
             NovelBookmarkButton(novel: novel),
             IconButton(
               tooltip: I18n.of(context).setting,
@@ -350,6 +467,18 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         onPrev: () => _handleNav('prev'),
         onNext: () => _handleNav('next'),
         onPickPage: () => _showJumpDialog(context, totalPages),
+      ),
+      player: ListenableBuilder(
+        listenable: _tts,
+        builder: (context, _) {
+          if (!_tts.isActive && _tts.status != NovelTtsStatus.error) {
+            return const SizedBox.shrink();
+          }
+          return NovelTtsBar(
+            controller: _tts,
+            onOpenSettings: () => openNovelTtsSettings(context),
+          );
+        },
       ),
     );
   }
@@ -836,6 +965,14 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 onTap: () {
                   Navigator.of(context).pop();
                   _showSettings(context);
+                },
+              ),
+              ListTile(
+                title: Text(I18n.of(context).novel_tts_settings),
+                leading: const Icon(Icons.headphones),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  openNovelTtsSettings(context);
                 },
               ),
               Builder(
