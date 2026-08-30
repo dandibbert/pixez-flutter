@@ -1,5 +1,9 @@
 name: Build Windows
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 on:
   push:
   pull_request: 
