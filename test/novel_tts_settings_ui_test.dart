@@ -54,6 +54,7 @@ void main() {
     expect(find.text('HTTP method'), findsOneWidget);
     expect(find.text('Named secret keys'), findsOneWidget);
     expect(find.text('New named secret values'), findsOneWidget);
+    expect(find.text('Validate body as JSON'), findsOneWidget);
     await tester.tap(find.text('POST'));
     await tester.pumpAndSettle();
     expect(find.text('GET'), findsOneWidget);

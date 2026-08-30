@@ -262,6 +262,9 @@ class _ProfileEditorState extends State<_ProfileEditor> {
       widget.initial?.provider is CustomTtsProviderConfig
       ? (widget.initial!.provider as CustomTtsProviderConfig).method
       : CustomHttpMethod.post;
+  late bool bodyIsJson = widget.initial?.provider is CustomTtsProviderConfig
+      ? (widget.initial!.provider as CustomTtsProviderConfig).bodyIsJson
+      : true;
   late final name = TextEditingController(text: widget.initial?.name ?? '');
   late final voice = TextEditingController(
     text: widget.initial?.voice ?? 'ja-JP-NanamiNeural',
@@ -369,7 +372,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
         method: method,
         headerTemplates: _headers(),
         bodyTemplate: body.text.isEmpty ? null : body.text,
-        bodyIsJson: true,
+        bodyIsJson: bodyIsJson,
       ),
     };
     return TtsProfile(
@@ -464,6 +467,12 @@ class _ProfileEditorState extends State<_ProfileEditor> {
               controller: body,
               maxLines: 5,
               decoration: const InputDecoration(labelText: 'Body template'),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Validate body as JSON'),
+              value: bodyIsJson,
+              onChanged: (value) => setState(() => bodyIsJson = value),
             ),
           ],
           TextField(
