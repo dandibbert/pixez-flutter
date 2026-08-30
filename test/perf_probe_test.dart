@@ -21,6 +21,7 @@ PerfSample sample({
   int totalImageRequests = 0,
   int downloadQueued = 0,
   int downloadRunning = 0,
+  int ttsRequests = 0,
   double lagMs = 0,
   int cpuMicros = 0,
   int liveImages = 0,
@@ -45,6 +46,7 @@ PerfSample sample({
     totalImageRequests: totalImageRequests,
     downloadQueued: downloadQueued,
     downloadRunning: downloadRunning,
+    ttsRequests: ttsRequests,
     lagMs: lagMs,
     cpuMicros: cpuMicros,
     liveImages: liveImages,
@@ -113,6 +115,7 @@ void main() {
       totalImageRequests: 908,
       downloadQueued: 5,
       downloadRunning: 2,
+      ttsRequests: 63,
       lagMs: 12.5,
       cpuMicros: 214,
       liveImages: 84,
@@ -135,6 +138,7 @@ void main() {
     expect(text, contains('908 all'));
     expect(text, contains('5 queued'));
     expect(text, contains('2 running'));
+    expect(text, contains('tts 63 req'));
     expect(text, contains('12.5ms'));
     expect(text, contains('214us'));
     expect(text, contains('84 live'));

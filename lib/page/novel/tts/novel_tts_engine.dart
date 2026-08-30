@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:pixez/component/perf_probe.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
 
@@ -204,6 +205,7 @@ class NovelTtsHttpSynthesizer implements NovelTtsSynthesizer {
   @override
   Future<Uint8List> synthesize(NovelTtsSettings settings, String text) async {
     final request = buildNovelTtsRequest(settings, text);
+    PerfCounters.ttsRequests++;
     final client = _client ?? HttpClient();
     final owned = _client == null;
     try {

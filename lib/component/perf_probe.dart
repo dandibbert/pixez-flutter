@@ -20,6 +20,10 @@ class PerfCounters {
   static int imageRequests = 0;
   static int imageErrors = 0;
 
+  /// Speech synthesis talks to its provider over its own `HttpClient`, so it
+  /// is invisible to both Dio counters above.
+  static int ttsRequests = 0;
+
   /// Downloads run in their own isolate, which no probe on this isolate can
   /// see. These read the queue the main isolate hands it.
   static int Function()? downloadQueued;
@@ -31,6 +35,7 @@ class PerfCounters {
     errors = 0;
     imageRequests = 0;
     imageErrors = 0;
+    ttsRequests = 0;
   }
 }
 
@@ -90,6 +95,7 @@ class PerfSample {
     required this.totalImageRequests,
     required this.downloadQueued,
     required this.downloadRunning,
+    required this.ttsRequests,
     required this.lagMs,
     required this.cpuMicros,
     required this.liveImages,
@@ -118,6 +124,7 @@ class PerfSample {
   final int totalImageRequests;
   final int downloadQueued;
   final int downloadRunning;
+  final int ttsRequests;
   final double lagMs;
 
   /// How long a fixed amount of arithmetic took. Nothing else on this isolate
@@ -163,7 +170,8 @@ class PerfSample {
       'api    $requests req ($totalRequests all) $errors err',
       'img    $imageRequests req ($totalImageRequests all)'
           '  $liveImages live ${n(imageCacheMb)}MB',
-      'dl     $downloadQueued queued  $downloadRunning running',
+      'dl     $downloadQueued queued  $downloadRunning running'
+          '   tts $ttsRequests req',
       'lag ${n(lagMs)}ms  cpu ${cpuMicros}us  rss ${n(rssMb)}MB',
     ];
   }
@@ -326,6 +334,7 @@ class _PerfProbeState extends State<PerfProbe> {
       totalImageRequests: PerfCounters.imageRequests,
       downloadQueued: PerfCounters.downloadQueued?.call() ?? 0,
       downloadRunning: PerfCounters.downloadRunning?.call() ?? 0,
+      ttsRequests: PerfCounters.ttsRequests,
       lagMs: _lagMs,
       cpuMicros: _cpuMicros,
       liveImages: imageCache.liveImageCount,
