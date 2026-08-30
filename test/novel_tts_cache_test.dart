@@ -40,6 +40,8 @@ void main() {
         ]),
         isTrue,
       );
+      expect(TtsAudioValidator.isValid([0x66, 0x4c, 0x61, 0x43]), isTrue);
+      expect(TtsAudioValidator.isValid([0x1a, 0x45, 0xdf, 0xa3]), isTrue);
       expect(TtsAudioValidator.isValid([1, 2, 3]), isFalse);
     },
   );

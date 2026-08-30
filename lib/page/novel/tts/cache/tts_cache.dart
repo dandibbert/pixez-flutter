@@ -59,8 +59,14 @@ class TtsAudioValidator {
         ascii.decode(bytes.sublist(0, 4), allowInvalid: true) == 'RIFF' &&
         ascii.decode(bytes.sublist(8, 12), allowInvalid: true) == 'WAVE')
       return true;
-    if (ascii.decode(bytes.sublist(0, 4), allowInvalid: true) == 'OggS')
+    final leadingFour = ascii.decode(bytes.sublist(0, 4), allowInvalid: true);
+    if (leadingFour == 'OggS' || leadingFour == 'fLaC') return true;
+    if (bytes[0] == 0x1a &&
+        bytes[1] == 0x45 &&
+        bytes[2] == 0xdf &&
+        bytes[3] == 0xa3) {
       return true;
+    }
     if (bytes.length >= 8 &&
         ascii.decode(bytes.sublist(4, 8), allowInvalid: true) == 'ftyp')
       return true;
