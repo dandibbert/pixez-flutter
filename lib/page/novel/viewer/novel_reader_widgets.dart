@@ -30,6 +30,7 @@ class NovelReaderScaffold extends StatelessWidget {
   final Widget header;
   final Widget? seriesBar;
   final Widget article;
+  final Widget? miniPlayer;
   final Widget pageNav;
 
   const NovelReaderScaffold({
@@ -38,6 +39,7 @@ class NovelReaderScaffold extends StatelessWidget {
     required this.article,
     required this.pageNav,
     this.seriesBar,
+    this.miniPlayer,
   });
 
   @override
@@ -48,6 +50,7 @@ class NovelReaderScaffold extends StatelessWidget {
         header,
         if (seriesBar != null) seriesBar!,
         Expanded(child: article),
+        if (miniPlayer != null) miniPlayer!,
         Material(color: scheme.surface, elevation: 8, child: pageNav),
       ],
     );
