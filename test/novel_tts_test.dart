@@ -196,7 +196,7 @@ void main() {
       settingsLoader: () => const NovelTtsSettings(
         provider: NovelTtsProvider.custom,
         customUrl: 'https://example/tts?t={text}',
-        splitChars: 5,
+        splitChars: 20,
         prefetchCount: 1,
       ),
       cacheDir: () async => dir,
@@ -210,23 +210,23 @@ void main() {
       author: 'Author',
       page: 1,
       totalPages: 1,
-      pageText: '第一句。第二句。',
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
       nextSeriesId: 22,
     );
     expect(controller.status, NovelTtsStatus.playing);
-    expect(controller.subtitle, '第一句。');
-    expect(synth.texts, contains('第一句。'));
-    expect(synth.texts, contains('第二句。'));
+    expect(controller.subtitle, '这是第一句用来测试拆分的。');
+    expect(synth.texts, contains('这是第一句用来测试拆分的。'));
+    expect(synth.texts, contains('这是第二句用来测试拆分的。'));
 
     await controller.skip(direction: 'next');
-    expect(controller.subtitle, '第二句。');
+    expect(controller.subtitle, '这是第二句用来测试拆分的。');
 
     await controller.skip(direction: 'next');
     expect(navigate?.kind, NovelTtsNavigateKind.series);
     expect(navigate?.seriesNovelId, 22);
     expect(controller.takePendingResume(22), isTrue);
 
-    await controller.dispose();
+    controller.dispose();
     await dir.delete(recursive: true);
   });
 
@@ -296,7 +296,7 @@ void main() {
 
     expect(find.byKey(novelTtsBarKey), findsOneWidget);
     expect(find.text('当前字幕'), findsOneWidget);
-    await controller.dispose();
+    controller.dispose();
   });
 }
 

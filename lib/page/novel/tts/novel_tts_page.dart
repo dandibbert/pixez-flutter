@@ -82,14 +82,19 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     _customVoice.dispose();
     _customHeaders.dispose();
     _customBody.dispose();
+    _persist(_draft(), updateState: false);
     _customContentType.dispose();
     super.dispose();
   }
 
-  Future<void> _persist(NovelTtsSettings next) async {
-    setState(() {
+  Future<void> _persist(NovelTtsSettings next, {bool updateState = true}) async {
+    if (updateState && mounted) {
+      setState(() {
+        _settings = next;
+      });
+    } else {
       _settings = next;
-    });
+    }
     await next.save();
   }
 
@@ -128,33 +133,6 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
           Text(
             i18n.novel_tts_provider,
             style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 8),
-          SegmentedButton<NovelTtsProvider>(
-            segments: [
-              ButtonSegment(
-                value: NovelTtsProvider.microsoft,
-                label: Text(i18n.novel_tts_provider_microsoft),
-                icon: const Icon(Icons.graphic_eq),
-              ),
-              ButtonSegment(
-                value: NovelTtsProvider.openai,
-                label: Text(i18n.novel_tts_provider_openai),
-                icon: const Icon(Icons.auto_awesome),
-              ),
-              ButtonSegment(
-                value: NovelTtsProvider.custom,
-                label: Text(i18n.novel_tts_provider_custom),
-                icon: const Icon(Icons.link),
-              ),
-            ],
-            selected: {_settings.provider},
-            onSelectionChanged: (value) {
-              if (value.isEmpty) {
-                return;
-              }
-              _persist(_draft().copyWith(provider: value.first));
-            },
           ),
           const SizedBox(height: 8),
           Align(
@@ -282,6 +260,15 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       Text(
         i18n.novel_tts_custom_variables,
         style: Theme.of(context).textTheme.bodySmall,
+      ),
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          '{text} {voice} {voiceName} {lang} {speed} {model}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontFamily: 'monospace',
+          ),
+        ),
       ),
     ];
   }

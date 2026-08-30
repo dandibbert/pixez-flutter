@@ -1,7 +1,7 @@
 /// Packs novel text into speakable chunks near [maxChars] without chopping
 /// through a sentence when a nearby ending is available.
 List<String> splitNovelTtsText(String source, {required int maxChars}) {
-  final limit = maxChars < 20 ? 20 : maxChars;
+  final limit = maxChars < 8 ? 8 : maxChars;
   final text = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
   if (text.isEmpty) {
     return const [];

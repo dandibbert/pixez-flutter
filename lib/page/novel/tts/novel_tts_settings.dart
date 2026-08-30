@@ -7,7 +7,7 @@ enum NovelTtsProvider { microsoft, openai, custom }
 class NovelTtsSettings {
   static const prefKey = 'novel_tts_settings_json';
   static const defaultSplitChars = 200;
-  static const minSplitChars = 40;
+  static const minSplitChars = 20;
   static const maxSplitChars = 800;
   static const defaultCustomUrl =
       'https://tts.773421.xyz/tts?t={text}&v={voice}';
