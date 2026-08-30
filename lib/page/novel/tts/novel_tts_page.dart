@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
@@ -45,6 +47,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   late final TextEditingController _customHeaders;
   late final TextEditingController _customBody;
   late final TextEditingController _customContentType;
+  Timer? _persistTimer;
 
   @override
   void initState() {
@@ -74,6 +77,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
 
   @override
   void dispose() {
+    _persistTimer?.cancel();
     _splitChars.dispose();
     _microsoftKey.dispose();
     _microsoftRegion.dispose();
@@ -92,6 +96,13 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     _persist(_draft(), updateState: false);
     _customContentType.dispose();
     super.dispose();
+  }
+
+  void _schedulePersist() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(milliseconds: 350), () {
+      _persist(_draft());
+    });
   }
 
   Future<void> _persist(NovelTtsSettings next, {bool updateState = true}) async {
@@ -201,6 +212,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                     helperText: i18n.novel_tts_split_chars_hint,
                     border: const OutlineInputBorder(),
                   ),
+                  onChanged: (_) => _schedulePersist(),
                   onEditingComplete: () => _persist(_draft()),
                   onSubmitted: (_) => _persist(_draft()),
                 ),
@@ -262,6 +274,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
           helperText: i18n.novel_tts_custom_url_hint,
           border: const OutlineInputBorder(),
         ),
+        onChanged: (_) => _schedulePersist(),
         onEditingComplete: () => _persist(_draft()),
       ),
       const SizedBox(height: 12),
@@ -332,6 +345,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
+        onChanged: (_) => _schedulePersist(),
         onEditingComplete: () => _persist(_draft()),
         onSubmitted: (_) => _persist(_draft()),
       ),
@@ -404,8 +418,7 @@ class _ReadingsEditor extends StatelessWidget {
             for (var i = 0; i < readings.length; i++)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(readings[i].surface),
-                subtitle: Text(readings[i].reading),
+                title: Text('${readings[i].surface}  →  ${readings[i].reading}'),
                 onTap: () => _edit(context, index: i),
                 trailing: IconButton(
                   tooltip: i18n.novel_tts_reading_delete,

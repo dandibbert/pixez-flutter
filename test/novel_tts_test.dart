@@ -410,12 +410,30 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('Japanese localization has TTS reading strings', () {
+  test('TTS strings are translated instead of leftover English', () {
     final ja = lookupAppLocalizations(const Locale('ja'));
     expect(ja.novel_tts_settings, '小説の読み上げ');
     expect(ja.novel_tts_section_readings, '読み仮名');
     expect(ja.novel_tts_reading_add, '読みを追加');
     expect(ja.novel_tts_readings_hint, contains('今日'));
+
+    final zh = lookupAppLocalizations(const Locale('zh'));
+    expect(zh.novel_tts_settings, '小说朗读');
+    expect(zh.novel_tts_section_readings, '读音标记');
+    expect(zh.novel_tts_lock_screen_hint, isNot(contains('Locking the screen')));
+
+    final de = lookupAppLocalizations(const Locale('de'));
+    expect(de.novel_tts_settings, 'Roman vorlesen');
+    expect(de.novel_tts_section_readings, 'Aussprache');
+    expect(de.novel_tts_empty, isNot(contains('Nothing to read')));
+
+    final es = lookupAppLocalizations(const Locale('es'));
+    expect(es.novel_tts_settings_subtitle, isNot(contains('Voice libraries')));
+    expect(es.novel_tts_not_configured, isNot(contains('Configure a voice')));
+
+    final ko = lookupAppLocalizations(const Locale('ko'));
+    expect(ko.novel_tts_custom_body, 'POST 본문 템플릿');
+    expect(ko.novel_tts_section_readings, '발음 표기');
   });
 
   testWidgets('settings page can add a pronunciation mark', (tester) async {
@@ -436,8 +454,7 @@ void main() {
     await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'きょう');
     await tester.tap(find.byKey(novelTtsReadingSaveKey));
     await tester.pumpAndSettle();
-    expect(find.text('今日'), findsOneWidget);
-    expect(find.text('きょう'), findsOneWidget);
+    expect(find.text('今日  →  きょう'), findsOneWidget);
     expect(NovelTtsSettings.load().readings, [
       const NovelTtsReading(surface: '今日', reading: 'きょう'),
     ]);
