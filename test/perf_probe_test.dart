@@ -17,7 +17,12 @@ PerfSample sample({
   int requests = 0,
   int totalRequests = 0,
   int errors = 0,
+  int imageRequests = 0,
+  int totalImageRequests = 0,
+  int downloadQueued = 0,
+  int downloadRunning = 0,
   double lagMs = 0,
+  int cpuMicros = 0,
   int liveImages = 0,
   double imageCacheMb = 0,
   double rssMb = 0,
@@ -36,7 +41,12 @@ PerfSample sample({
     requests: requests,
     totalRequests: totalRequests,
     errors: errors,
+    imageRequests: imageRequests,
+    totalImageRequests: totalImageRequests,
+    downloadQueued: downloadQueued,
+    downloadRunning: downloadRunning,
     lagMs: lagMs,
+    cpuMicros: cpuMicros,
     liveImages: liveImages,
     imageCacheMb: imageCacheMb,
     rssMb: rssMb,
@@ -99,7 +109,12 @@ void main() {
       requests: 47,
       totalRequests: 1503,
       errors: 3,
+      imageRequests: 12,
+      totalImageRequests: 908,
+      downloadQueued: 5,
+      downloadRunning: 2,
       lagMs: 12.5,
+      cpuMicros: 214,
       liveImages: 84,
       imageCacheMb: 61.5,
       rssMb: 412.25,
@@ -116,9 +131,42 @@ void main() {
     expect(text, contains('47 req'));
     expect(text, contains('1503 all'));
     expect(text, contains('3 err'));
+    expect(text, contains('12 req'));
+    expect(text, contains('908 all'));
+    expect(text, contains('5 queued'));
+    expect(text, contains('2 running'));
     expect(text, contains('12.5ms'));
+    expect(text, contains('214us'));
     expect(text, contains('84 live'));
     expect(text, contains('412.3MB'));
+  });
+
+  test('image traffic is counted apart from the API', () {
+    const api = PerfCountingInterceptor();
+    const images = PerfCountingInterceptor(images: true);
+    final options = RequestOptions(path: '/x');
+
+    api.onRequest(options, RequestInterceptorHandler());
+    images.onRequest(options, RequestInterceptorHandler());
+    images.onRequest(options, RequestInterceptorHandler());
+
+    expect(PerfCounters.requests, 1);
+    expect(PerfCounters.imageRequests, 2);
+  });
+
+  test('download queue reads through whatever the fetcher registered', () {
+    var queued = 4;
+    PerfCounters.downloadQueued = () => queued;
+    PerfCounters.downloadRunning = () => 1;
+    addTearDown(() {
+      PerfCounters.downloadQueued = null;
+      PerfCounters.downloadRunning = null;
+    });
+
+    expect(PerfCounters.downloadQueued!(), 4);
+    queued = 0;
+    expect(PerfCounters.downloadQueued!(), 0);
+    expect(PerfCounters.downloadRunning!(), 1);
   });
 
   test('the interceptor counts requests, responses and failures', () async {
