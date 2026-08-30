@@ -133,4 +133,51 @@ void main() {
       expect(items.map((item) => item.displayText).join(), '後半です。');
     },
   );
+
+  test('rendered secret values never affect cache paths', () async {
+    final directory = await Directory.systemTemp.createTemp('pixez-tts-secret');
+    addTearDown(() => directory.delete(recursive: true));
+    final executor = FakeExecutor();
+    final engine = NovelTtsSynthesisEngine(
+      executor: executor,
+      cacheDirectory: directory,
+    );
+    const profile = TtsProfile(
+      id: 'secret',
+      name: 'Secret URL',
+      enabled: true,
+      provider: CustomTtsProviderConfig(
+        endpointTemplate: 'https://x.test/{{secret:token}}/tts',
+        method: CustomHttpMethod.get,
+      ),
+      voice: 'v',
+    );
+    const document = NovelTtsDocument(
+      novelId: '1',
+      pages: [
+        NovelTtsPageDocument(pageNumber: 1, displayText: '本文。', ruby: []),
+      ],
+    );
+    final first = await engine.synthesize(
+      document: document,
+      profile: profile,
+      rules: const [],
+      context: const PronunciationContext(novelId: '1'),
+      title: '題',
+      author: '著者',
+      secrets: const {'token': 'first-secret'},
+    );
+    final second = await engine.synthesize(
+      document: document,
+      profile: profile,
+      rules: const [],
+      context: const PronunciationContext(novelId: '1'),
+      title: '題',
+      author: '著者',
+      secrets: const {'token': 'second-secret'},
+    );
+    expect(first.single.filePath, second.single.filePath);
+    expect(first.single.filePath, isNot(contains('first-secret')));
+    expect(executor.requests, hasLength(1));
+  });
 }

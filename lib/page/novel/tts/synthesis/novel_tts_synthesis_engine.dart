@@ -234,7 +234,7 @@ class NovelTtsSynthesisEngine {
           spokenText: projection.spokenText,
           ssml: projection.ssml,
           provider: profile.provider.kind.name,
-          endpoint: request.url,
+          endpoint: profile.provider.endpoint,
           voice: profile.voice,
           model: profile.model ?? '',
           speed: profile.speed,
