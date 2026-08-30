@@ -41,6 +41,7 @@ import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
+import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_keys.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
@@ -413,11 +414,21 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _maybeResumeTts();
           });
-          return Focus(
-            autofocus: true,
-            child: Scaffold(
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              body: _buildReader(context),
+          // Recolour the whole reader subtree so the chrome, the article and
+          // the settings sheet all follow the reading background.
+          return Theme(
+            data: applyNovelReaderTheme(
+              Theme.of(context),
+              userSetting.novelReaderBackground,
+            ),
+            child: Focus(
+              autofocus: true,
+              child: Builder(
+                builder: (context) => Scaffold(
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  body: _buildReader(context),
+                ),
+              ),
             ),
           );
         }
@@ -692,6 +703,10 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           lineHeight: userSetting.novelLineHeight,
           fontFamily: userSetting.novelFontFamily,
           fontFilePath: userSetting.novelFontFile,
+          background: userSetting.novelReaderBackground,
+          onBackgroundChanged: (value) {
+            userSetting.setNovelReaderBackground(value);
+          },
           onFontSizeChanged: (value) {
             userSetting.setNovelFontsizeWithoutSave(value);
           },

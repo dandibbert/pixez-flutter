@@ -396,6 +396,12 @@
   "novel_font_default": "默认",
   "novel_font_import": "从文件导入字体",
   "novel_font_search": "搜索已安装字体",
+  "novel_background": "阅读背景",
+  "novel_background_system": "跟随应用",
+  "novel_background_paper": "纸白",
+  "novel_background_sepia": "护眼",
+  "novel_background_dark": "深色",
+  "novel_background_black": "纯黑",
   "novel_font_import_failed": "无法导入该字体文件",
   "novel_font_imported": "已导入",
   "novel_filter_search_mode": "搜索类型",
@@ -464,5 +470,7 @@
   "novel_tts_empty": "这一页没有可朗读的文本",
   "novel_tts_not_configured": "请先配置语音库",
   "novel_tts_playing": "正在朗读",
-  "novel_tts_synthesizing": "正在合成"
+  "novel_tts_synthesizing": "正在合成",
+  "perf_probe": "性能诊断",
+  "perf_probe_summary": "浮层显示帧数、网络与内存，用于排查发烫或耗电"
 }

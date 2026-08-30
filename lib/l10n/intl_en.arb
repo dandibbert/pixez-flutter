@@ -462,5 +462,7 @@
   "novel_tts_empty": "Nothing to read on this page",
   "novel_tts_not_configured": "Configure a voice library first",
   "novel_tts_playing": "Playing",
-  "novel_tts_synthesizing": "Synthesizing"
+  "novel_tts_synthesizing": "Synthesizing",
+  "perf_probe": "Performance readout",
+  "perf_probe_summary": "Overlay frames, network and memory to diagnose heat or battery drain"
 }

@@ -396,6 +396,12 @@
   "novel_font_default": "Default",
   "novel_font_import": "Import font file",
   "novel_font_search": "Search installed fonts",
+  "novel_background": "Reading background",
+  "novel_background_system": "App theme",
+  "novel_background_paper": "Paper",
+  "novel_background_sepia": "Sepia",
+  "novel_background_dark": "Dark",
+  "novel_background_black": "Black",
   "novel_font_import_failed": "Could not import that font file",
   "novel_font_imported": "Imported",
   "novel_filter_search_mode": "Search type",
@@ -425,7 +431,13 @@
   "novel_filter_translated_tags": "Include translated tag results",
   "novel_filter_merge_keyword": "Merge keyword results",
   "novel_filter_reset": "Reset",
-  "@novel_filter_last_n_days": {"placeholders": {"days": {"type": "int"}}},
+  "@novel_filter_last_n_days": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "novel_tts": "TTS",
   "novel_tts_settings": "Novel TTS",
   "novel_tts_settings_subtitle": "Voice libraries, chunking, and lock-screen playback",
@@ -465,5 +477,7 @@
   "novel_tts_empty": "Nothing to read on this page",
   "novel_tts_not_configured": "Configure a voice library first",
   "novel_tts_playing": "Playing",
-  "novel_tts_synthesizing": "Synthesizing"
+  "novel_tts_synthesizing": "Synthesizing",
+  "perf_probe": "Performance readout",
+  "perf_probe_summary": "Overlay frames, network and memory to diagnose heat or battery drain"
 }

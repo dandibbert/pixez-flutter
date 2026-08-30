@@ -339,6 +339,15 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   },
                 ),
                 SwitchListTile(
+                  value: userSetting.perfProbe,
+                  title: Text(I18n.of(context).perf_probe),
+                  subtitle: Text(I18n.of(context).perf_probe_summary),
+                  onChanged: (value) async {
+                    HapticUtil.light();
+                    userSetting.setPerfProbe(value);
+                  },
+                ),
+                SwitchListTile(
                   value: userSetting.isReturnAgainToExit,
                   title: Text(I18n.of(context).return_again_to_exit),
                   onChanged: (value) async {
