@@ -19,8 +19,28 @@ class NovelTtsBufferedSession {
   Future<void> consume(
     Stream<NovelTtsSynthesisItem> source, {
     bool autoPlay = true,
-  }) async {
+  }) {
     final token = _guard.begin();
+    return _consume(source, token: token, autoPlay: autoPlay);
+  }
+
+  Future<void> consumeGenerated(
+    Stream<NovelTtsSynthesisItem> Function(
+      TtsGenerationGuard guard,
+      TtsGenerationToken token,
+    )
+    source, {
+    bool autoPlay = true,
+  }) {
+    final token = _guard.begin();
+    return _consume(source(_guard, token), token: token, autoPlay: autoPlay);
+  }
+
+  Future<void> _consume(
+    Stream<NovelTtsSynthesisItem> source, {
+    required TtsGenerationToken token,
+    required bool autoPlay,
+  }) async {
     bufferedDuration = Duration.zero;
     _loaded = false;
     _started = false;
@@ -51,7 +71,7 @@ class NovelTtsBufferedSession {
       }
     }
     if (_guard.accepts(token) && autoPlay && _loaded && !_started) {
-      await audio.play();
+      await (playbackController?.play() ?? audio.play());
       _started = true;
     }
   }

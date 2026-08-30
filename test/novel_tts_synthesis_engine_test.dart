@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixez/page/novel/tts/domain/novel_tts_document.dart';
 import 'package:pixez/page/novel/tts/model/tts_profile.dart';
 import 'package:pixez/page/novel/tts/pronunciation/pronunciation_engine.dart';
 import 'package:pixez/page/novel/tts/provider/tts_request_builder.dart';
+import 'package:pixez/page/novel/tts/queue/tts_queue_policy.dart';
 import 'package:pixez/page/novel/tts/synthesis/novel_tts_synthesis_engine.dart';
 
 class FakeExecutor implements TtsHttpExecutor {
@@ -12,6 +14,16 @@ class FakeExecutor implements TtsHttpExecutor {
   Future<List<int>> execute(TtsHttpRequest request) async {
     requests.add(request);
     return [0x49, 0x44, 0x33, 0, 0, 0];
+  }
+}
+
+class DelayedExecutor implements TtsHttpExecutor {
+  final started = Completer<void>();
+  final response = Completer<List<int>>();
+  @override
+  Future<List<int>> execute(TtsHttpRequest request) {
+    started.complete();
+    return response.future;
   }
 }
 
@@ -131,6 +143,56 @@ void main() {
         startTextOffset: 5,
       );
       expect(items.map((item) => item.displayText).join(), '後半です。');
+    },
+  );
+
+  test(
+    'cancelled network responses are rejected before cache publication',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'pixez-tts-cancel',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final executor = DelayedExecutor();
+      final engine = NovelTtsSynthesisEngine(
+        executor: executor,
+        cacheDirectory: directory,
+      );
+      final guard = TtsGenerationGuard();
+      final token = guard.begin();
+      const profile = TtsProfile(
+        id: 'c',
+        name: 'Custom',
+        enabled: true,
+        provider: CustomTtsProviderConfig(
+          endpointTemplate: 'https://x.test/tts',
+          method: CustomHttpMethod.post,
+          bodyTemplate: '{{text}}',
+          bodyIsJson: false,
+        ),
+        voice: 'v',
+      );
+      const document = NovelTtsDocument(
+        novelId: '1',
+        pages: [
+          NovelTtsPageDocument(pageNumber: 1, displayText: '本文。', ruby: []),
+        ],
+      );
+      final synthesis = engine.synthesize(
+        document: document,
+        profile: profile,
+        rules: const [],
+        context: const PronunciationContext(novelId: '1'),
+        title: '題',
+        author: '著者',
+        guard: guard,
+        token: token,
+      );
+      await executor.started.future;
+      guard.cancel();
+      executor.response.complete([0x49, 0x44, 0x33, 0, 0, 0]);
+      await expectLater(synthesis, throwsA(isA<TtsSynthesisCancelled>()));
+      expect(await directory.list().toList(), isEmpty);
     },
   );
 

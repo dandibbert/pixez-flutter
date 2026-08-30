@@ -62,6 +62,22 @@ void main() {
     expect(audio.playCalls, 1);
     expect(session.bufferedDuration, const Duration(seconds: 100));
   });
+  test('cancelled generated results never reach the playback queue', () async {
+    final audio = SessionAudioPort();
+    final session = NovelTtsBufferedSession(audio: audio);
+    final gate = Completer<void>();
+    final consuming = session.consumeGenerated((guard, token) async* {
+      await gate.future;
+      yield item('stale', 20);
+    });
+    await Future<void>.delayed(Duration.zero);
+    await session.cancel();
+    gate.complete();
+    await consuming;
+    expect(audio.loaded, isEmpty);
+    expect(audio.playCalls, 0);
+  });
+
   test('short completed chapter starts without waiting forever', () async {
     final audio = SessionAudioPort();
     final session = NovelTtsBufferedSession(audio: audio);

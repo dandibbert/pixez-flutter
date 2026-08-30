@@ -540,7 +540,10 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _ttsMiniPlayerVisible = true;
       _ttsPreparing = true;
     });
-    Stream<NovelTtsSynthesisItem> narration() async* {
+    Stream<NovelTtsSynthesisItem> narration(
+      TtsGenerationGuard guard,
+      TtsGenerationToken token,
+    ) async* {
       var currentStore = _novelStore;
       var currentDocument = document;
       var currentStartPage = startPage;
@@ -562,6 +565,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           secrets: secrets,
           startPage: currentStartPage,
           startTextOffset: currentStartOffset,
+          guard: guard,
+          token: token,
         );
         if (!settings.autoNextNovel) break;
         final next =
@@ -591,7 +596,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     }
 
     try {
-      await session.consume(narration());
+      await session.consumeGenerated(narration);
     } catch (error, stackTrace) {
       LPrinter.d(error);
       LPrinter.d(stackTrace);
