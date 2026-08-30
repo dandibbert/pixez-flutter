@@ -541,24 +541,58 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _ttsMiniPlayerVisible = true;
       _ttsPreparing = true;
     });
-    try {
-      await session.consume(
-        engine.synthesizeIncrementally(
-          document: document,
+    Stream<NovelTtsSynthesisItem> narration() async* {
+      var currentStore = _novelStore;
+      var currentDocument = document;
+      var currentStartPage = startPage;
+      var currentStartOffset = startTextOffset;
+      final continuation = TtsContinuationPlanner(widget.id.toString());
+      while (true) {
+        final novel = currentStore.novel!;
+        yield* engine.synthesizeIncrementally(
+          document: currentDocument,
           profile: profile,
           rules: const <PronunciationRule>[],
           context: PronunciationContext(
-            novelId: widget.id.toString(),
-            seriesId: _novelStore.novel!.series.id?.toString(),
-            authorId: _novelStore.novel!.user.id.toString(),
+            novelId: novel.id.toString(),
+            seriesId: novel.series.id?.toString(),
+            authorId: novel.user.id.toString(),
           ),
-          title: _novelStore.novel!.title,
-          author: _novelStore.novel!.user.name,
+          title: novel.title,
+          author: novel.user.name,
           secrets: secrets,
-          startPage: startPage,
-          startTextOffset: startTextOffset,
-        ),
-      );
+          startPage: currentStartPage,
+          startTextOffset: currentStartOffset,
+        );
+        if (!settings.autoNextNovel) break;
+        final next =
+            currentStore.novelTextResponse?.seriesNavigation?.nextNovel;
+        if (!continuation.acceptNext(
+          next == null
+              ? null
+              : TtsNextNovel(id: next.id.toString(), viewable: next.viewable),
+        )) {
+          break;
+        }
+        final nextStore = NovelStore(next!.id, null);
+        await nextStore.fetch();
+        if (nextStore.errorMessage != null ||
+            nextStore.novel == null ||
+            nextStore.spans.isEmpty) {
+          break;
+        }
+        currentStore = nextStore;
+        currentDocument = NovelTtsDocument.fromSpans(
+          next.id.toString(),
+          nextStore.spans,
+        );
+        currentStartPage = 1;
+        currentStartOffset = 0;
+      }
+    }
+
+    try {
+      await session.consume(narration());
     } catch (error, stackTrace) {
       LPrinter.d(error);
       LPrinter.d(stackTrace);
