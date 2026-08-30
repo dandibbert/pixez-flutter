@@ -13,6 +13,7 @@ import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
+import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
@@ -339,6 +340,7 @@ void main() {
     );
 
     expect(find.byKey(novelTtsSettingsPageKey), findsOneWidget);
+    expect(find.byKey(novelTtsReadingsSectionKey), findsOneWidget);
     expect(find.byKey(novelTtsCustomUrlFieldKey), findsOneWidget);
 
     await tester.tap(find.byKey(novelTtsProviderMicrosoftKey));
@@ -354,6 +356,108 @@ void main() {
     await tester.pumpAndSettle();
     expect(NovelTtsSettings.load().splitChars, 160);
     expect(NovelTtsSettings.load().provider, NovelTtsProvider.openai);
+  });
+
+  test('applies longer pronunciation marks before shorter ones', () {
+    const readings = [
+      NovelTtsReading(surface: '行', reading: 'こう'),
+      NovelTtsReading(surface: '行く', reading: 'いく'),
+      NovelTtsReading(surface: '銀行', reading: 'ぎんこう'),
+      NovelTtsReading(surface: '今日', reading: 'きょう'),
+    ];
+    expect(
+      applyNovelTtsReadings('今日は銀行に行く。', readings),
+      'きょうはぎんこうにいく。',
+    );
+    expect(
+      parseNovelTtsReadingLines('今日=きょう\n# skip\n行先/ゆきさき'),
+      [
+        const NovelTtsReading(surface: '今日', reading: 'きょう'),
+        const NovelTtsReading(surface: '行先', reading: 'ゆきさき'),
+      ],
+    );
+  });
+
+  test('controller synthesizes the marked reading, not the written form', () async {
+    final synth = _FakeSynth();
+    final audio = _FakeAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_yomi');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+        readings: [NovelTtsReading(surface: '今日', reading: 'きょう')],
+      ),
+      cacheDir: () async => dir,
+    );
+
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '今日は雨です。',
+    );
+    expect(controller.subtitle, '今日は雨です。');
+    expect(synth.texts, ['きょうは雨です。']);
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('TTS strings are translated instead of leftover English', () {
+    final ja = lookupAppLocalizations(const Locale('ja'));
+    expect(ja.novel_tts_settings, '小説の読み上げ');
+    expect(ja.novel_tts_section_readings, '読み仮名');
+    expect(ja.novel_tts_reading_add, '読みを追加');
+    expect(ja.novel_tts_readings_hint, contains('今日'));
+
+    final zh = lookupAppLocalizations(const Locale('zh'));
+    expect(zh.novel_tts_settings, '小说朗读');
+    expect(zh.novel_tts_section_readings, '读音标记');
+    expect(zh.novel_tts_lock_screen_hint, isNot(contains('Locking the screen')));
+
+    final de = lookupAppLocalizations(const Locale('de'));
+    expect(de.novel_tts_settings, 'Roman vorlesen');
+    expect(de.novel_tts_section_readings, 'Aussprache');
+    expect(de.novel_tts_empty, isNot(contains('Nothing to read')));
+
+    final es = lookupAppLocalizations(const Locale('es'));
+    expect(es.novel_tts_settings_subtitle, isNot(contains('Voice libraries')));
+    expect(es.novel_tts_not_configured, isNot(contains('Configure a voice')));
+
+    final ko = lookupAppLocalizations(const Locale('ko'));
+    expect(ko.novel_tts_custom_body, 'POST 본문 템플릿');
+    expect(ko.novel_tts_section_readings, '발음 표기');
+  });
+
+  testWidgets('settings page can add a pronunciation mark', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsPage(initial: const NovelTtsSettings()),
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '今日');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'きょう');
+    await tester.tap(find.byKey(novelTtsReadingSaveKey));
+    await tester.pumpAndSettle();
+    expect(find.text('今日  →  きょう'), findsOneWidget);
+    expect(NovelTtsSettings.load().readings, [
+      const NovelTtsReading(surface: '今日', reading: 'きょう'),
+    ]);
   });
 
   testWidgets('player bar shows the current subtitle', (tester) async {

@@ -472,5 +472,19 @@
   "novel_tts_playing": "正在朗读",
   "novel_tts_synthesizing": "正在合成",
   "perf_probe": "性能诊断",
-  "perf_probe_summary": "浮层显示帧数、网络与内存，用于排查发烫或耗电"
+  "perf_probe_summary": "浮层显示帧数、网络与内存，用于排查发烫或耗电",
+  "novel_tts_section_voice": "语音库",
+  "novel_tts_section_playback": "播放",
+  "novel_tts_section_readings": "读音标记",
+  "novel_tts_readings_hint": "合成前按这里的标记替换读音，更长的词优先。例如把「今日」读成「きょう」。",
+  "novel_tts_readings_empty": "还没有读音标记",
+  "novel_tts_reading_surface": "写法",
+  "novel_tts_reading_value": "读音",
+  "novel_tts_reading_add": "添加标记",
+  "novel_tts_reading_edit": "编辑标记",
+  "novel_tts_reading_delete": "删除",
+  "novel_tts_reading_save": "保存",
+  "novel_tts_reading_bulk": "粘贴列表",
+  "novel_tts_reading_bulk_hint": "每行一对，例如 今日=きょう",
+  "novel_tts_advanced": "高级"
 }
