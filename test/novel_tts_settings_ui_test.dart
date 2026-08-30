@@ -122,6 +122,37 @@ void main() {
     expect(repository.saves.last.maxLength, 370);
   });
 
+  testWidgets('settings and Add Profile are localized on a Japanese phone', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('ja'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsSettingsPage(
+          repository: TtsSettingsRepository(secretStore: UiSecrets()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('音声サービス設定'), findsOneWidget);
+    expect(find.text('分割とバッファリング'), findsOneWidget);
+    expect(find.text('Provider profiles'), findsNothing);
+    expect(find.text('Segmentation and buffering'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('tts-add-profile')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TTS 設定を追加'), findsOneWidget);
+    expect(find.text('Add TTS profile'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settings use consistent Traditional Chinese terminology', (
     tester,
   ) async {
