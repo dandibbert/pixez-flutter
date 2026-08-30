@@ -7,6 +7,7 @@ import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
+import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_repository.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
 const Key novelTtsSettingsPageKey = Key('novelTtsSettingsPage');
@@ -142,8 +143,9 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     );
   }
 
-  Future<void> _setReadings(List<NovelTtsReading> readings) {
-    return _persist(_draft().copyWith(readings: readings));
+  Future<void> _setReadings(List<NovelTtsReading> readings) async {
+    await _persist(_draft().copyWith(readings: readings));
+    await PronunciationRepository().replaceFromSettings(readings);
   }
 
   @override

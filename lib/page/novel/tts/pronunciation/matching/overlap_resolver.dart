@@ -18,7 +18,22 @@ int _reasonRank(PronunciationReason reason) {
   }
 }
 
+bool _userDictionaryOverride(PronunciationDecision decision) {
+  return decision.reason == PronunciationReason.exactPhrase ||
+      decision.reason == PronunciationReason.forcedRule;
+}
+
 int compareAppliedDecisions(PronunciationDecision a, PronunciationDecision b) {
+  final aUser = _userDictionaryOverride(a);
+  final bUser = _userDictionaryOverride(b);
+  final aRuby = a.reason == PronunciationReason.explicitRuby;
+  final bRuby = b.reason == PronunciationReason.explicitRuby;
+  if (aUser && bRuby) {
+    return -1;
+  }
+  if (bUser && aRuby) {
+    return 1;
+  }
   final locked = (b.locked ? 1 : 0).compareTo(a.locked ? 1 : 0);
   if (locked != 0) {
     return locked;

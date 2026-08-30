@@ -16,6 +16,7 @@ import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
@@ -473,6 +474,37 @@ void main() {
     );
     expect(controller.subtitle, '今日は雨です。');
     expect(synth.texts, ['きょうは雨です。']);
+
+    final yuji = _FakeSynth();
+    final yujiController = NovelTtsController(
+      synthesizer: yuji,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+        readings: [
+          NovelTtsReading(
+            surface: '悠仁',
+            reading: 'ゆうじ',
+            mode: PronunciationMatchMode.exactPhrase,
+          ),
+        ],
+      ),
+      cacheDir: () async => dir,
+    );
+    await yujiController.start(
+      novelId: 2,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: 'みんなの悠仁が来た。',
+    );
+    expect(yujiController.subtitle, 'みんなの悠仁が来た。');
+    expect(yuji.texts, ['みんなのゆうじが来た。']);
+    yujiController.dispose();
 
     controller.dispose();
     await dir.delete(recursive: true);

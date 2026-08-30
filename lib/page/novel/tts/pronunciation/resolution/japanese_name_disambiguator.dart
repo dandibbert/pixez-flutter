@@ -152,8 +152,9 @@ class JapaneseNameDisambiguator {
         PronunciationReason.morphologyProperName,
       );
     }
-    if (_isWorkOrSeries(candidate.rule.scope) &&
-        _startsWithAny(after, japaneseNameParticles)) {
+    if (_hasNameParticleContext(source, candidate) &&
+        (_isWorkOrSeries(candidate.rule.scope) ||
+            candidate.rule.surface.runes.length >= 2)) {
       return _apply(
         candidate,
         surface,
@@ -161,6 +162,27 @@ class JapaneseNameDisambiguator {
       );
     }
     return _skip(candidate, surface, PronunciationReason.rejectedLowConfidence);
+  }
+
+  bool _hasNameParticleContext(
+    String source,
+    PronunciationCandidate candidate,
+  ) {
+    final after = source.substring(candidate.end);
+    if (_startsWithAny(after, japaneseNameParticles)) {
+      return true;
+    }
+    return _precededByNameParticle(source, candidate.start);
+  }
+
+  bool _precededByNameParticle(String source, int start) {
+    for (final particle in japaneseNameParticles) {
+      if (start >= particle.length &&
+          source.substring(start - particle.length, start) == particle) {
+        return true;
+      }
+    }
+    return false;
   }
 
   MorphologyToken? _coveringToken(

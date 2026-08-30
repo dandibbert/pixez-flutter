@@ -122,9 +122,14 @@ void main() {
     );
   });
 
-  test('explicit ruby wins over the dictionary', () async {
+  test('explicit ruby wins over a name alias', () async {
     final snapshot = compiler.compile([
-      phrase('full', '五条悟', 'ごじょうさとる'),
+      phrase(
+        'alias',
+        '五条悟',
+        'ごじょうさとる',
+        mode: PronunciationMatchMode.nameAlias,
+      ),
     ], workId: 'work-1');
     final document = novelTtsDocumentFromSpans([
       NovelSpansData(NovelSpansType.rb, parseNovelRubyMarkup('[[rb:五条悟＞ごじょう]]')!.encoded),
@@ -143,6 +148,71 @@ void main() {
     expect(
       resolved.appliedDecisions.single.reason,
       PronunciationReason.explicitRuby,
+    );
+  });
+
+  test('exact and force marks override author ruby', () async {
+    final document = novelTtsDocumentFromSpans([
+      NovelSpansData(NovelSpansType.rb, parseNovelRubyMarkup('[[rb:悠仁＞なるひと]]')!.encoded),
+      NovelSpansData(NovelSpansType.normal, 'が来た。'),
+    ]);
+    final exact = compiler.compile([
+      phrase('exact', '悠仁', 'ゆうじ'),
+    ], workId: 'work-1');
+    final exactResolved = await pipeline.resolve(
+      document: document,
+      snapshot: exact,
+    );
+    expect(
+      renderer.renderAll(
+        source: document.displayText,
+        decisions: exactResolved.appliedDecisions,
+      ),
+      'ゆうじが来た。',
+    );
+
+    final forced = compiler.compile([
+      phrase(
+        'force',
+        '悠仁',
+        'ゆうじ',
+        mode: PronunciationMatchMode.force,
+      ),
+    ], workId: 'work-1');
+    final forceResolved = await pipeline.resolve(
+      document: document,
+      snapshot: forced,
+    );
+    expect(
+      renderer.renderAll(
+        source: document.displayText,
+        decisions: forceResolved.appliedDecisions,
+      ),
+      'ゆうじが来た。',
+    );
+  });
+
+  test('みんなの悠仁 is a name even as a global alias', () async {
+    final snapshot = compiler.compile([
+      phrase(
+        'yuji',
+        '悠仁',
+        'ゆうじ',
+        mode: PronunciationMatchMode.nameAlias,
+        scope: PronunciationScopeType.global,
+        scopeId: null,
+      ),
+    ]);
+    final resolved = await pipeline.resolve(
+      document: const NovelTtsTextDocument(displayText: 'みんなの悠仁が来た。'),
+      snapshot: snapshot,
+    );
+    expect(
+      renderer.renderAll(
+        source: 'みんなの悠仁が来た。',
+        decisions: resolved.appliedDecisions,
+      ),
+      'みんなのゆうじが来た。',
     );
   });
 
@@ -275,6 +345,21 @@ void main() {
     expect(first.rules, hasLength(1));
     expect(second.rules.single.surface, '今日');
     expect(Prefer.getString(PronunciationRepository.v1BackupKey), isNotEmpty);
+
+    final live = await repo.snapshotFor(
+      workId: '1',
+      seriesId: null,
+      settingsReadings: const [
+        NovelTtsReading(
+          surface: '悠仁',
+          reading: 'ゆうじ',
+          mode: PronunciationMatchMode.exactPhrase,
+        ),
+      ],
+    );
+    expect(live.activeRules.single.surface, '悠仁');
+    expect(live.activeRules.single.reading, 'ゆうじ');
+    expect(live.activeRules.single.mode, PronunciationMatchMode.exactPhrase);
   });
 
   test('preview explains applied and skipped decisions', () async {

@@ -135,28 +135,60 @@ class PronunciationRepository {
     return next;
   }
 
+  Future<PronunciationStore> replaceFromSettings(
+    List<NovelTtsReading> readings, {
+    int? nowMs,
+  }) async {
+    final current = await load();
+    final next = current.copyWith(
+      rules: _migration.migrateV1(
+        readings,
+        nowMs: nowMs ?? DateTime.now().millisecondsSinceEpoch,
+      ),
+      v1Completed: true,
+      completedAt: nowMs ?? DateTime.now().millisecondsSinceEpoch,
+    );
+    await save(next);
+    return next;
+  }
+
   Future<PronunciationSnapshot> snapshotFor({
     required String? workId,
     required String? seriesId,
     List<NovelTtsReading>? settingsReadings,
   }) async {
+    final live = settingsReadings ?? NovelTtsSettings.load().readings;
+    if (live.isNotEmpty) {
+      final rules = _migration.migrateV1(live);
+      final store = await load();
+      if (!_sameSurfaces(store.rules, rules)) {
+        await replaceFromSettings(live);
+      }
+      return _compiler.compile(rules, workId: workId, seriesId: seriesId);
+    }
     var store = await load();
-    if (!store.v1Completed &&
-        (settingsReadings != null && settingsReadings.isNotEmpty ||
-            (NovelTtsSettings.load().readings.isNotEmpty))) {
-      store = await migrateFromSettingsIfNeeded(readings: settingsReadings);
+    if (!store.v1Completed) {
+      store = await migrateFromSettingsIfNeeded(readings: live);
     }
-    final rules = store.rules;
-    if (rules.isEmpty &&
-        settingsReadings != null &&
-        settingsReadings.isNotEmpty) {
-      return _compiler.compile(
-        _migration.migrateV1(settingsReadings),
-        workId: workId,
-        seriesId: seriesId,
-      );
+    return _compiler.compile(store.rules, workId: workId, seriesId: seriesId);
+  }
+
+  bool _sameSurfaces(
+    List<PronunciationRule> stored,
+    List<PronunciationRule> live,
+  ) {
+    if (stored.length != live.length) {
+      return false;
     }
-    return _compiler.compile(rules, workId: workId, seriesId: seriesId);
+    for (var i = 0; i < stored.length; i++) {
+      if (stored[i].surface != live[i].surface ||
+          stored[i].reading != live[i].reading ||
+          stored[i].mode != live[i].mode ||
+          stored[i].enabled != live[i].enabled) {
+        return false;
+      }
+    }
+    return true;
   }
 
   List<NovelTtsReading> asLegacyReadings(PronunciationStore store) {
