@@ -40,6 +40,7 @@ import 'package:pixez/page/history/history_page.dart';
 import 'package:pixez/page/login/login_page.dart';
 import 'package:pixez/page/novel/history/novel_history_page.dart';
 import 'package:pixez/page/novel/novel_rail.dart';
+import 'package:pixez/page/novel/tts/ui/novel_tts_settings_page.dart';
 import 'package:pixez/page/shield/shield_page.dart';
 import 'package:pixez/page/task/job_page.dart';
 import 'package:pixez/page/theme/theme_page.dart';
@@ -260,6 +261,14 @@ class _SettingPageState extends State<SettingPage> {
                       leading: Icon(Icons.book),
                       title: Text(I18n.of(context).novel),
                       onTap: () => openNovelRail(context),
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.record_voice_over),
+                      title: Text('Novel text to speech'),
+                      onTap: () => Leader.push(
+                        context,
+                        NovelTtsSettingsPage(),
+                      ),
                     ),
                     ListTile(
                       leading: Icon(Icons.message),

@@ -35,6 +35,7 @@ class TtsSettingsSnapshot {
     this.maxLength = 360,
     this.startupBufferSeconds = 90,
     this.targetBufferSeconds = 180,
+    this.maxCacheMegabytes = 512,
     this.autoNextPage = true,
     this.autoNextNovel = true,
     this.localPlaybackSpeed = 1,
@@ -45,9 +46,34 @@ class TtsSettingsSnapshot {
   final int maxLength;
   final int startupBufferSeconds;
   final int targetBufferSeconds;
+  final int maxCacheMegabytes;
   final bool autoNextPage;
   final bool autoNextNovel;
   final double localPlaybackSpeed;
+  TtsSettingsSnapshot copyWith({
+    List<TtsProfile>? profiles,
+    String? currentProfileId,
+    int? targetLength,
+    int? maxLength,
+    int? startupBufferSeconds,
+    int? targetBufferSeconds,
+    int? maxCacheMegabytes,
+    bool? autoNextPage,
+    bool? autoNextNovel,
+    double? localPlaybackSpeed,
+  }) => TtsSettingsSnapshot(
+    profiles: profiles ?? this.profiles,
+    currentProfileId: currentProfileId ?? this.currentProfileId,
+    targetLength: targetLength ?? this.targetLength,
+    maxLength: maxLength ?? this.maxLength,
+    startupBufferSeconds: startupBufferSeconds ?? this.startupBufferSeconds,
+    targetBufferSeconds: targetBufferSeconds ?? this.targetBufferSeconds,
+    maxCacheMegabytes: maxCacheMegabytes ?? this.maxCacheMegabytes,
+    autoNextPage: autoNextPage ?? this.autoNextPage,
+    autoNextNovel: autoNextNovel ?? this.autoNextNovel,
+    localPlaybackSpeed: localPlaybackSpeed ?? this.localPlaybackSpeed,
+  );
+
   TtsProfile? get currentProfile => profiles
       .where((profile) => profile.id == currentProfileId && profile.enabled)
       .firstOrNull;
@@ -59,6 +85,7 @@ class TtsSettingsSnapshot {
     'maxLength': maxLength,
     'startupBufferSeconds': startupBufferSeconds,
     'targetBufferSeconds': targetBufferSeconds,
+    'maxCacheMegabytes': maxCacheMegabytes,
     'autoNextPage': autoNextPage,
     'autoNextNovel': autoNextNovel,
     'localPlaybackSpeed': localPlaybackSpeed,
@@ -74,6 +101,7 @@ class TtsSettingsSnapshot {
     maxLength: json['maxLength'] as int? ?? 360,
     startupBufferSeconds: json['startupBufferSeconds'] as int? ?? 90,
     targetBufferSeconds: json['targetBufferSeconds'] as int? ?? 180,
+    maxCacheMegabytes: json['maxCacheMegabytes'] as int? ?? 512,
     autoNextPage: json['autoNextPage'] as bool? ?? true,
     autoNextNovel: json['autoNextNovel'] as bool? ?? true,
     localPlaybackSpeed: (json['localPlaybackSpeed'] as num?)?.toDouble() ?? 1,

@@ -90,6 +90,41 @@ class TtsAtomicCacheWriter {
   }
 }
 
+class TtsDiskCache {
+  const TtsDiskCache({required this.directory, required this.maximumBytes});
+  final Directory directory;
+  final int maximumBytes;
+
+  Future<void> touch(File file) async {
+    if (await file.exists()) await file.setLastModified(DateTime.now());
+  }
+
+  Future<List<File>> prune({Set<String> pinned = const {}}) async {
+    if (!await directory.exists()) return const [];
+    final files = await directory
+        .list()
+        .where((entity) => entity is File && !entity.path.endsWith('.part'))
+        .cast<File>()
+        .toList();
+    final entries = <({File file, int bytes, DateTime accessed})>[];
+    for (final file in files) {
+      final stat = await file.stat();
+      entries.add((file: file, bytes: stat.size, accessed: stat.modified));
+    }
+    var total = entries.fold<int>(0, (sum, entry) => sum + entry.bytes);
+    entries.sort((a, b) => a.accessed.compareTo(b.accessed));
+    final removed = <File>[];
+    for (final entry in entries) {
+      if (total <= maximumBytes) break;
+      if (pinned.contains(entry.file.path)) continue;
+      if (await entry.file.exists()) await entry.file.delete();
+      total -= entry.bytes;
+      removed.add(entry.file);
+    }
+    return removed;
+  }
+}
+
 class TtsCacheEntry {
   TtsCacheEntry({
     required this.key,

@@ -39,6 +39,7 @@ import 'package:pixez/page/comment/comment_page.dart';
 import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
 import 'package:pixez/page/novel/search/novel_result_page.dart';
 import 'package:pixez/page/novel/tts/data/tts_settings_repository.dart';
+import 'package:pixez/page/novel/tts/data/pronunciation_dictionary_repository.dart';
 import 'package:pixez/page/novel/tts/domain/novel_tts_document.dart';
 import 'package:pixez/page/novel/tts/playback/novel_tts_playback_controller.dart';
 import 'package:pixez/page/novel/tts/pronunciation/pronunciation_engine.dart';
@@ -48,6 +49,8 @@ import 'package:pixez/page/novel/tts/synthesis/novel_tts_synthesis_engine.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_full_player.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_mini_player.dart';
 import 'package:pixez/page/novel/tts/ui/novel_tts_start_sheet.dart';
+import 'package:pixez/page/novel/tts/ui/novel_tts_settings_page.dart';
+import 'package:pixez/page/novel/tts/ui/pronunciation_dictionary_page.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
@@ -462,27 +465,20 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   Future<void> _showNovelTtsStart() async {
     final settingsRepository = TtsSettingsRepository();
-    final settings = await settingsRepository.load();
-    final profile = settings.currentProfile;
+    var settings = await settingsRepository.load();
+    var profile = settings.currentProfile;
     if (!mounted) return;
     if (profile == null) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Set up novel narration'),
-          content: const Text(
-            'Create and enable a TTS provider profile in Settings → Novel text to speech first.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => NovelTtsSettingsPage(repository: settingsRepository),
         ),
       );
-      return;
+      settings = await settingsRepository.load();
+      profile = settings.currentProfile;
+      if (!mounted || profile == null) return;
     }
+    final selectedProfile = profile;
     final mode = await showModalBottomSheet<NovelTtsStartMode>(
       context: context,
       builder: (context) => NovelTtsStartSheet(
@@ -522,12 +518,14 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       startTextOffset = (pageText.length * ratio).round();
     }
     final cacheRoot = await getTemporaryDirectory();
-    final secrets = await settingsRepository.readSecrets(profile);
+    final secrets = await settingsRepository.readSecrets(selectedProfile);
+    final pronunciationRules = await PronunciationDictionaryRepository().load();
     final engine = NovelTtsSynthesisEngine(
       executor: DioTtsHttpExecutor(),
       cacheDirectory: Directory(Path.join(cacheRoot.path, 'novel_tts_cache')),
       targetLength: settings.targetLength,
       maxLength: settings.maxLength,
+      maxCacheBytes: settings.maxCacheMegabytes * 1024 * 1024,
     );
     final session = NovelTtsBufferedSession(
       audio: audio,
@@ -552,8 +550,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         final novel = currentStore.novel!;
         yield* engine.synthesizeIncrementally(
           document: currentDocument,
-          profile: profile,
-          rules: const <PronunciationRule>[],
+          profile: selectedProfile,
+          rules: pronunciationRules,
           context: PronunciationContext(
             novelId: novel.id.toString(),
             seriesId: novel.series.id?.toString(),
@@ -697,6 +695,26 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
             }
             await SupportorPlugin.start(selectionText);
             ContextMenuController.removeAny();
+          },
+        ),
+      );
+    }
+    if (_selectedText.trim().isNotEmpty) {
+      buttonItems.add(
+        ContextMenuButtonItem(
+          label: 'Add pronunciation',
+          onPressed: () {
+            final selectedText = _selectedText.trim();
+            ContextMenuController.removeAny();
+            Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) => PronunciationDictionaryPage(
+                  initialSurface: selectedText,
+                  initialScope: PronunciationScope.novel,
+                  initialScopeId: widget.id.toString(),
+                ),
+              ),
+            );
           },
         ),
       );

@@ -86,19 +86,26 @@ class NovelTtsSynthesisEngine {
     required this.cacheDirectory,
     this.targetLength = 220,
     this.maxLength = 360,
+    this.maxCacheBytes = 512 * 1024 * 1024,
     TtsRequestBuilder? requestBuilder,
     PronunciationEngine? pronunciation,
     TtsAtomicCacheWriter? writer,
   }) : _requestBuilder = requestBuilder ?? TtsRequestBuilder(),
        _pronunciation = pronunciation ?? PronunciationEngine(),
-       _writer = writer ?? const TtsAtomicCacheWriter();
+       _writer = writer ?? const TtsAtomicCacheWriter(),
+       _diskCache = TtsDiskCache(
+         directory: cacheDirectory,
+         maximumBytes: maxCacheBytes,
+       );
   final TtsHttpExecutor executor;
   final Directory cacheDirectory;
   final int targetLength;
   final int maxLength;
+  final int maxCacheBytes;
   final TtsRequestBuilder _requestBuilder;
   final PronunciationEngine _pronunciation;
   final TtsAtomicCacheWriter _writer;
+  final TtsDiskCache _diskCache;
 
   Stream<NovelTtsSynthesisItem> synthesizeIncrementally({
     required NovelTtsDocument document,
@@ -241,6 +248,9 @@ class NovelTtsSynthesisEngine {
           final bytes = await executor.execute(request);
           _ensureCurrent(guard, token);
           await _writer.write(destination: destination, bytes: bytes);
+          await _diskCache.prune(pinned: {destination.path});
+        } else {
+          await _diskCache.touch(destination);
         }
         final seconds = math.max(
           1,

@@ -26,6 +26,53 @@ class PronunciationRule {
   final int priority;
   final bool enabled;
   final bool overridePixivRuby;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'surface': surface,
+    'reading': reading,
+    'scope': scope.name,
+    'scopeId': scopeId,
+    'priority': priority,
+    'enabled': enabled,
+    'overridePixivRuby': overridePixivRuby,
+  };
+
+  factory PronunciationRule.fromJson(Map<String, dynamic> json) =>
+      PronunciationRule(
+        id: json['id'] as String,
+        surface: json['surface'] as String,
+        reading: json['reading'] as String,
+        scope: PronunciationScope.values.byName(
+          json['scope'] as String? ?? PronunciationScope.global.name,
+        ),
+        scopeId: json['scopeId'] as String?,
+        priority: json['priority'] as int? ?? 0,
+        enabled: json['enabled'] as bool? ?? true,
+        overridePixivRuby: json['overridePixivRuby'] as bool? ?? false,
+      );
+
+  PronunciationRule copyWith({
+    String? id,
+    String? surface,
+    String? reading,
+    PronunciationScope? scope,
+    String? scopeId,
+    int? priority,
+    bool? enabled,
+    bool? overridePixivRuby,
+  }) => PronunciationRule(
+    id: id ?? this.id,
+    surface: surface ?? this.surface,
+    reading: reading ?? this.reading,
+    scope: scope ?? this.scope,
+    scopeId: scope == PronunciationScope.global
+        ? null
+        : (scopeId ?? this.scopeId),
+    priority: priority ?? this.priority,
+    enabled: enabled ?? this.enabled,
+    overridePixivRuby: overridePixivRuby ?? this.overridePixivRuby,
+  );
 }
 
 class PronunciationRuby {
