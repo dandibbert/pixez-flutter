@@ -1,23 +1,40 @@
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
+
 class NovelTtsReading {
-  const NovelTtsReading({required this.surface, required this.reading});
+  const NovelTtsReading({
+    required this.surface,
+    required this.reading,
+    this.mode,
+  });
 
   final String surface;
   final String reading;
+  final PronunciationMatchMode? mode;
 
   bool get isValid => surface.trim().isNotEmpty && reading.trim().isNotEmpty;
 
   NovelTtsReading trimmed() {
-    return NovelTtsReading(surface: surface.trim(), reading: reading.trim());
+    return NovelTtsReading(
+      surface: surface.trim(),
+      reading: reading.trim(),
+      mode: mode,
+    );
   }
 
   Map<String, dynamic> toJson() {
-    return {'surface': surface, 'reading': reading};
+    return {
+      'surface': surface,
+      'reading': reading,
+      if (mode != null) 'mode': mode!.name,
+    };
   }
 
   factory NovelTtsReading.fromJson(Map<String, dynamic> json) {
+    final modeName = json['mode'] as String?;
     return NovelTtsReading(
       surface: json['surface'] as String? ?? '',
       reading: json['reading'] as String? ?? '',
+      mode: _modeNamed(modeName),
     );
   }
 
@@ -96,6 +113,18 @@ List<NovelTtsReading> parseNovelTtsReadingLines(String raw) {
     for (final line in raw.split(RegExp(r'\r?\n')))
       if (parseNovelTtsReadingLine(line) case final reading?) reading,
   ];
+}
+
+PronunciationMatchMode? _modeNamed(String? name) {
+  if (name == null) {
+    return null;
+  }
+  for (final mode in PronunciationMatchMode.values) {
+    if (mode.name == name) {
+      return mode;
+    }
+  }
+  return null;
 }
 
 List<NovelTtsReading> readingsFromJson(Object? raw) {

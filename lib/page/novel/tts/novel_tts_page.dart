@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
+import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
 const Key novelTtsSettingsPageKey = Key('novelTtsSettingsPage');
@@ -231,9 +233,19 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
           _Section(
             key: novelTtsReadingsSectionKey,
             title: i18n.novel_tts_section_readings,
-            child: _ReadingsEditor(
-              readings: _settings.readings,
-              onChanged: _setReadings,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  i18n.novel_tts_analyzer_boundary,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                _ReadingsEditor(
+                  readings: _settings.readings,
+                  onChanged: _setReadings,
+                ),
+              ],
             ),
           ),
         ],
@@ -498,12 +510,20 @@ class _ReadingDialog extends StatefulWidget {
 class _ReadingDialogState extends State<_ReadingDialog> {
   late final TextEditingController _surface;
   late final TextEditingController _reading;
+  late PronunciationMatchMode _mode;
 
   @override
   void initState() {
     super.initState();
     _surface = TextEditingController(text: widget.initial?.surface ?? '');
     _reading = TextEditingController(text: widget.initial?.reading ?? '');
+    _mode = widget.initial?.mode ??
+        const PronunciationMigration().classifyV1Surface(
+          widget.initial?.surface ?? '',
+        ).mode;
+    if (widget.initial == null) {
+      _mode = PronunciationMatchMode.exactPhrase;
+    }
   }
 
   @override
@@ -544,6 +564,43 @@ class _ReadingDialogState extends State<_ReadingDialog> {
                 border: const OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<PronunciationMatchMode>(
+              initialValue: _mode,
+              decoration: InputDecoration(
+                labelText: i18n.novel_tts_advanced,
+                border: const OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: PronunciationMatchMode.exactPhrase,
+                  child: Text(i18n.novel_tts_mode_exact),
+                ),
+                DropdownMenuItem(
+                  value: PronunciationMatchMode.nameAlias,
+                  child: Text(i18n.novel_tts_mode_alias),
+                ),
+                DropdownMenuItem(
+                  value: PronunciationMatchMode.force,
+                  child: Text(i18n.novel_tts_mode_force),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _mode = value);
+                }
+              },
+            ),
+            if (_mode == PronunciationMatchMode.force)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  i18n.novel_tts_mode_force_warning,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -558,6 +615,7 @@ class _ReadingDialogState extends State<_ReadingDialog> {
             final next = NovelTtsReading(
               surface: _surface.text,
               reading: _reading.text,
+              mode: _mode,
             ).trimmed();
             if (!next.isValid) {
               return;

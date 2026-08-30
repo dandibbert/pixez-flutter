@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -12,9 +13,14 @@ import 'package:pixez/page/novel/tts/novel_tts_advance.dart';
 import 'package:pixez/page/novel/tts/novel_tts_audio.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
-import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
-import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
+import 'package:pixez/page/novel/tts/novel_tts_text.dart';
+import 'package:pixez/page/novel/tts/pronunciation/matching/pronunciation_compiler.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
+import 'package:pixez/page/novel/tts/pronunciation/resolution/pronunciation_pipeline.dart';
+import 'package:pixez/page/novel/tts/pronunciation/resolution/pronunciation_renderer.dart';
+import 'package:pixez/page/novel/tts/pronunciation/resolution/source_aware_splitter.dart';
+import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_repository.dart';
 
 enum NovelTtsStatus { idle, synthesizing, playing, paused, error }
 
@@ -42,12 +48,23 @@ class NovelTtsClip {
     required this.page,
     required this.chunkIndex,
     required this.text,
-  });
+    String? spokenText,
+    this.sourceStart = 0,
+    this.sourceEnd = 0,
+    this.pronunciationFingerprint = '',
+  }) : spokenText = spokenText ?? text;
 
   final int novelId;
   final int page;
   final int chunkIndex;
   final String text;
+  final String spokenText;
+  final int sourceStart;
+  final int sourceEnd;
+  final String pronunciationFingerprint;
+
+  String get spokenTextHash =>
+      sha1.convert(utf8.encode(spokenText)).toString();
 }
 
 class NovelTtsChapter {
@@ -133,11 +150,19 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     NovelTtsNowPlaying? nowPlaying,
     NovelTtsSettings Function()? settingsLoader,
     Future<Directory> Function()? cacheDir,
+    PronunciationRepository? pronunciationRepository,
+    PronunciationPipeline? pronunciationPipeline,
+    SourceAwareNovelTtsSplitter? splitter,
   }) : _synthesizer = synthesizer ?? NovelTtsHttpSynthesizer(),
        _audio = audio ?? JustAudioNovelTtsPlayer(),
        _nowPlaying = nowPlaying ?? NovelTtsNowPlaying(),
        _settingsLoader = settingsLoader ?? NovelTtsSettings.load,
-       _cacheDir = cacheDir {
+       _cacheDir = cacheDir,
+       _pronunciationRepository =
+           pronunciationRepository ?? PronunciationRepository(),
+       _pronunciationPipeline = pronunciationPipeline ?? PronunciationPipeline(),
+       _splitter = splitter ?? const SourceAwareNovelTtsSplitter(),
+       _renderer = const PronunciationRenderer() {
     _audio.listen();
     _completionSub = _audio.onComplete.listen((_) {
       unawaited(_onQueueComplete());
@@ -164,6 +189,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   final NovelTtsNowPlaying _nowPlaying;
   final NovelTtsSettings Function() _settingsLoader;
   final Future<Directory> Function()? _cacheDir;
+  final PronunciationRepository _pronunciationRepository;
+  final PronunciationPipeline _pronunciationPipeline;
+  final SourceAwareNovelTtsSplitter _splitter;
+  final PronunciationRenderer _renderer;
+  PronunciationSnapshot? _sessionSnapshot;
 
   StreamSubscription<void>? _completionSub;
   StreamSubscription<int>? _clipSub;
@@ -235,9 +265,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     required int totalPages,
     required String pageText,
     List<String>? pageTexts,
+    List<NovelTtsTextDocument>? pageDocuments,
     String? coverUrl,
     int? prevSeriesId,
     int? nextSeriesId,
+    String? seriesId,
     int? startChunk,
   }) async {
     final loaded = settings;
@@ -250,14 +282,27 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     final texts = pageTexts == null || pageTexts.isEmpty
         ? [pageText]
         : pageTexts;
-    final built = _clipsFromPages(texts, loaded.clampedSplitChars, novelId);
+    final documents = pageDocuments == null || pageDocuments.isEmpty
+        ? [for (final text in texts) novelTtsDocumentFromText(text)]
+        : pageDocuments;
+    _generation++;
+    _pronunciationPipeline.worker.sessionGeneration = _generation;
+    _sessionSnapshot = await _pronunciationRepository.snapshotFor(
+      workId: '$novelId',
+      seriesId: seriesId,
+      settingsReadings: loaded.readings,
+    );
+    final built = await _clipsFromDocuments(
+      documents,
+      loaded.clampedSplitChars,
+      novelId: novelId,
+    );
     if (built.isEmpty) {
       status = NovelTtsStatus.error;
       errorMessage = 'empty';
       notifyListeners();
       return;
     }
-    _generation++;
     pendingResumeNovelId = null;
     _chapters
       ..clear()
@@ -342,30 +387,23 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
-    final chunks = splitNovelTtsText(
-      pageText,
-      maxChars: settings.clampedSplitChars,
+    final pageClips = await _clipsFromDocuments(
+      [novelTtsDocumentFromText(pageText)],
+      settings.clampedSplitChars,
+      novelId: current.novelId,
+      pageOffset: page,
     );
-    if (chunks.isEmpty) {
+    if (pageClips.isEmpty) {
       await skip(direction: fromEnd ? 'prev' : 'next');
       return;
     }
     session = current.copyWith(
       page: page,
       totalPages: totalPages,
-      chunks: chunks,
+      chunks: [for (final clip in pageClips) clip.text],
       prevSeriesId: prevSeriesId,
       nextSeriesId: nextSeriesId,
     );
-    final pageClips = [
-      for (var i = 0; i < chunks.length; i++)
-        NovelTtsClip(
-          novelId: current.novelId,
-          page: page,
-          chunkIndex: i,
-          text: chunks[i],
-        ),
-    ];
     clips = [
       for (final clip in clips)
         if (clip.page < page) clip,
@@ -378,7 +416,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     }
     clipIndex = _indexOf(
       page: page,
-      chunkIndex: fromEnd ? chunks.length - 1 : 0,
+      chunkIndex: fromEnd ? pageClips.length - 1 : 0,
     );
     await _playFrom(clipIndex);
   }
@@ -438,6 +476,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> stop() async {
     _rememberBookmark();
     _generation++;
+    _pronunciationPipeline.worker.sessionGeneration = _generation;
     pendingResumeNovelId = null;
     _prefetchingSeriesId = null;
     _holdAfterReady = false;
@@ -701,10 +740,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       if (loaded == null || !isActive) {
         return false;
       }
-      final extra = _clipsFromPages(
-        loaded.pageTexts,
+      final extra = await _clipsFromDocuments(
+        [for (final text in loaded.pageTexts) novelTtsDocumentFromText(text)],
         settings.clampedSplitChars,
-        loaded.novelId,
+        novelId: loaded.novelId,
       );
       if (extra.isEmpty) {
         return false;
@@ -798,22 +837,59 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
   }
 
-  List<NovelTtsClip> _clipsFromPages(
-    List<String> pages,
-    int splitChars, [
+  Future<List<NovelTtsClip>> _clipsFromDocuments(
+    List<NovelTtsTextDocument> pages,
+    int splitChars, {
     int? novelId,
-  ]) {
+    int pageOffset = 1,
+  }) async {
     final id = novelId ?? session?.novelId ?? 0;
+    final snapshot = _sessionSnapshot;
     final result = <NovelTtsClip>[];
     for (var page = 0; page < pages.length; page++) {
-      final chunks = splitNovelTtsText(pages[page], maxChars: splitChars);
-      for (var i = 0; i < chunks.length; i++) {
+      final document = pages[page];
+      if (document.displayText.trim().isEmpty) {
+        continue;
+      }
+      final resolved = snapshot == null
+          ? null
+          : await _pronunciationPipeline.resolve(
+              document: document,
+              snapshot: snapshot,
+              sessionId: '$id:${page + pageOffset}',
+              generation: _generation,
+            );
+      if (snapshot != null &&
+          resolved != null &&
+          resolved.snapshotFingerprint != snapshot.fingerprint) {
+        continue;
+      }
+      final applied = resolved?.appliedDecisions ?? const [];
+      final ranges = _splitter.split(
+        displayText: document.displayText,
+        appliedDecisions: applied,
+        budget: RuneTtsTextBudget(splitChars),
+      );
+      for (var i = 0; i < ranges.length; i++) {
+        final range = ranges[i];
+        final display = document.displayText.substring(range.start, range.end);
+        final spoken = resolved == null
+            ? display
+            : _renderer.renderRange(
+                source: document.displayText,
+                range: range,
+                decisions: applied,
+              );
         result.add(
           NovelTtsClip(
             novelId: id,
-            page: page + 1,
+            page: page + pageOffset,
             chunkIndex: i,
-            text: chunks[i],
+            text: display,
+            spokenText: spoken,
+            sourceStart: range.start,
+            sourceEnd: range.end,
+            pronunciationFingerprint: snapshot?.fingerprint ?? '',
           ),
         );
       }
@@ -845,7 +921,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<File> _fileForClip(int index) async {
-    final spoken = applyNovelTtsReadings(clips[index].text, settings.readings);
+    final spoken = clips[index].spokenText;
     final bytes = await _audioBytes(spoken);
     return _writeCache(spoken, bytes);
   }
@@ -864,9 +940,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   String _cacheKey(String text) {
     final loaded = settings;
+    final spokenHash = sha1.convert(utf8.encode(text)).toString();
     final material =
-        '${loaded.provider.name}|${loaded.activeVoice}|${loaded.openaiModel}|$text';
-    return sha1.convert(material.codeUnits).toString();
+        '${loaded.provider.name}|${loaded.activeVoice}|${loaded.openaiModel}|${loaded.openaiSpeed}|$spokenHash';
+    return sha1.convert(utf8.encode(material)).toString();
   }
 
   Future<File> _writeCache(String text, Uint8List bytes) async {

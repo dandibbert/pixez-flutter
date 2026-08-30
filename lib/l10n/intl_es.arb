@@ -434,5 +434,12 @@
   "novel_tts_reading_save": "Guardar",
   "novel_tts_reading_bulk": "Pegar lista",
   "novel_tts_reading_bulk_hint": "Un par por línea, por ejemplo 今日=きょう",
-  "novel_tts_advanced": "Avanzado"
+  "novel_tts_advanced": "Avanzado",
+  "novel_tts_mode_exact": "Fixed phrase",
+  "novel_tts_mode_alias": "Name alias",
+  "novel_tts_mode_force": "Force replace (advanced)",
+  "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
+  "novel_tts_preview_spoken": "Spoken",
+  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_needs_review": "Review after import"
 }

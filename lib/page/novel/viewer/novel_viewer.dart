@@ -372,6 +372,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pageTexts = [
       for (var i = 0; i < totalPages; i++) novelTtsTextFromPages(pages, i),
     ];
+    final pageDocuments = [
+      for (var i = 0; i < totalPages; i++) novelTtsDocumentFromPages(pages, i),
+    ];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     await _tts.start(
       novelId: widget.id,
@@ -381,6 +384,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       totalPages: totalPages,
       pageText: pageTexts[page - 1],
       pageTexts: pageTexts,
+      pageDocuments: pageDocuments,
+      seriesId: novel.series.id?.toString(),
       coverUrl: novel.imageUrls.medium,
       prevSeriesId: navigation?.prevNovel?.viewable == true
           ? navigation!.prevNovel!.id
