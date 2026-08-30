@@ -485,29 +485,29 @@ void main() {
   test('maps a clip across a dropped paragraph break', () {
     final blocks = [
       NovelReaderBlock.spans([
-        NovelSpansData(NovelSpansType.normal, '第一句。\n'),
+        NovelSpansData(NovelSpansType.normal, '这是第一句用来测试拆分的。\n'),
       ]),
       NovelReaderBlock.spans([
-        NovelSpansData(NovelSpansType.normal, '第二句。'),
+        NovelSpansData(NovelSpansType.normal, '这是第二句用来测试拆分的。'),
       ]),
     ];
     expect(
       novelTtsBlockIndexForChunk(
         blocks: blocks,
         chunkIndex: 1,
-        splitChars: 6,
+        splitChars: 20,
       ),
       1,
     );
     final highlights = novelTtsHighlightsForClip(
       blocks: blocks,
       chunkIndex: 1,
-      splitChars: 6,
+      splitChars: 20,
     );
     expect(highlights, isNotEmpty);
-    expect(highlights.first.blockIndex, 1);
-    expect(highlights.first.start, 0);
-    expect(highlights.first.end, '第二句。'.length);
+    expect(highlights.single.blockIndex, 1);
+    expect(highlights.single.start, 0);
+    expect(highlights.single.end, '这是第二句用来测试拆分的。'.length);
   });
 
   test('can pause while synthesizing and resume afterwards', () async {
