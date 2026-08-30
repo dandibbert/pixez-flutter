@@ -31,6 +31,7 @@ import WidgetKit
         InstalledFontsPlugin.bind(engineBridge)
         DeepLinkPlugin.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "DeepLinkPlugin")!)
         bindAppWidgetChannel(engineBridge)
+        NovelTtsLiveActivityPlugin.bind(engineBridge)
     }
 
     private func bindAppWidgetChannel(_ engineBridge: FlutterImplicitEngineBridge) {
