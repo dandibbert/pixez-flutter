@@ -583,7 +583,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           break;
         }
         final nextStore = NovelStore(next!.id, null);
-        await nextStore.fetch();
+        try {
+          await nextStore.fetch();
+        } catch (error, stackTrace) {
+          LPrinter.d(error);
+          LPrinter.d(stackTrace);
+          break;
+        }
         if (nextStore.errorMessage != null ||
             nextStore.novel == null ||
             nextStore.spans.isEmpty) {
@@ -601,6 +607,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
     try {
       await session.consumeGenerated(narration);
+    } on TtsSynthesisCancelled {
+      // Explicit stop/restart invalidates in-flight results without user error.
     } catch (error, stackTrace) {
       LPrinter.d(error);
       LPrinter.d(stackTrace);
