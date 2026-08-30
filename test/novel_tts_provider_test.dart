@@ -66,6 +66,7 @@ void main() {
       provider: CustomTtsProviderConfig(
         endpointTemplate: 'https://x.test/{{voice}}',
         method: CustomHttpMethod.put,
+        headerTemplates: {'X-Tenant': '{{secret:tenant}}'},
         bodyTemplate: '{"text":"{{text|json}}"}',
       ),
       voice: 'v',
@@ -77,10 +78,16 @@ void main() {
         spokenText: 'a "quote"',
         ssml: '',
         profile: profile,
+        secrets: const {'tenant': 'private-tenant-token'},
       ),
     );
     expect(request.method, 'PUT');
     expect(request.url, 'https://x.test/v');
     expect(jsonDecode(request.body!)['text'], 'a "quote"');
+    expect(request.headers['X-Tenant'], 'private-tenant-token');
+    expect(
+      request.redactedDescription,
+      isNot(contains('private-tenant-token')),
+    );
   });
 }

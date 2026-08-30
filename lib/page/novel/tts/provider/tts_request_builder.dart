@@ -133,17 +133,24 @@ class TtsRequestBuilder {
     String? body,
     TtsTemplateContext context,
   ) {
-    var safeUrl = url;
-    var safeBody = body;
-    for (final secret in context.secrets.values.where(
-      (value) => value.isNotEmpty,
-    )) {
-      safeUrl = safeUrl.replaceAll(secret, '<redacted>');
-      safeBody = safeBody?.replaceAll(secret, '<redacted>');
+    final secretValues = context.secrets.values
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    String redact(String value) {
+      var safe = value;
+      for (final secret in secretValues) {
+        safe = safe.replaceAll(secret, '<redacted>');
+      }
+      return safe;
     }
+
+    final safeUrl = redact(url);
+    final safeBody = body == null ? null : redact(body);
     final safeHeaders = <String, String>{
       for (final entry in headers.entries)
-        entry.key: _sensitiveHeader(entry.key) ? '<redacted>' : entry.value,
+        entry.key: _sensitiveHeader(entry.key)
+            ? '<redacted>'
+            : redact(entry.value),
     };
     return TtsHttpRequest(
       method: method,
