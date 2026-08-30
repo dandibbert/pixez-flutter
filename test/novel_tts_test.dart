@@ -532,6 +532,43 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('replacing a finished clip does not skip the next one', () async {
+    final audio = _ReenteringAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_reenter');
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    await controller.start(
+      novelId: 3,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+    );
+    expect(controller.clips.length, greaterThanOrEqualTo(3));
+    expect(controller.clipIndex, 0);
+    expect(audio.playCount, 1);
+
+    audio.emitComplete();
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(controller.clipIndex, 1);
+    expect(audio.playCount, 2);
+    expect(controller.subtitle, '这是第二句用来测试拆分的。');
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
   test('TTS strings are translated instead of leftover English', () {
     final ja = lookupAppLocalizations(const Locale('ja'));
     expect(ja.novel_tts_settings, '小説の読み上げ');
@@ -647,6 +684,64 @@ class _GatedSynth implements NovelTtsSynthesizer {
   Future<Uint8List> synthesize(NovelTtsSettings settings, String text) async {
     await _gate;
     return Uint8List.fromList(const [1, 2, 3, 4]);
+  }
+}
+
+class _ReenteringAudio implements NovelTtsAudioPlayer {
+  var playCount = 0;
+  final _completed = StreamController<void>.broadcast();
+  final _clipIndex = StreamController<int>.broadcast();
+
+  void emitComplete() => _completed.add(null);
+
+  @override
+  Stream<void> get onComplete => _completed.stream;
+
+  @override
+  Stream<int> get onClipIndex => _clipIndex.stream;
+
+  @override
+  void listen() {}
+
+  @override
+  Future<void> playFile(String path) => playFiles([path]);
+
+  @override
+  Future<void> playFiles(List<String> paths) async {
+    playCount++;
+    if (playCount > 1) {
+      _completed.add(null);
+    }
+  }
+
+  @override
+  Future<void> enqueue(String path) async {}
+
+  @override
+  Future<bool> seekNext() async => false;
+
+  @override
+  Future<bool> seekPrevious() async => false;
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> resume() async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<Duration?> get duration async => const Duration(seconds: 1);
+
+  @override
+  Future<Duration?> get position async => Duration.zero;
+
+  @override
+  Future<void> dispose() async {
+    await _completed.close();
+    await _clipIndex.close();
   }
 }
 

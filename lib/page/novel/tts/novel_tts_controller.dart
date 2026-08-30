@@ -178,6 +178,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   var _fillAgain = false;
   var _holdAfterReady = false;
   var _audioReady = false;
+  var _advanceDepth = 0;
   Timer? _nowPlayingTimer;
 
   NovelTtsStatus status = NovelTtsStatus.idle;
@@ -524,19 +525,26 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _onQueueComplete() async {
-    if (status == NovelTtsStatus.idle) {
+    if (status == NovelTtsStatus.idle ||
+        status == NovelTtsStatus.paused ||
+        _advanceDepth > 0) {
       return;
     }
-    if (clipIndex + 1 < clips.length) {
-      await _playFrom(clipIndex + 1);
-      return;
+    _advanceDepth++;
+    try {
+      if (clipIndex + 1 < clips.length) {
+        await _playFrom(clipIndex + 1);
+        return;
+      }
+      await _maybePrefetchSeries();
+      if (clipIndex + 1 < clips.length) {
+        await _playFrom(clipIndex + 1);
+        return;
+      }
+      await skip(direction: 'next');
+    } finally {
+      _advanceDepth--;
     }
-    await _maybePrefetchSeries();
-    if (clipIndex + 1 < clips.length) {
-      await _playFrom(clipIndex + 1);
-      return;
-    }
-    await skip(direction: 'next');
   }
 
   void _onQueuedClip(int queueIndex) {
@@ -571,6 +579,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (clips.isEmpty) {
       return;
     }
+    _advanceDepth++;
     final generation = ++_generation;
     _queuedClips.clear();
     _applyClip(index.clamp(0, clips.length - 1));
@@ -606,6 +615,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       status = NovelTtsStatus.error;
       errorMessage = error.toString();
       notifyListeners();
+    } finally {
+      _advanceDepth--;
     }
   }
 

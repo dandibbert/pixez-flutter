@@ -18,8 +18,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bot_toast/bot_toast.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:path_provider/path_provider.dart';
@@ -79,7 +80,6 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   int _ttsUiClip = -1;
   NovelTtsStatus? _ttsUiStatus;
   int? _ttsUiPage;
-  final Map<int, GlobalKey> _ttsBlockKeys = {};
   final Map<int, NovelStore> _prefetchedTtsStores = {};
   String _selectedText = "";
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
@@ -152,9 +152,6 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   void _goToPage(int page) {
     final next = clampNovelPage(page, _totalPages);
-    if (next != _currentPage) {
-      _ttsBlockKeys.clear();
-    }
     setState(() {
       _currentPage = next;
     });
@@ -202,7 +199,6 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       return;
     }
     if (navigate.kind == NovelTtsNavigateKind.page && navigate.page != null) {
-      _ttsBlockKeys.clear();
       _ttsDrivingPage = true;
       _goToPage(navigate.page!);
       _ttsDrivingPage = false;
@@ -234,13 +230,23 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     _ttsUiClip = clip;
     _ttsUiStatus = status;
     _ttsUiPage = page;
-    setState(() {});
-    if (clipMoved && _tts.isActive && _tts.session?.novelId == widget.id) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _scrollToTtsClip();
-        }
-      });
+    void apply() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+      if (clipMoved && _tts.isActive && _tts.session?.novelId == widget.id) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _scrollToTtsClip();
+          }
+        });
+      }
+    }
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      apply();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
     }
   }
 
@@ -249,31 +255,23 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         _tts.session?.page != _currentPage) {
       return;
     }
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
     final pages = _pages;
     if (pages.isEmpty) {
       return;
     }
     final pageIndex = clampNovelPage(_currentPage, pages.length) - 1;
     final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
+    if (blocks.isEmpty) {
+      return;
+    }
     final index = novelTtsBlockIndexForClip(
       blocks: blocks,
       clipText: _tts.subtitle,
     );
-    final targetContext = _ttsBlockKeys[index]?.currentContext;
-    if (targetContext != null) {
-      Scrollable.ensureVisible(
-        targetContext,
-        alignment: 0.28,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOut,
-      );
-      return;
-    }
-    final controller = _controller;
-    if (controller == null || !controller.hasClients || blocks.isEmpty) {
-      return;
-    }
     final max = controller.position.maxScrollExtent;
     final target = max * (index / blocks.length);
     controller.animateTo(
@@ -521,6 +519,12 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pageIndex = clampNovelPage(_currentPage, totalPages) - 1;
     final pageSpans = pages.isEmpty ? <NovelSpansData>[] : pages[pageIndex];
     final blocks = _splitCache.blocks(pageSpans, pageIndex);
+    final followClip = _tts.isActive &&
+        _tts.session?.novelId == widget.id &&
+        _tts.session?.page == _currentPage;
+    final followBlock = followClip
+        ? novelTtsBlockIndexForClip(blocks: blocks, clipText: _tts.subtitle)
+        : -1;
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
     final navState = resolveNovelPageNavState(
       currentPage: clampNovelPage(_currentPage, totalPages),
@@ -604,7 +608,12 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           controller: _controller,
           itemCount: blocks.length,
           itemBuilder: (context, index) {
-            return _buildReaderBlock(context, blocks[index], style, index);
+            return _buildReaderBlock(
+              context,
+              blocks[index],
+              style,
+              highlighted: index == followBlock,
+            );
           },
         ),
       ),
@@ -634,32 +643,14 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   Widget _buildReaderBlock(
     BuildContext context,
     NovelReaderBlock block,
-    TextStyle style,
-    int index,
-  ) {
+    TextStyle style, {
+    required bool highlighted,
+  }) {
     if (block.isBlank) {
       return SizedBox(height: style.fontSize ?? 16);
     }
-    final follow = _tts.isActive &&
-        _tts.session?.novelId == widget.id &&
-        _tts.session?.page == _currentPage;
-    var highlighted = false;
-    if (follow) {
-      final pages = _pages;
-      if (pages.isNotEmpty) {
-        final pageIndex = clampNovelPage(_currentPage, pages.length) - 1;
-        highlighted =
-            index ==
-            novelTtsBlockIndexForClip(
-              blocks: _splitCache.blocks(pages[pageIndex], pageIndex),
-              clipText: _tts.subtitle,
-            );
-      }
-    }
     final scheme = Theme.of(context).colorScheme;
-    final key = _ttsBlockKeys.putIfAbsent(index, GlobalKey.new);
     return Padding(
-      key: key,
       padding: const EdgeInsets.only(bottom: 10),
       child: DecoratedBox(
         decoration: BoxDecoration(
