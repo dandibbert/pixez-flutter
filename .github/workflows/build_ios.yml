@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - master
+      - experiment/novel-tts-base
+      - feature/novel-tts-plan
 
 jobs:
   Build_IOS:
