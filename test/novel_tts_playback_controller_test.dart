@@ -31,6 +31,8 @@ class FakeNovelTtsAudioPort implements NovelTtsAudioPort {
 
   @override
   Future<void> seek(Duration position) async {}
+  @override
+  Future<void> setSpeed(double speed) async {}
 
   @override
   Future<void> skipTo(int index) async => skippedTo = index;
@@ -55,46 +57,52 @@ NovelTtsPlaybackItem item(int index) => NovelTtsPlaybackItem(
 );
 
 void main() {
-  test('keeps displayText for subtitles while exposing playback progress', () async {
-    final port = FakeNovelTtsAudioPort();
-    final controller = NovelTtsPlaybackController(port);
-    await controller.load([item(0), item(1)]);
+  test(
+    'keeps displayText for subtitles while exposing playback progress',
+    () async {
+      final port = FakeNovelTtsAudioPort();
+      final controller = NovelTtsPlaybackController(port);
+      await controller.load([item(0), item(1)]);
 
-    port.emit(
-      const NovelTtsAudioEvent(
-        currentIndex: 0,
-        position: Duration(seconds: 3),
-        processingState: NovelTtsAudioProcessingState.ready,
-        playing: true,
-      ),
-    );
-    await Future<void>.delayed(Duration.zero);
+      port.emit(
+        const NovelTtsAudioEvent(
+          currentIndex: 0,
+          position: Duration(seconds: 3),
+          processingState: NovelTtsAudioProcessingState.ready,
+          playing: true,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    expect(controller.snapshot.currentItem?.displayText, '行方');
-    expect(controller.snapshot.position, const Duration(seconds: 3));
-    expect(controller.snapshot.state, NovelTtsPlaybackState.playing);
-    expect(controller.snapshot.progress, closeTo(.3, .001));
-  });
+      expect(controller.snapshot.currentItem?.displayText, '行方');
+      expect(controller.snapshot.position, const Duration(seconds: 3));
+      expect(controller.snapshot.state, NovelTtsPlaybackState.playing);
+      expect(controller.snapshot.progress, closeTo(.3, .001));
+    },
+  );
 
-  test('maps exhausted audio to honest buffering without fake playback', () async {
-    final port = FakeNovelTtsAudioPort();
-    final controller = NovelTtsPlaybackController(port);
-    await controller.load([item(0)]);
-    controller.updateBufferedDuration(Duration.zero);
+  test(
+    'maps exhausted audio to honest buffering without fake playback',
+    () async {
+      final port = FakeNovelTtsAudioPort();
+      final controller = NovelTtsPlaybackController(port);
+      await controller.load([item(0)]);
+      controller.updateBufferedDuration(Duration.zero);
 
-    port.emit(
-      const NovelTtsAudioEvent(
-        currentIndex: 0,
-        position: Duration(seconds: 10),
-        processingState: NovelTtsAudioProcessingState.buffering,
-        playing: false,
-      ),
-    );
-    await Future<void>.delayed(Duration.zero);
+      port.emit(
+        const NovelTtsAudioEvent(
+          currentIndex: 0,
+          position: Duration(seconds: 10),
+          processingState: NovelTtsAudioProcessingState.buffering,
+          playing: false,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    expect(controller.snapshot.state, NovelTtsPlaybackState.buffering);
-    expect(controller.snapshot.playing, isFalse);
-  });
+      expect(controller.snapshot.state, NovelTtsPlaybackState.buffering);
+      expect(controller.snapshot.playing, isFalse);
+    },
+  );
 
   test('manual page changes do not mutate the audio queue', () async {
     final port = FakeNovelTtsAudioPort();

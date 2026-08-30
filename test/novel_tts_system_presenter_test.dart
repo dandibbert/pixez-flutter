@@ -21,6 +21,8 @@ class PresenterPort implements NovelTtsAudioPort {
   @override
   Future<void> seek(Duration position) async {}
   @override
+  Future<void> setSpeed(double speed) async {}
+  @override
   Future<void> skipTo(int index) async {}
   @override
   Future<void> stop() async {}

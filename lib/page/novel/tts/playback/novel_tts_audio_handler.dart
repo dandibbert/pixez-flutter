@@ -85,6 +85,10 @@ class NovelTtsAudioHandler extends BaseAudioHandler
   Future<void> seek(Duration position) => _player.seek(position);
 
   @override
+  Future<void> setSpeed(double speed) =>
+      _player.setSpeed(speed.clamp(0.5, 2.0));
+
+  @override
   Future<void> skipTo(int index) => skipToQueueItem(index);
 
   @override

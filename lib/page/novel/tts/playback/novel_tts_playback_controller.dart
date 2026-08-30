@@ -62,6 +62,7 @@ abstract interface class NovelTtsAudioPort {
   Future<void> stop();
   Future<void> seek(Duration position);
   Future<void> skipTo(int index);
+  Future<void> setSpeed(double speed);
   Future<void> dispose();
 }
 
@@ -112,7 +113,9 @@ class NovelTtsPlaybackSnapshot {
     return NovelTtsPlaybackSnapshot(
       state: state ?? this.state,
       items: items ?? this.items,
-      currentIndex: clearCurrentIndex ? null : currentIndex ?? this.currentIndex,
+      currentIndex: clearCurrentIndex
+          ? null
+          : currentIndex ?? this.currentIndex,
       position: position ?? this.position,
       bufferedDuration: bufferedDuration ?? this.bufferedDuration,
       visiblePage: visiblePage ?? this.visiblePage,
@@ -161,7 +164,10 @@ class NovelTtsPlaybackController extends ChangeNotifier {
   Future<void> append(NovelTtsPlaybackItem item) async {
     await _audioPort.append(item);
     _snapshot = _snapshot.copyWith(
-      items: List<NovelTtsPlaybackItem>.unmodifiable([..._snapshot.items, item]),
+      items: List<NovelTtsPlaybackItem>.unmodifiable([
+        ..._snapshot.items,
+        item,
+      ]),
     );
     notifyListeners();
   }
@@ -171,6 +177,7 @@ class NovelTtsPlaybackController extends ChangeNotifier {
   Future<void> stop() => _audioPort.stop();
   Future<void> seek(Duration position) => _audioPort.seek(position);
   Future<void> skipTo(int index) => _audioPort.skipTo(index);
+  Future<void> setSpeed(double speed) => _audioPort.setSpeed(speed);
 
   void updateBufferedDuration(Duration duration) {
     _snapshot = _snapshot.copyWith(bufferedDuration: duration);
@@ -187,9 +194,10 @@ class NovelTtsPlaybackController extends ChangeNotifier {
       NovelTtsAudioProcessingState.loading ||
       NovelTtsAudioProcessingState.buffering => NovelTtsPlaybackState.buffering,
       NovelTtsAudioProcessingState.completed => NovelTtsPlaybackState.completed,
-      NovelTtsAudioProcessingState.ready => event.playing
-          ? NovelTtsPlaybackState.playing
-          : NovelTtsPlaybackState.paused,
+      NovelTtsAudioProcessingState.ready =>
+        event.playing
+            ? NovelTtsPlaybackState.playing
+            : NovelTtsPlaybackState.paused,
       NovelTtsAudioProcessingState.idle => NovelTtsPlaybackState.idle,
     };
     _snapshot = _snapshot.copyWith(

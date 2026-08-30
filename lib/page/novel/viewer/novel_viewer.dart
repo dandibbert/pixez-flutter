@@ -500,6 +500,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       return;
     }
     _attachTtsController(controller);
+    await controller.setSpeed(settings.localPlaybackSpeed);
     final document = NovelTtsDocument.fromSpans(
       widget.id.toString(),
       _novelStore.spans,

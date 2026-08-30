@@ -101,6 +101,8 @@ class NovelTtsFullPlayer extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _NovelTtsSpeedControl(controller: controller),
               const SizedBox(height: 16),
               Text(
                 _stateLabel(snapshot),
@@ -123,4 +125,35 @@ class NovelTtsFullPlayer extends StatelessWidget {
         NovelTtsPlaybackState.completed => 'Completed',
         NovelTtsPlaybackState.failed => 'Playback failed',
       };
+}
+
+class _NovelTtsSpeedControl extends StatefulWidget {
+  const _NovelTtsSpeedControl({required this.controller});
+  final NovelTtsPlaybackController controller;
+  @override
+  State<_NovelTtsSpeedControl> createState() => _NovelTtsSpeedControlState();
+}
+
+class _NovelTtsSpeedControlState extends State<_NovelTtsSpeedControl> {
+  double speed = 1;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      const Icon(Icons.speed),
+      Expanded(
+        child: Slider(
+          min: 0.5,
+          max: 2,
+          divisions: 15,
+          value: speed,
+          label: '${speed.toStringAsFixed(1)}×',
+          onChanged: (value) {
+            setState(() => speed = value);
+            widget.controller.setSpeed(value);
+          },
+        ),
+      ),
+      SizedBox(width: 44, child: Text('${speed.toStringAsFixed(1)}×')),
+    ],
+  );
 }
