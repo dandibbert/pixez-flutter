@@ -292,10 +292,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     if (blocks.isEmpty) {
       return;
     }
-    final index = novelTtsBlockIndexForChunk(
+    final index = novelTtsBlockIndexForSpokenText(
       blocks: blocks,
-      chunkIndex: _tts.chunkIndex,
-      splitChars: _tts.settings.clampedSplitChars,
+      clipText: _tts.currentClip?.text ?? _tts.subtitle,
     );
     final box = _ttsBlockKeys[index]?.currentContext?.findRenderObject();
     final viewportTop = _articleViewportTop();
@@ -393,19 +392,20 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       nextSeriesId: navigation?.nextNovel?.viewable == true
           ? navigation!.nextNovel!.id
           : null,
-      startChunk: fromEnd ? 1 << 20 : _visibleStartChunk(page),
+      startChunk: fromEnd ? 1 << 20 : null,
+      startNeedle: fromEnd ? null : _visibleStartNeedle(page),
     );
   }
 
-  int _visibleStartChunk(int page) {
+  String _visibleStartNeedle(int page) {
     final pages = _pages;
     if (pages.isEmpty) {
-      return 0;
+      return '';
     }
     final pageIndex = clampNovelPage(page, pages.length) - 1;
     final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
     if (blocks.isEmpty) {
-      return 0;
+      return '';
     }
     final viewportTop = _articleViewportTop();
     var blockIndex = 0;
@@ -430,11 +430,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 .clamp(0, blocks.length - 1);
       }
     }
-    return novelTtsChunkIndexForBlock(
-      blocks: blocks,
-      blockIndex: blockIndex,
-      splitChars: _tts.settings.clampedSplitChars,
-    );
+    return novelTtsNeedleForBlock(blocks, blockIndex);
   }
 
   double? _articleViewportTop() {
@@ -634,10 +630,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         _tts.session?.novelId == widget.id &&
         _tts.session?.page == _currentPage;
     final clipHighlights = followClip
-        ? novelTtsHighlightsForClip(
+        ? novelTtsHighlightsForSpokenText(
             blocks: blocks,
-            chunkIndex: _tts.chunkIndex,
-            splitChars: _tts.settings.clampedSplitChars,
+            clipText: _tts.currentClip?.text ?? _tts.subtitle,
           )
         : const <NovelTtsSpanHighlight>[];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;

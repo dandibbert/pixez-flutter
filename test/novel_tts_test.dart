@@ -576,6 +576,53 @@ void main() {
     expect(highlights.single.end, '这是第二句用来测试拆分的。'.length);
   });
 
+  test('spoken clip text keeps subtitle and highlight on the same sentence', () {
+    const source =
+        'とにかく私はこうしてここに住み始めた。\n'
+        '悠仁くんに恋して一か月。\n'
+        '悠仁くんとできれば付き合いたい。\n'
+        '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, source),
+    ]);
+    expect(blocks.map((block) => block.text.trim()), contains('悠仁くんに恋して一か月。'));
+
+    const long =
+        '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
+    const love = '悠仁くんに恋して一か月。';
+    final longHighlights = novelTtsHighlightsForSpokenText(
+      blocks: blocks,
+      clipText: long,
+    );
+    expect(longHighlights, isNotEmpty);
+    expect(
+      longHighlights.every((highlight) {
+        final text = blocks[highlight.blockIndex].text;
+        return text.contains('今まで') && !text.contains('恋して');
+      }),
+      isTrue,
+    );
+
+    final loveHighlights = novelTtsHighlightsForSpokenText(
+      blocks: blocks,
+      clipText: love,
+    );
+    expect(loveHighlights, isNotEmpty);
+    expect(blocks[loveHighlights.first.blockIndex].text, contains(love));
+    expect(
+      novelTtsBlockIndexForSpokenText(blocks: blocks, clipText: love),
+      loveHighlights.first.blockIndex,
+    );
+
+    final chunks = splitNovelTtsText(source, maxChars: 20);
+    expect(novelTtsIndexOfNeedle(chunks, love), greaterThanOrEqualTo(0));
+    expect(chunks[novelTtsIndexOfNeedle(chunks, love)], contains(love));
+    expect(
+      chunks[novelTtsIndexOfNeedle(chunks, love)].contains('今まで'),
+      isFalse,
+    );
+  });
+
   test('can pause while synthesizing and resume afterwards', () async {
     final gate = Completer<void>();
     final synth = _GatedSynth(gate.future);
@@ -707,6 +754,19 @@ void main() {
     );
     expect(controller.clipIndex, 0);
     expect(controller.subtitle, '这是第一句用来测试拆分的。');
+
+    await controller.start(
+      novelId: 7,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText:
+          'とにかく私はこうしてここに住み始めた。\n悠仁くんに恋して一か月。\n今まで私の名を呼ばなかったり回避するためだったんだろう。',
+      startNeedle: '悠仁くんに恋して一か月。',
+    );
+    expect(controller.subtitle, contains('悠仁くんに恋して一か月。'));
+    expect(controller.subtitle.contains('今まで'), isFalse);
 
     await controller.start(
       novelId: 7,

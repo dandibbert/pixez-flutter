@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pixez/page/novel/tts/novel_tts_advance.dart';
 import 'package:pixez/page/novel/tts/novel_tts_audio.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
+import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
@@ -223,6 +224,13 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   void Function(NovelTtsNavigate navigate)? onNavigate;
   Future<NovelTtsChapter?> Function(int novelId)? onLoadChapter;
 
+  NovelTtsClip? get currentClip {
+    if (clips.isEmpty) {
+      return null;
+    }
+    return clips[clipIndex.clamp(0, clips.length - 1)];
+  }
+
   int get chunkIndex {
     if (clips.isEmpty) {
       return 0;
@@ -271,6 +279,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     int? nextSeriesId,
     String? seriesId,
     int? startChunk,
+    String? startNeedle,
   }) async {
     final loaded = settings;
     if (!loaded.isConfigured) {
@@ -336,11 +345,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       prevSeriesId: prevSeriesId,
       nextSeriesId: nextSeriesId,
     );
-    clipIndex = _indexOf(
+    clipIndex = _indexForStart(
       page: page,
-      chunkIndex: startChunk ??
-          _bookmarkChunk(novelId: novelId, page: page) ??
-          0,
+      novelId: novelId,
+      startChunk: startChunk,
+      startNeedle: startNeedle,
     );
     errorMessage = null;
     _holdAfterReady = false;
@@ -895,6 +904,39 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       }
     }
     return result;
+  }
+
+  int _indexForStart({
+    required int page,
+    required int novelId,
+    int? startChunk,
+    String? startNeedle,
+  }) {
+    if (startNeedle != null && startNeedle.trim().isNotEmpty) {
+      final pageTexts = [
+        for (final clip in clips)
+          if (clip.page == page) clip.text,
+      ];
+      final local = novelTtsIndexOfNeedle(pageTexts, startNeedle);
+      if (local >= 0) {
+        var seen = 0;
+        for (var i = 0; i < clips.length; i++) {
+          if (clips[i].page != page) {
+            continue;
+          }
+          if (seen == local) {
+            return i;
+          }
+          seen++;
+        }
+      }
+    }
+    return _indexOf(
+      page: page,
+      chunkIndex: startChunk ??
+          _bookmarkChunk(novelId: novelId, page: page) ??
+          0,
+    );
   }
 
   int _indexOf({required int page, required int chunkIndex}) {
