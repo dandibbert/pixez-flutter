@@ -51,7 +51,19 @@ class TtsRequestBuilder {
       'X-Microsoft-OutputFormat': profile.format,
       'User-Agent': 'PixEz-Novel-TTS',
     };
-    return _request('POST', provider.endpoint, headers, context.ssml, context);
+    final innerSsml = context.ssml
+        .replaceFirst(RegExp(r'^\s*<speak(?:\s[^>]*)?>'), '')
+        .replaceFirst(RegExp(r'</speak>\s*$'), '');
+    final rate = ((profile.speed - 1) * 100).round();
+    final pitch = profile.pitch == profile.pitch.roundToDouble()
+        ? profile.pitch.round().toString()
+        : profile.pitch.toString();
+    final body =
+        '<speak version="1.0" xml:lang="${_xmlAttribute(profile.language)}">'
+        '<voice name="${_xmlAttribute(profile.voice)}">'
+        '<prosody rate="$rate%" pitch="${pitch}st">$innerSsml</prosody>'
+        '</voice></speak>';
+    return _request('POST', provider.endpoint, headers, body, context);
   }
 
   TtsHttpRequest _openAi(
@@ -100,6 +112,12 @@ class TtsRequestBuilder {
       context,
     );
   }
+
+  String _xmlAttribute(String value) => value
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
 
   String _requiredSecret(TtsTemplateContext context, String name) {
     final value = context.secrets[name];

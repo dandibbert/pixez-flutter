@@ -24,7 +24,9 @@ void main() {
         secrets: const {'api_key': 'top-secret'},
       ),
     );
-    expect(request.body, '<speak>ゆくえ</speak>');
+    expect(request.body, contains('<voice name="ja-JP-NanamiNeural">'));
+    expect(request.body, contains('<prosody rate="0%" pitch="0st">'));
+    expect(request.body, contains('ゆくえ'));
     expect(request.headers['Ocp-Apim-Subscription-Key'], 'top-secret');
     expect(request.redactedDescription, isNot(contains('top-secret')));
   });
