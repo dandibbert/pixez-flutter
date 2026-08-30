@@ -51,6 +51,7 @@ void main() {
           bodyIsJson: false,
         ),
         voice: 'v',
+        format: 'flac',
       );
       const document = NovelTtsDocument(
         novelId: '1',
@@ -76,6 +77,7 @@ void main() {
       expect(first.single.displayText, '行方です。');
       expect(first.single.spokenText, 'ゆくえです。');
       expect(executor.requests.single.body, 'ゆくえです。');
+      expect(first.single.filePath, endsWith('.flac'));
       expect(await File(first.single.filePath).exists(), isTrue);
       final second = await engine.synthesize(
         document: document,

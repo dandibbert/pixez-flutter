@@ -317,6 +317,8 @@ class NovelTtsSynthesisEngine {
         lower.contains('pcm'))
       return 'wav';
     if (lower.contains('ogg') || lower.contains('opus')) return 'ogg';
+    if (lower.contains('flac')) return 'flac';
+    if (lower.contains('webm')) return 'webm';
     if (lower.contains('aac') || lower.contains('m4a')) return 'm4a';
     return 'mp3';
   }
