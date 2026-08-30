@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:pixez/er/prefer.dart';
+import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 
 enum NovelTtsProvider { microsoft, openai, custom }
 
@@ -33,6 +34,7 @@ class NovelTtsSettings {
     this.customHeaders = '',
     this.customBody = '',
     this.customContentType = '',
+    this.readings = const [],
   });
 
   final NovelTtsProvider provider;
@@ -55,6 +57,7 @@ class NovelTtsSettings {
   final String customHeaders;
   final String customBody;
   final String customContentType;
+  final List<NovelTtsReading> readings;
 
   NovelTtsSettings copyWith({
     NovelTtsProvider? provider,
@@ -77,6 +80,7 @@ class NovelTtsSettings {
     String? customHeaders,
     String? customBody,
     String? customContentType,
+    List<NovelTtsReading>? readings,
   }) {
     return NovelTtsSettings(
       provider: provider ?? this.provider,
@@ -99,6 +103,7 @@ class NovelTtsSettings {
       customHeaders: customHeaders ?? this.customHeaders,
       customBody: customBody ?? this.customBody,
       customContentType: customContentType ?? this.customContentType,
+      readings: readings ?? this.readings,
     );
   }
 
@@ -164,6 +169,7 @@ class NovelTtsSettings {
       'customHeaders': customHeaders,
       'customBody': customBody,
       'customContentType': customContentType,
+      'readings': [for (final reading in readings) reading.toJson()],
     };
   }
 
@@ -195,6 +201,7 @@ class NovelTtsSettings {
       customHeaders: json['customHeaders'] as String? ?? '',
       customBody: json['customBody'] as String? ?? '',
       customContentType: json['customContentType'] as String? ?? '',
+      readings: readingsFromJson(json['readings']),
     );
   }
 

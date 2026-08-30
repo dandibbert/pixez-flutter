@@ -472,5 +472,19 @@
   "novel_tts_playing": "正在朗讀",
   "novel_tts_synthesizing": "正在合成",
   "perf_probe": "效能診斷",
-  "perf_probe_summary": "浮層顯示影格、網路與記憶體，用於排查發燙或耗電"
+  "perf_probe_summary": "浮層顯示影格、網路與記憶體，用於排查發燙或耗電",
+  "novel_tts_section_voice": "語音庫",
+  "novel_tts_section_playback": "播放",
+  "novel_tts_section_readings": "讀音標記",
+  "novel_tts_readings_hint": "合成前依這裡的標記替換讀音，較長的詞優先。例如把「今日」讀成「きょう」。",
+  "novel_tts_readings_empty": "還沒有讀音標記",
+  "novel_tts_reading_surface": "寫法",
+  "novel_tts_reading_value": "讀音",
+  "novel_tts_reading_add": "新增標記",
+  "novel_tts_reading_edit": "編輯標記",
+  "novel_tts_reading_delete": "刪除",
+  "novel_tts_reading_save": "儲存",
+  "novel_tts_reading_bulk": "貼上列表",
+  "novel_tts_reading_bulk_hint": "每行一對，例如 今日=きょう",
+  "novel_tts_advanced": "進階"
 }

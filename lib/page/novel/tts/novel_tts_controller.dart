@@ -12,6 +12,7 @@ import 'package:pixez/page/novel/tts/novel_tts_advance.dart';
 import 'package:pixez/page/novel/tts/novel_tts_audio.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
+import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 
@@ -757,9 +758,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<File> _fileForClip(int index) async {
-    final text = clips[index].text;
-    final bytes = await _audioBytes(text);
-    return _writeCache(text, bytes);
+    final spoken = applyNovelTtsReadings(clips[index].text, settings.readings);
+    final bytes = await _audioBytes(spoken);
+    return _writeCache(spoken, bytes);
   }
 
   Future<Uint8List> _audioBytes(String text) {
