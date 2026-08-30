@@ -55,12 +55,11 @@ class _NovelTtsSettingsPageState extends State<NovelTtsSettingsPage> {
         currentProfileId: current.currentProfileId ?? draft.profile.id,
       ),
     );
-    if (draft.apiKey.trim().isNotEmpty)
-      await repository.writeSecret(
-        draft.profile,
-        'api_key',
-        draft.apiKey.trim(),
-      );
+    for (final entry in draft.secretValues.entries) {
+      if (entry.value.isNotEmpty) {
+        await repository.writeSecret(draft.profile, entry.key, entry.value);
+      }
+    }
   }
 
   TtsProfile _enabled(TtsProfile p, bool enabled) => TtsProfile(
@@ -244,9 +243,9 @@ class _IntSetting extends StatelessWidget {
 }
 
 class _ProfileDraft {
-  const _ProfileDraft(this.profile, this.apiKey);
+  const _ProfileDraft(this.profile, this.secretValues);
   final TtsProfile profile;
-  final String apiKey;
+  final Map<String, String> secretValues;
 }
 
 class _ProfileEditor extends StatefulWidget {
@@ -290,6 +289,14 @@ class _ProfileEditorState extends State<_ProfileEditor> {
         : '',
   );
   late final apiKey = TextEditingController();
+  late final secretNames = TextEditingController(
+    text:
+        ((widget.initial?.providerOptions['secretNames'] as List?)
+                    ?.cast<String>() ??
+                const <String>[])
+            .join(', '),
+  );
+  late final secretValues = TextEditingController();
   late final format = TextEditingController(
     text: widget.initial?.format ?? 'mp3',
   );
@@ -320,6 +327,28 @@ class _ProfileEditorState extends State<_ProfileEditor> {
         map[line.substring(0, index).trim()] = line.substring(index + 1).trim();
     }
     return map;
+  }
+
+  List<String> _secretNames() => secretNames.text
+      .split(',')
+      .map((name) => name.trim())
+      .where((name) => name.isNotEmpty && name != 'api_key')
+      .toSet()
+      .toList();
+
+  Map<String, String> _secretValues() {
+    final values = <String, String>{};
+    if (apiKey.text.trim().isNotEmpty) {
+      values['api_key'] = apiKey.text.trim();
+    }
+    for (final entry in secretValues.text.split(';')) {
+      final separator = entry.indexOf('=');
+      if (separator <= 0) continue;
+      final name = entry.substring(0, separator).trim();
+      final value = entry.substring(separator + 1).trim();
+      if (name.isNotEmpty && value.isNotEmpty) values[name] = value;
+    }
+    return values;
   }
 
   TtsProfile? _profile() {
@@ -356,6 +385,10 @@ class _ProfileEditorState extends State<_ProfileEditor> {
       pitch: double.tryParse(pitch.text) ?? 0,
       language: language.text.trim(),
       format: format.text.trim(),
+      providerOptions: {
+        ...?widget.initial?.providerOptions,
+        'secretNames': _secretNames(),
+      },
       secretNamespace: widget.initial?.secretNamespace ?? '',
     );
   }
@@ -441,6 +474,21 @@ class _ProfileEditorState extends State<_ProfileEditor> {
               helperText: 'Leave blank to keep the existing secure value',
             ),
           ),
+          TextField(
+            controller: secretNames,
+            decoration: const InputDecoration(
+              labelText: 'Named secret keys',
+              helperText: 'Comma-separated names for {{secret:name}} templates',
+            ),
+          ),
+          TextField(
+            controller: secretValues,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'New named secret values',
+              helperText: 'name=value; other=value — blank keeps stored values',
+            ),
+          ),
           Row(
             children: [
               Expanded(
@@ -493,7 +541,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                     ? null
                     : () => Navigator.pop(
                         context,
-                        _ProfileDraft(_profile()!, apiKey.text),
+                        _ProfileDraft(_profile()!, _secretValues()),
                       ),
                 child: const Text('Save'),
               ),

@@ -29,19 +29,29 @@ void main() {
         enabled: true,
         provider: AzureTtsProviderConfig(region: 'japaneast'),
         voice: 'voice',
+        providerOptions: {
+          'secretNames': ['tenant_token'],
+        },
         secretNamespace: 'p',
       );
       await repo.save(
         TtsSettingsSnapshot(profiles: const [profile], currentProfileId: 'p'),
       );
       await repo.writeSecret(profile, 'api_key', 'never-log-this');
+      await repo.writeSecret(profile, 'tenant_token', 'named-secret-value');
       final prefs = await SharedPreferences.getInstance();
       expect(
         prefs.getString(TtsSettingsRepository.preferencesKey),
-        isNot(contains('never-log-this')),
+        allOf(
+          isNot(contains('never-log-this')),
+          isNot(contains('named-secret-value')),
+        ),
       );
       expect((await repo.load()).currentProfile?.voice, 'voice');
-      expect(await repo.readSecrets(profile), {'api_key': 'never-log-this'});
+      expect(await repo.readSecrets(profile), {
+        'api_key': 'never-log-this',
+        'tenant_token': 'named-secret-value',
+      });
     },
   );
 }

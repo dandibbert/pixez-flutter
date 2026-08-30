@@ -52,6 +52,8 @@ void main() {
     await tester.tap(find.text('customHttp'));
     await tester.pumpAndSettle();
     expect(find.text('HTTP method'), findsOneWidget);
+    expect(find.text('Named secret keys'), findsOneWidget);
+    expect(find.text('New named secret values'), findsOneWidget);
     await tester.tap(find.text('POST'));
     await tester.pumpAndSettle();
     expect(find.text('GET'), findsOneWidget);
