@@ -13,6 +13,7 @@
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
         7C2A716D2765CF9A00B6BA48 /* DocumentPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C2A716C2765CF9A00B6BA48 /* DocumentPlugin.swift */; };
 		A1F0E0022FCE8606004A2614 /* InstalledFontsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F0E0012FCE8606004A2614 /* InstalledFontsPlugin.swift */; };
+		A2F0E0022FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F0E0012FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -73,6 +74,7 @@
 		7B6D6D9EB122407894F34F16 /* Pods-Runner-SsssGridManExtension.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner-SsssGridManExtension.profile.xcconfig"; path = "Target Support Files/Pods-Runner-SsssGridManExtension/Pods-Runner-SsssGridManExtension.profile.xcconfig"; sourceTree = "<group>"; };
         7C2A716C2765CF9A00B6BA48 /* DocumentPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPlugin.swift; sourceTree = "<group>"; };
 		A1F0E0012FCE8606004A2614 /* InstalledFontsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledFontsPlugin.swift; sourceTree = "<group>"; };
+		A2F0E0012FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelTtsNowPlayingPlugin.swift; sourceTree = "<group>"; };
 		7C8B5968260F680500098D5C /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		7C8B596A260F680500098D5C /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		7CC54C3726103351009033DF /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
@@ -226,6 +228,7 @@
 				CFB8EE8B28C4437500B8D74E /* AppWidgetDBManager.swift */,
 				7C2A716C2765CF9A00B6BA48 /* DocumentPlugin.swift */,
 				A1F0E0012FCE8606004A2614 /* InstalledFontsPlugin.swift */,
+				A2F0E0012FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift */,
 				CF725E372ACE7C7600615536 /* DeepLinkPlugin.swift */,
 			);
 			path = Runner;
@@ -443,6 +446,7 @@
 				CF725E382ACE7C7600615536 /* DeepLinkPlugin.swift in Sources */,
 				7C2A716D2765CF9A00B6BA48 /* DocumentPlugin.swift in Sources */,
 				A1F0E0022FCE8606004A2614 /* InstalledFontsPlugin.swift in Sources */,
+				A2F0E0022FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift in Sources */,
 				A70B475725D4D94200AE0717 /* CodeGen.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);

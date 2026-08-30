@@ -9,6 +9,9 @@
          FlutterApplication and put your custom class here.
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -51,6 +54,23 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/card_app_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".plugin.NovelTtsRemoteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.perol.pixez.tts.PLAY" />
+                <action android:name="com.perol.pixez.tts.PAUSE" />
+                <action android:name="com.perol.pixez.tts.NEXT" />
+                <action android:name="com.perol.pixez.tts.PREV" />
+                <action android:name="com.perol.pixez.tts.STOP" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".plugin.NovelTtsPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

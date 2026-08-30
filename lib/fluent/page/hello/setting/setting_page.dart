@@ -42,6 +42,7 @@ import 'package:pixez/models/account.dart';
 import 'package:pixez/models/board_info.dart';
 import 'package:pixez/page/novel/history/novel_history_page.dart';
 import 'package:pixez/page/novel/novel_rail.dart';
+import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({Key? key}) : super(key: key);
@@ -257,6 +258,18 @@ class _SettingPageState extends State<SettingPage> {
                 NovelRail(),
                 title: Text(I18n.of(context).novel),
                 icon: Icon(FluentIcons.plain_text),
+              ),
+            ),
+            ListTile(
+              leading: Icon(FluentIcons.play),
+              title: Text(I18n.of(context).novel_tts_settings),
+              subtitle: Text(I18n.of(context).novel_tts_settings_subtitle),
+              trailing: Icon(FluentIcons.chevron_right),
+              onPressed: () => Leader.push(
+                context,
+                const NovelTtsPage(),
+                title: Text(I18n.of(context).novel_tts_settings),
+                icon: Icon(FluentIcons.play),
               ),
             ),
             ListTile(
