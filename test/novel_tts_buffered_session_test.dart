@@ -6,9 +6,10 @@ import 'package:pixez/page/novel/tts/synthesis/novel_tts_synthesis_engine.dart';
 
 class SessionAudioPort implements NovelTtsAudioPort {
   final loaded = <NovelTtsPlaybackItem>[];
+  final eventController = StreamController<NovelTtsAudioEvent>.broadcast();
   int playCalls = 0;
   @override
-  Stream<NovelTtsAudioEvent> get events => const Stream.empty();
+  Stream<NovelTtsAudioEvent> get events => eventController.stream;
   @override
   Future<void> load(List<NovelTtsPlaybackItem> items) async {
     loaded
@@ -34,7 +35,18 @@ class SessionAudioPort implements NovelTtsAudioPort {
   @override
   Future<void> skipTo(int index) async {}
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() => eventController.close();
+
+  void emit({required int index, required Duration position}) {
+    eventController.add(
+      NovelTtsAudioEvent(
+        currentIndex: index,
+        position: position,
+        processingState: NovelTtsAudioProcessingState.ready,
+        playing: true,
+      ),
+    );
+  }
 }
 
 NovelTtsSynthesisItem item(String id, int seconds) => NovelTtsSynthesisItem(
@@ -62,6 +74,33 @@ void main() {
     expect(audio.playCalls, 1);
     expect(session.bufferedDuration, const Duration(seconds: 100));
   });
+  test('pauses at target and resumes only below low duration', () async {
+    final audio = SessionAudioPort();
+    final controller = NovelTtsPlaybackController(audio);
+    final session = NovelTtsBufferedSession(
+      audio: audio,
+      playbackController: controller,
+    );
+    var produced = 0;
+    Stream<NovelTtsSynthesisItem> source() async* {
+      for (var index = 0; index < 4; index++) {
+        produced++;
+        yield item('${index + 1}', 60);
+      }
+    }
+
+    final consuming = session.consume(source());
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(produced, 3);
+    expect(session.bufferedDuration, const Duration(seconds: 180));
+    audio.emit(index: 1, position: const Duration(seconds: 31));
+    await consuming;
+    expect(produced, 4);
+    expect(audio.loaded.map((item) => item.id), ['1', '2', '3', '4']);
+    await session.dispose();
+    controller.dispose();
+  });
+
   test('cancelled generated results never reach the playback queue', () async {
     final audio = SessionAudioPort();
     final session = NovelTtsBufferedSession(audio: audio);

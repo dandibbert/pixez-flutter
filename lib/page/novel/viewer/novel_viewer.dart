@@ -459,7 +459,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   }
 
   void _closeTtsPlayer() {
-    unawaited(novelTtsBufferedSession?.cancel());
+    final session = novelTtsBufferedSession;
+    novelTtsBufferedSession = null;
+    unawaited(session?.dispose());
     if (mounted) setState(() => _ttsMiniPlayerVisible = false);
   }
 
@@ -527,6 +529,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       maxLength: settings.maxLength,
       maxCacheBytes: settings.maxCacheMegabytes * 1024 * 1024,
     );
+    await novelTtsBufferedSession?.dispose();
+    novelTtsBufferedSession = null;
     final session = NovelTtsBufferedSession(
       audio: audio,
       playbackController: controller,
