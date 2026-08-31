@@ -12,9 +12,11 @@ import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
 import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
+import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
@@ -360,6 +362,46 @@ void main() {
     expect(NovelTtsSettings.load().provider, NovelTtsProvider.openai);
   });
 
+  testWidgets('custom voice settings use chips and unclipped advanced fields', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const NovelTtsPage(
+          initial: NovelTtsSettings(
+            customUrl: 'https://host/tts?t=',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(ExpansionTile), findsNothing);
+    await tester.tap(find.byKey(novelTtsInsertTextChipKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey)).controller?.text,
+      contains('{text}'),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddHeaderKey));
+    await tester.pumpAndSettle();
+
+    final headerName = tester.getRect(find.byKey(novelTtsHeaderNameFieldKey));
+    expect(headerName.height, greaterThan(48));
+    await tester.enterText(find.byKey(novelTtsHeaderNameFieldKey), 'Authorization');
+    await tester.enterText(find.byKey(novelTtsHeaderValueFieldKey), 'Bearer tok');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(NovelTtsSettings.load().customHeaders, 'Authorization: Bearer tok');
+  });
+
   test('applies longer pronunciation marks before shorter ones', () {
     const readings = [
       NovelTtsReading(surface: '行', reading: 'こう'),
@@ -378,6 +420,31 @@ void main() {
         const NovelTtsReading(surface: '行先', reading: 'ゆきさき'),
       ],
     );
+    expect(
+      parseNovelTtsReadingLines('悟:さとる\nAuthorization=skip'),
+      [
+        const NovelTtsReading(surface: '悟', reading: 'さとる'),
+        const NovelTtsReading(surface: 'Authorization', reading: 'skip'),
+      ],
+    );
+    expect(parseNovelTtsReadingLine('今日きょう'), isNull);
+  });
+
+  test('parses request headers with colon or equals', () {
+    expect(
+      parseNovelTtsHeaderLines('Authorization: Bearer tok\nX-Voice=alloy\n'),
+      {
+        'Authorization': 'Bearer tok',
+        'X-Voice': 'alloy',
+      },
+    );
+    expect(
+      serializeNovelTtsHeaderLines({'Authorization': 'Bearer tok'}),
+      'Authorization: Bearer tok',
+    );
+    expect(formatMicrosoftRatePercent(-10), '-10%');
+    expect(parseMicrosoftRatePercent('+20%'), 20);
+    expect(languageFromMicrosoftVoice('ja-JP-NanamiNeural'), 'ja-JP');
   });
 
   test('controller synthesizes the marked reading, not the written form', () async {
@@ -408,8 +475,59 @@ void main() {
     expect(controller.subtitle, '今日は雨です。');
     expect(synth.texts, ['きょうは雨です。']);
 
+    final yuji = _FakeSynth();
+    final yujiController = NovelTtsController(
+      synthesizer: yuji,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+        readings: [
+          NovelTtsReading(
+            surface: '悠仁',
+            reading: 'ゆうじ',
+            mode: PronunciationMatchMode.exactPhrase,
+          ),
+        ],
+      ),
+      cacheDir: () async => dir,
+    );
+    await yujiController.start(
+      novelId: 2,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: 'みんなの悠仁が来た。',
+    );
+    expect(yujiController.subtitle, 'みんなの悠仁が来た。');
+    expect(yuji.texts, ['みんなのゆうじが来た。']);
+    yujiController.dispose();
+
     controller.dispose();
     await dir.delete(recursive: true);
+  });
+
+  test('maps a visible reader line onto the synthesizer offset', () {
+    const pageText =
+        'とにかく私はこうしてここに住み始めた。\n悠仁くんに恋して一か月。\n今まで私の名を呼ばなかったり回避するためだったんだろう。';
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, pageText),
+    ]);
+    final yujiIndex = blocks.indexWhere(
+      (block) => block.text.contains('悠仁くんに恋して一か月。'),
+    );
+    expect(yujiIndex, greaterThan(0));
+    expect(
+      novelTtsSourceOffsetForBlock(
+        pageText: pageText,
+        blocks: blocks,
+        blockIndex: yujiIndex,
+      ),
+      pageText.indexOf('悠仁くんに恋して一か月。'),
+    );
   });
 
   test('maps a spoken clip to the matching reader block', () {
@@ -508,6 +626,53 @@ void main() {
     expect(highlights.single.blockIndex, 1);
     expect(highlights.single.start, 0);
     expect(highlights.single.end, '这是第二句用来测试拆分的。'.length);
+  });
+
+  test('spoken clip text keeps subtitle and highlight on the same sentence', () {
+    const source =
+        'とにかく私はこうしてここに住み始めた。\n'
+        '悠仁くんに恋して一か月。\n'
+        '悠仁くんとできれば付き合いたい。\n'
+        '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, source),
+    ]);
+    expect(blocks.map((block) => block.text.trim()), contains('悠仁くんに恋して一か月。'));
+
+    const long =
+        '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
+    const love = '悠仁くんに恋して一か月。';
+    final longHighlights = novelTtsHighlightsForSpokenText(
+      blocks: blocks,
+      clipText: long,
+    );
+    expect(longHighlights, isNotEmpty);
+    expect(
+      longHighlights.every((highlight) {
+        final text = blocks[highlight.blockIndex].text;
+        return text.contains('今まで') && !text.contains('恋して');
+      }),
+      isTrue,
+    );
+
+    final loveHighlights = novelTtsHighlightsForSpokenText(
+      blocks: blocks,
+      clipText: love,
+    );
+    expect(loveHighlights, isNotEmpty);
+    expect(blocks[loveHighlights.first.blockIndex].text, contains(love));
+    expect(
+      novelTtsBlockIndexForSpokenText(blocks: blocks, clipText: love),
+      loveHighlights.first.blockIndex,
+    );
+
+    final chunks = splitNovelTtsText(source, maxChars: 20);
+    expect(novelTtsIndexOfNeedle(chunks, love), greaterThanOrEqualTo(0));
+    expect(chunks[novelTtsIndexOfNeedle(chunks, love)], contains(love));
+    expect(
+      chunks[novelTtsIndexOfNeedle(chunks, love)].contains('今まで'),
+      isFalse,
+    );
   });
 
   test('can pause while synthesizing and resume afterwards', () async {
@@ -646,6 +811,20 @@ void main() {
       novelId: 7,
       title: 'Title',
       author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText:
+          'とにかく私はこうしてここに住み始めた。\n悠仁くんに恋して一か月。\n今まで私の名を呼ばなかったり回避するためだったんだろう。',
+      startNeedle: '悠仁くんに恋して一か月。',
+    );
+    expect(controller.subtitle, contains('悠仁くんに恋して一か月。'));
+    expect(controller.subtitle.contains('今まで'), isFalse);
+    expect(controller.subtitle.contains('とにかく'), isFalse);
+
+    await controller.start(
+      novelId: 7,
+      title: 'Title',
+      author: 'Author',
       page: 2,
       totalPages: 2,
       pageText: '下一页第一句用来测试拆分的。',
@@ -655,6 +834,61 @@ void main() {
       ],
     );
     expect(controller.subtitle, '下一页第一句用来测试拆分的。');
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('starts at the visible sentence inside a packed clip', () async {
+    final synth = _FakeSynth();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_start_visible');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 200,
+        readings: [
+          NovelTtsReading(
+            surface: '悠仁',
+            reading: 'ゆうじ',
+            mode: PronunciationMatchMode.exactPhrase,
+          ),
+        ],
+      ),
+      cacheDir: () async => dir,
+    );
+    const pageText =
+        'とにかく私はこうしてここに住み始めた。\n悠仁くんに恋して一か月。\n今まで私の名を呼ばなかったり回避するためだったんだろう。';
+    final blocks = splitNovelReaderBlocks([
+      NovelSpansData(NovelSpansType.normal, pageText),
+    ]);
+    expect(blocks.map((block) => block.text.trim()), contains('悠仁くんに恋して一か月。'));
+    final yujiIndex = blocks.indexWhere(
+      (block) => block.text.contains('悠仁くんに恋して一か月。'),
+    );
+    final offset = novelTtsSourceOffsetForBlock(
+      pageText: pageText,
+      blocks: blocks,
+      blockIndex: yujiIndex,
+    );
+
+    await controller.start(
+      novelId: 8,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: pageText,
+      startNeedle: '悠仁くんに恋して一か月。',
+      startOffset: offset,
+    );
+    expect(controller.clips, hasLength(1));
+    expect(controller.subtitle, startsWith('悠仁くんに恋して一か月。'));
+    expect(controller.subtitle.contains('とにかく'), isFalse);
+    expect(synth.texts.single, startsWith('ゆうじくんに恋して一か月。'));
 
     controller.dispose();
     await dir.delete(recursive: true);

@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_ruby.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
@@ -17,6 +21,83 @@ String novelTtsTextFromPages(List<List<NovelSpansData>> pages, int pageIndex) {
 
 String novelTtsTextFromBlocks(Iterable<NovelReaderBlock> blocks) {
   return novelTtsTextFromSpans(blocks.expand((block) => block.spans));
+}
+
+NovelTtsTextDocument novelTtsDocumentFromSpans(Iterable<NovelSpansData> spans) {
+  final buffer = StringBuffer();
+  final rubies = <NovelTtsRubyAnnotation>[];
+  for (final span in spans) {
+    if (span.type == NovelSpansType.rb) {
+      final ruby = parseNovelRubyPayload(span.text);
+      if (ruby.base.isEmpty) {
+        continue;
+      }
+      if (buffer.isNotEmpty &&
+          !_startsWithBreak(ruby.base) &&
+          !_endsWithBreak(buffer)) {
+        // Ruby is inline; no extra separator.
+      }
+      final start = buffer.length;
+      buffer.write(ruby.base);
+      if (ruby.ruby.isNotEmpty) {
+        rubies.add(
+          NovelTtsRubyAnnotation(
+            start: start,
+            end: start + ruby.base.length,
+            surface: ruby.base,
+            reading: ruby.ruby,
+          ),
+        );
+      }
+      continue;
+    }
+    final piece = novelTtsSpeakableSpan(span);
+    if (piece.isEmpty) {
+      continue;
+    }
+    if (buffer.isNotEmpty && !_startsWithBreak(piece) && !_endsWithBreak(buffer)) {
+      if (span.type == NovelSpansType.chapter) {
+        buffer.write('\n');
+      }
+    }
+    buffer.write(piece);
+  }
+  final raw = buffer.toString();
+  final display = raw.trim();
+  final lead = display.isEmpty ? 0 : raw.indexOf(display);
+  final shifted = [
+    for (final ruby in rubies)
+      if (ruby.start >= lead && ruby.end <= lead + display.length)
+        NovelTtsRubyAnnotation(
+          start: ruby.start - lead,
+          end: ruby.end - lead,
+          surface: ruby.surface,
+          reading: ruby.reading,
+        ),
+  ];
+  return NovelTtsTextDocument(
+    displayText: display,
+    rubyAnnotations: shifted,
+    sourceHash: sha1.convert(utf8.encode(display)).toString(),
+  );
+}
+
+NovelTtsTextDocument novelTtsDocumentFromText(String text) {
+  final display = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  return NovelTtsTextDocument(
+    displayText: display,
+    sourceHash: sha1.convert(utf8.encode(display)).toString(),
+  );
+}
+
+NovelTtsTextDocument novelTtsDocumentFromPages(
+  List<List<NovelSpansData>> pages,
+  int pageIndex,
+) {
+  if (pages.isEmpty || pageIndex < 0 || pageIndex >= pages.length) {
+    return const NovelTtsTextDocument(displayText: '');
+  }
+  return novelTtsDocumentFromSpans(pages[pageIndex]);
 }
 
 /// Spoken characters for one reader span. Empty means the span is skipped.

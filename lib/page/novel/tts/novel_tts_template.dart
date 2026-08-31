@@ -96,7 +96,10 @@ Map<String, String> parseNovelTtsHeaderLines(String raw) {
     if (trimmed.isEmpty) {
       continue;
     }
-    final index = trimmed.indexOf(':');
+    var index = trimmed.indexOf(':');
+    if (index <= 0) {
+      index = trimmed.indexOf('=');
+    }
     if (index <= 0) {
       continue;
     }
@@ -107,4 +110,11 @@ Map<String, String> parseNovelTtsHeaderLines(String raw) {
     }
   }
   return headers;
+}
+
+String serializeNovelTtsHeaderLines(Map<String, String> headers) {
+  return [
+    for (final entry in headers.entries)
+      if (entry.key.trim().isNotEmpty) '${entry.key.trim()}: ${entry.value}',
+  ].join('\n');
 }

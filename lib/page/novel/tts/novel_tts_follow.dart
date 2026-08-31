@@ -95,6 +95,34 @@ NovelTtsTextRange? novelTtsClipSpeakableRange({
   return range.isEmpty ? null : range;
 }
 
+List<NovelTtsSpanHighlight> _highlightsForPageRange(
+  NovelTtsSpeakableLayout layout,
+  NovelTtsTextRange range,
+) {
+  if (range.isEmpty) {
+    return const [];
+  }
+  final rawStart = layout.toRawOffset(range.start);
+  final rawEnd = layout.toRawOffset(range.end);
+  final highlights = <NovelTtsSpanHighlight>[];
+  for (final run in layout.runs) {
+    final start = rawStart > run.rawStart ? rawStart : run.rawStart;
+    final end = rawEnd < run.rawEnd ? rawEnd : run.rawEnd;
+    if (start >= end) {
+      continue;
+    }
+    highlights.add(
+      NovelTtsSpanHighlight(
+        blockIndex: run.blockIndex,
+        spanIndex: run.spanIndex,
+        start: run.displayStart + (start - run.rawStart),
+        end: run.displayStart + (end - run.rawStart),
+      ),
+    );
+  }
+  return highlights;
+}
+
 /// Per-span display ranges that overlap the current TTS clip.
 List<NovelTtsSpanHighlight> novelTtsHighlightsForClip({
   required List<NovelReaderBlock> blocks,
@@ -117,25 +145,143 @@ List<NovelTtsSpanHighlight> novelTtsHighlightsForClip({
   if (range == null) {
     return const [];
   }
-  final rawStart = layout.toRawOffset(range.start);
-  final rawEnd = layout.toRawOffset(range.end);
-  final highlights = <NovelTtsSpanHighlight>[];
-  for (final run in layout.runs) {
-    final start = rawStart > run.rawStart ? rawStart : run.rawStart;
-    final end = rawEnd < run.rawEnd ? rawEnd : run.rawEnd;
-    if (start >= end) {
+  return _highlightsForPageRange(layout, range);
+}
+
+/// Aligns [clipText] onto reader blocks even when the viewer dropped newlines
+/// that the synthesizer still has in [clipText].
+List<NovelTtsSpanHighlight> novelTtsHighlightsForSpokenText({
+  required List<NovelReaderBlock> blocks,
+  required String clipText,
+}) {
+  if (blocks.isEmpty) {
+    return const [];
+  }
+  final layout = novelTtsSpeakableLayout(blocks);
+  final range = novelTtsAlignFlexible(layout.pageText, clipText);
+  if (range == null) {
+    return const [];
+  }
+  return _highlightsForPageRange(layout, range);
+}
+
+/// Finds [needle] in [pageText] while ignoring whitespace / newline mismatches.
+NovelTtsTextRange? novelTtsAlignFlexible(
+  String pageText,
+  String needle, {
+  int from = 0,
+}) {
+  final compact = _stripSpeakableSpace(needle);
+  if (compact.isEmpty || pageText.isEmpty) {
+    return null;
+  }
+  var n = 0;
+  var start = -1;
+  final begin = from < 0 ? 0 : from;
+  for (var i = begin; i < pageText.length; i++) {
+    if (_isSpeakableSpace(pageText[i])) {
       continue;
     }
-    highlights.add(
-      NovelTtsSpanHighlight(
-        blockIndex: run.blockIndex,
-        spanIndex: run.spanIndex,
-        start: run.displayStart + (start - run.rawStart),
-        end: run.displayStart + (end - run.rawStart),
-      ),
-    );
+    if (pageText[i] == compact[n]) {
+      if (n == 0) {
+        start = i;
+      }
+      n++;
+      if (n == compact.length) {
+        return NovelTtsTextRange(start, i + 1);
+      }
+      continue;
+    }
+    n = 0;
+    start = -1;
+    if (pageText[i] == compact[0]) {
+      start = i;
+      n = 1;
+      if (n == compact.length) {
+        return NovelTtsTextRange(start, i + 1);
+      }
+    }
   }
-  return highlights;
+  return null;
+}
+
+String _stripSpeakableSpace(String text) {
+  final buffer = StringBuffer();
+  for (var i = 0; i < text.length; i++) {
+    if (!_isSpeakableSpace(text[i])) {
+      buffer.write(text[i]);
+    }
+  }
+  return buffer.toString();
+}
+
+bool novelTtsTextCoversNeedle(String clipText, String needle) {
+  final compactClip = _stripSpeakableSpace(clipText);
+  final compactNeedle = _stripSpeakableSpace(needle);
+  if (compactClip.isEmpty || compactNeedle.isEmpty) {
+    return false;
+  }
+  return compactClip.contains(compactNeedle) ||
+      compactNeedle.contains(compactClip);
+}
+
+int novelTtsIndexOfNeedle(Iterable<String> clipTexts, String needle) {
+  final compactNeedle = _stripSpeakableSpace(needle);
+  if (compactNeedle.isEmpty) {
+    return -1;
+  }
+  var index = 0;
+  for (final clipText in clipTexts) {
+    if (novelTtsTextCoversNeedle(clipText, needle)) {
+      return index;
+    }
+    index++;
+  }
+  return -1;
+}
+
+String novelTtsNeedleForBlock(List<NovelReaderBlock> blocks, int blockIndex) {
+  if (blockIndex < 0 || blockIndex >= blocks.length) {
+    return '';
+  }
+  for (var i = blockIndex; i < blocks.length; i++) {
+    final text = novelTtsTextFromBlocks([blocks[i]]).trim();
+    if (text.isNotEmpty) {
+      return text.length > 80 ? text.substring(0, 80) : text;
+    }
+  }
+  return '';
+}
+
+/// Source offset of [blockIndex] inside synthesizer [pageText].
+///
+/// Reader blocks drop newlines that the TTS document still has, so this walks
+/// blocks in order instead of using a raw `indexOf`.
+int? novelTtsSourceOffsetForBlock({
+  required String pageText,
+  required List<NovelReaderBlock> blocks,
+  required int blockIndex,
+}) {
+  if (pageText.isEmpty || blockIndex < 0 || blockIndex >= blocks.length) {
+    return null;
+  }
+  var from = 0;
+  for (var i = 0; i < blocks.length; i++) {
+    final text = novelTtsTextFromBlocks([blocks[i]]).trim();
+    if (text.isEmpty) {
+      continue;
+    }
+    final range = novelTtsAlignFlexible(pageText, text, from: from);
+    if (range == null) {
+      continue;
+    }
+    if (i >= blockIndex) {
+      return range.start;
+    }
+    from = range.end;
+  }
+  final needle = novelTtsNeedleForBlock(blocks, blockIndex);
+  return novelTtsAlignFlexible(pageText, needle)?.start;
 }
 
 NovelTtsSpanHighlight? novelTtsHighlightForSpan({
@@ -265,6 +411,20 @@ int novelTtsBlockIndexForChunk({
     return 0;
   }
   return 0;
+}
+
+int novelTtsBlockIndexForSpokenText({
+  required List<NovelReaderBlock> blocks,
+  required String clipText,
+}) {
+  final highlights = novelTtsHighlightsForSpokenText(
+    blocks: blocks,
+    clipText: clipText,
+  );
+  if (highlights.isNotEmpty) {
+    return highlights.first.blockIndex;
+  }
+  return novelTtsBlockIndexForClip(blocks: blocks, clipText: clipText);
 }
 
 bool _isSpeakableSpace(String char) {

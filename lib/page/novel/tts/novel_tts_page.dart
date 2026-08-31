@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
+import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
+import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_repository.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
 const Key novelTtsSettingsPageKey = Key('novelTtsSettingsPage');
@@ -139,8 +143,9 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     );
   }
 
-  Future<void> _setReadings(List<NovelTtsReading> readings) {
-    return _persist(_draft().copyWith(readings: readings));
+  Future<void> _setReadings(List<NovelTtsReading> readings) async {
+    await _persist(_draft().copyWith(readings: readings));
+    await PronunciationRepository().replaceFromSettings(readings);
   }
 
   @override
@@ -231,9 +236,19 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
           _Section(
             key: novelTtsReadingsSectionKey,
             title: i18n.novel_tts_section_readings,
-            child: _ReadingsEditor(
-              readings: _settings.readings,
-              onChanged: _setReadings,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  i18n.novel_tts_analyzer_boundary,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                _ReadingsEditor(
+                  readings: _settings.readings,
+                  onChanged: _setReadings,
+                ),
+              ],
             ),
           ),
         ],
@@ -243,22 +258,118 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   }
 
   List<Widget> _microsoftFields(AppLocalizations i18n) {
+    final rate = parseMicrosoftRatePercent(_microsoftRate.text);
     return [
       _box(_microsoftKey, i18n.novel_tts_microsoft_key, obscure: true),
-      _box(_microsoftRegion, i18n.novel_tts_microsoft_region),
-      _box(_microsoftVoice, i18n.novel_tts_microsoft_voice),
-      _box(_microsoftLanguage, i18n.novel_tts_microsoft_language),
-      _box(_microsoftRate, i18n.novel_tts_microsoft_rate),
+      NovelTtsChoiceField(
+        label: i18n.novel_tts_microsoft_region,
+        controller: _microsoftRegion,
+        choices: microsoftRegionChoices,
+        onChanged: (_) {
+          setState(() {});
+          _schedulePersist();
+        },
+      ),
+      NovelTtsChoiceField(
+        label: i18n.novel_tts_microsoft_voice,
+        controller: _microsoftVoice,
+        choices: microsoftVoiceChoices,
+        onChanged: (value) {
+          final language = languageFromMicrosoftVoice(value);
+          if (language != null && _microsoftLanguage.text.trim().isEmpty) {
+            _microsoftLanguage.text = language;
+          } else if (language != null &&
+              microsoftLanguageChoices.any((choice) =>
+                  choice.value == _microsoftLanguage.text.trim())) {
+            _microsoftLanguage.text = language;
+          }
+          setState(() {});
+          _schedulePersist();
+        },
+      ),
+      NovelTtsChoiceField(
+        label: i18n.novel_tts_microsoft_language,
+        controller: _microsoftLanguage,
+        choices: microsoftLanguageChoices,
+        onChanged: (_) {
+          setState(() {});
+          _schedulePersist();
+        },
+      ),
+      Text(i18n.novel_tts_microsoft_rate),
+      Slider(
+        value: rate,
+        min: -50,
+        max: 50,
+        divisions: 20,
+        label: formatMicrosoftRatePercent(rate),
+        onChanged: (value) {
+          setState(() {
+            _microsoftRate.text = formatMicrosoftRatePercent(value);
+          });
+          _schedulePersist();
+        },
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          formatMicrosoftRatePercent(rate),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
+      const SizedBox(height: 8),
     ];
   }
 
   List<Widget> _openaiFields(AppLocalizations i18n) {
+    final speed = (_openaiSpeed.text.trim().isEmpty
+            ? _settings.openaiSpeed
+            : double.tryParse(_openaiSpeed.text.trim()) ??
+                _settings.openaiSpeed)
+        .clamp(0.25, 4.0);
     return [
       _box(_openaiBaseUrl, i18n.novel_tts_openai_base_url),
       _box(_openaiApiKey, i18n.novel_tts_openai_api_key, obscure: true),
-      _box(_openaiModel, i18n.novel_tts_openai_model),
-      _box(_openaiVoice, i18n.novel_tts_openai_voice),
-      _box(_openaiSpeed, i18n.novel_tts_openai_speed),
+      NovelTtsChoiceField(
+        label: i18n.novel_tts_openai_model,
+        controller: _openaiModel,
+        choices: openaiModelChoices,
+        onChanged: (_) {
+          setState(() {});
+          _schedulePersist();
+        },
+      ),
+      NovelTtsChoiceField(
+        label: i18n.novel_tts_openai_voice,
+        controller: _openaiVoice,
+        choices: openaiVoiceChoices,
+        onChanged: (_) {
+          setState(() {});
+          _schedulePersist();
+        },
+      ),
+      Text(i18n.novel_tts_openai_speed),
+      Slider(
+        value: speed,
+        min: 0.25,
+        max: 4,
+        divisions: 15,
+        label: speed.toStringAsFixed(2),
+        onChanged: (value) {
+          setState(() {
+            _openaiSpeed.text = value.toStringAsFixed(2);
+          });
+          _schedulePersist();
+        },
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          speed.toStringAsFixed(2),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
+      const SizedBox(height: 8),
     ];
   }
 
@@ -277,7 +388,14 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
         onChanged: (_) => _schedulePersist(),
         onEditingComplete: () => _persist(_draft()),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
+      NovelTtsPlaceholderChips(
+        caption: i18n.novel_tts_insert_placeholder,
+        onInsert: (token) {
+          insertNovelTtsToken(_customUrl, token);
+          _schedulePersist();
+        },
+      ),
       DropdownButtonFormField<String>(
         initialValue: _settings.customMethod == 'POST' ? 'POST' : 'GET',
         decoration: InputDecoration(
@@ -297,31 +415,40 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       ),
       const SizedBox(height: 12),
       _box(_customVoice, i18n.novel_tts_custom_voice),
-      ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        title: Text(i18n.novel_tts_advanced),
+      NovelTtsAdvancedPanel(
+        title: i18n.novel_tts_advanced,
         children: [
-          _box(_customHeaders, i18n.novel_tts_custom_headers, minLines: 2),
-          _box(_customBody, i18n.novel_tts_custom_body, minLines: 3),
-          _box(_customContentType, i18n.novel_tts_custom_content_type),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              i18n.novel_tts_custom_variables,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+          Text(
+            i18n.novel_tts_custom_headers,
+            style: Theme.of(context).textTheme.titleSmall,
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '{text} {voice} {voiceName} {lang} {speed} {model}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
+          const SizedBox(height: 8),
+          NovelTtsHeaderListEditor(
+            initial: _customHeaders.text,
+            nameLabel: i18n.novel_tts_header_name,
+            valueLabel: i18n.novel_tts_header_value,
+            addLabel: i18n.novel_tts_header_add,
+            onChanged: (raw) {
+              _customHeaders.text = raw;
+              _persist(_draft(), updateState: false);
+            },
+          ),
+          _box(_customBody, i18n.novel_tts_custom_body, minLines: 3),
+          NovelTtsPlaceholderChips(
+            caption: i18n.novel_tts_insert_placeholder,
+            onInsert: (token) {
+              insertNovelTtsToken(_customBody, token);
+              _schedulePersist();
+            },
+          ),
+          NovelTtsChoiceField(
+            label: i18n.novel_tts_custom_content_type,
+            controller: _customContentType,
+            choices: contentTypeChoices,
+            onChanged: (_) {
+              setState(() {});
+              _schedulePersist();
+            },
           ),
         ],
       ),
@@ -419,6 +546,7 @@ class _ReadingsEditor extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text('${readings[i].surface}  →  ${readings[i].reading}'),
+                subtitle: Text(_modeLabel(i18n, readings[i])),
                 onTap: () => _edit(context, index: i),
                 trailing: IconButton(
                   tooltip: i18n.novel_tts_reading_delete,
@@ -449,6 +577,19 @@ class _ReadingsEditor extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _modeLabel(AppLocalizations i18n, NovelTtsReading reading) {
+    final mode = reading.mode ??
+        const PronunciationMigration().classifyV1Surface(reading.surface).mode;
+    switch (mode) {
+      case PronunciationMatchMode.exactPhrase:
+        return i18n.novel_tts_mode_exact;
+      case PronunciationMatchMode.nameAlias:
+        return i18n.novel_tts_mode_alias;
+      case PronunciationMatchMode.force:
+        return i18n.novel_tts_mode_force;
+    }
   }
 
   Future<void> _edit(BuildContext context, {int? index}) async {
@@ -498,12 +639,20 @@ class _ReadingDialog extends StatefulWidget {
 class _ReadingDialogState extends State<_ReadingDialog> {
   late final TextEditingController _surface;
   late final TextEditingController _reading;
+  late PronunciationMatchMode _mode;
 
   @override
   void initState() {
     super.initState();
     _surface = TextEditingController(text: widget.initial?.surface ?? '');
     _reading = TextEditingController(text: widget.initial?.reading ?? '');
+    _mode = widget.initial?.mode ??
+        const PronunciationMigration().classifyV1Surface(
+          widget.initial?.surface ?? '',
+        ).mode;
+    if (widget.initial == null) {
+      _mode = PronunciationMatchMode.exactPhrase;
+    }
   }
 
   @override
@@ -544,6 +693,51 @@ class _ReadingDialogState extends State<_ReadingDialog> {
                 border: const OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<PronunciationMatchMode>(
+              initialValue: _mode,
+              decoration: InputDecoration(
+                labelText: i18n.novel_tts_reading_mode,
+                border: const OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: PronunciationMatchMode.exactPhrase,
+                  child: Text(i18n.novel_tts_mode_exact),
+                ),
+                DropdownMenuItem(
+                  value: PronunciationMatchMode.nameAlias,
+                  child: Text(i18n.novel_tts_mode_alias),
+                ),
+                DropdownMenuItem(
+                  value: PronunciationMatchMode.force,
+                  child: Text(i18n.novel_tts_mode_force),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _mode = value);
+                }
+              },
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                switch (_mode) {
+                  PronunciationMatchMode.exactPhrase =>
+                    i18n.novel_tts_mode_exact_hint,
+                  PronunciationMatchMode.nameAlias =>
+                    i18n.novel_tts_mode_alias_hint,
+                  PronunciationMatchMode.force =>
+                    i18n.novel_tts_mode_force_warning,
+                },
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: _mode == PronunciationMatchMode.force
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -558,6 +752,7 @@ class _ReadingDialogState extends State<_ReadingDialog> {
             final next = NovelTtsReading(
               surface: _surface.text,
               reading: _reading.text,
+              mode: _mode,
             ).trimmed();
             if (!next.isValid) {
               return;

@@ -292,10 +292,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     if (blocks.isEmpty) {
       return;
     }
-    final index = novelTtsBlockIndexForChunk(
+    final index = novelTtsBlockIndexForSpokenText(
       blocks: blocks,
-      chunkIndex: _tts.chunkIndex,
-      splitChars: _tts.settings.clampedSplitChars,
+      clipText: _tts.currentClip?.text ?? _tts.subtitle,
     );
     final box = _ttsBlockKeys[index]?.currentContext?.findRenderObject();
     final viewportTop = _articleViewportTop();
@@ -372,7 +371,11 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pageTexts = [
       for (var i = 0; i < totalPages; i++) novelTtsTextFromPages(pages, i),
     ];
+    final pageDocuments = [
+      for (var i = 0; i < totalPages; i++) novelTtsDocumentFromPages(pages, i),
+    ];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
+    final start = fromEnd ? null : _visibleStart(page);
     await _tts.start(
       novelId: widget.id,
       title: novel.title,
@@ -381,6 +384,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       totalPages: totalPages,
       pageText: pageTexts[page - 1],
       pageTexts: pageTexts,
+      pageDocuments: pageDocuments,
+      seriesId: novel.series.id?.toString(),
       coverUrl: novel.imageUrls.medium,
       prevSeriesId: navigation?.prevNovel?.viewable == true
           ? navigation!.prevNovel!.id
@@ -388,19 +393,21 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       nextSeriesId: navigation?.nextNovel?.viewable == true
           ? navigation!.nextNovel!.id
           : null,
-      startChunk: fromEnd ? 1 << 20 : _visibleStartChunk(page),
+      startChunk: fromEnd ? 1 << 20 : null,
+      startNeedle: fromEnd ? null : start?.needle,
+      startOffset: fromEnd ? null : start?.offset,
     );
   }
 
-  int _visibleStartChunk(int page) {
+  ({String needle, int? offset})? _visibleStart(int page) {
     final pages = _pages;
     if (pages.isEmpty) {
-      return 0;
+      return null;
     }
     final pageIndex = clampNovelPage(page, pages.length) - 1;
     final blocks = _splitCache.blocks(pages[pageIndex], pageIndex);
     if (blocks.isEmpty) {
-      return 0;
+      return null;
     }
     final viewportTop = _articleViewportTop();
     var blockIndex = 0;
@@ -425,10 +432,15 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 .clamp(0, blocks.length - 1);
       }
     }
-    return novelTtsChunkIndexForBlock(
-      blocks: blocks,
-      blockIndex: blockIndex,
-      splitChars: _tts.settings.clampedSplitChars,
+    final needle = novelTtsNeedleForBlock(blocks, blockIndex);
+    final display = novelTtsDocumentFromPages(pages, pageIndex).displayText;
+    return (
+      needle: needle,
+      offset: novelTtsSourceOffsetForBlock(
+        pageText: display,
+        blocks: blocks,
+        blockIndex: blockIndex,
+      ),
     );
   }
 
@@ -629,10 +641,9 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         _tts.session?.novelId == widget.id &&
         _tts.session?.page == _currentPage;
     final clipHighlights = followClip
-        ? novelTtsHighlightsForClip(
+        ? novelTtsHighlightsForSpokenText(
             blocks: blocks,
-            chunkIndex: _tts.chunkIndex,
-            splitChars: _tts.settings.clampedSplitChars,
+            clipText: _tts.currentClip?.text ?? _tts.subtitle,
           )
         : const <NovelTtsSpanHighlight>[];
     final navigation = _novelStore.novelTextResponse?.seriesNavigation;
