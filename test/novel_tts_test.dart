@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/prefer.dart';
@@ -1079,6 +1081,77 @@ void main() {
       PronunciationMatchMode.nameAlias,
     );
     expect(find.text('Name alias'), findsOneWidget);
+  });
+
+  testWidgets('captures the mark editor previewing a name alias', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 940);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Droid Sans Fallback has no Latin, so the separators in the decision list
+    // need a second family behind it.
+    for (final (family, path) in [
+      ('Latin', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+      ('CJK', '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf'),
+    ]) {
+      final file = File(path);
+      if (!file.existsSync()) {
+        return;
+      }
+      final loader = FontLoader(family)
+        ..addFont(Future<ByteData>.value(ByteData.view(file.readAsBytesSync().buffer)));
+      await loader.load();
+    }
+
+    const captureKey = Key('tts-mark-editor-capture');
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: captureKey,
+        child: MaterialApp(
+          theme: ThemeData(
+            useMaterial3: true,
+            fontFamily: 'Latin',
+            fontFamilyFallback: const ['CJK'],
+          ),
+          locale: const Locale('ja'),
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: NovelTtsPage(initial: const NovelTtsSettings()),
+        ),
+      ),
+    );
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'さとる');
+    await tester.enterText(
+      find.byKey(novelTtsReadingPreviewFieldKey),
+      '悟は笑った。真相を悟った。悟さんが来た。',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(captureKey),
+    );
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 2);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final file = File(
+        '/opt/cursor/artifacts/tts_mark_editor_name_alias_preview.png',
+      );
+      file.parent.createSync(recursive: true);
+      file.writeAsBytesSync(bytes!.buffer.asUint8List());
+      expect(file.existsSync(), isTrue);
+    });
   });
 
   testWidgets('the mark editor previews applied and kept decisions', (
