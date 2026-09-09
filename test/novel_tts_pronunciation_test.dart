@@ -243,6 +243,58 @@ void main() {
     expect(await render('葵', 'あおい', '葵は強い。'), 'あおいは強い。');
   });
 
+  test('a cast of aliases reads a whole excerpt', () async {
+    PronunciationRule alias(String id, String surface, String reading) =>
+        phrase(
+          id,
+          surface,
+          reading,
+          mode: PronunciationMatchMode.nameAlias,
+        );
+    final snapshot = compiler.compile([
+      phrase('full', '五条悟', 'ごじょうさとる'),
+      alias('satoru', '悟', 'さとる'),
+      alias('megumi', '恵', 'めぐみ'),
+      alias('suguru', '傑', 'すぐる'),
+      alias('nobara', '棘', 'のばら'),
+    ], workId: 'work-1');
+    const source =
+        '悟は教室の窓際に座っていた。恵が入ってくると、悟は顔を上げて笑った。\n'
+        '「悟、また遅刻か」と恵が言う。悟は肩をすくめただけだった。\n'
+        'やがて彼は事の重大さを悟った。悟りを開くにはまだ早い。\n'
+        '恵まれた環境で育った恵は、知恵を働かせて話を逸らした。\n'
+        '「傑！」棘が叫んだ。傑は振り返らなかった。棘の声は震えていた。\n'
+        '悟さんと恵さんは幼馴染で、傑くんはその後輩だ。\n'
+        '悟って誰？と棘が聞いた。恵は答えなかった。\n'
+        '彼女は自分の過ちを悟らないままだった。悟れば話は変わる。';
+
+    final resolved = await pipeline.resolve(
+      document: NovelTtsTextDocument(displayText: source),
+      snapshot: snapshot,
+    );
+
+    expect(
+      renderer.renderAll(
+        source: source,
+        decisions: resolved.appliedDecisions,
+      ),
+      'さとるは教室の窓際に座っていた。めぐみが入ってくると、さとるは顔を上げて笑った。\n'
+      '「さとる、また遅刻か」とめぐみが言う。さとるは肩をすくめただけだった。\n'
+      'やがて彼は事の重大さを悟った。悟りを開くにはまだ早い。\n'
+      '恵まれた環境で育っためぐみは、知恵を働かせて話を逸らした。\n'
+      '「すぐる！」のばらが叫んだ。すぐるは振り返らなかった。のばらの声は震えていた。\n'
+      'さとるさんとめぐみさんは幼馴染で、すぐるくんはその後輩だ。\n'
+      'さとるって誰？とのばらが聞いた。めぐみは答えなかった。\n'
+      '彼女は自分の過ちを悟らないままだった。悟れば話は変わる。',
+    );
+    // 17 of the 23 written名 land as names; the six left alone are all verb or
+    // compound uses. That ratio is the whole point of the feature: the reader
+    // configures 悟 once and does not hear さとる in 悟った.
+    expect(resolved.appliedDecisions, hasLength(17));
+    expect(resolved.allDecisions, hasLength(23));
+    expect(resolved.analyzerCapability, 'lexicon-pos');
+  });
+
   test('aliases degrade to boundaries when the analyzer fails', () async {
     final pipeline = PronunciationPipeline(
       worker: PronunciationWorker(analyzer: _BrokenAnalyzer()),
