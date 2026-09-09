@@ -9,6 +9,7 @@ enum PronunciationReason {
   morphologyProperName,
   workScopedNameContext,
   quotativeNameContext,
+  aliasWithoutConflict,
   rejectedInsideLargerToken,
   rejectedVerbOrAdjective,
   rejectedInflectionSuffix,

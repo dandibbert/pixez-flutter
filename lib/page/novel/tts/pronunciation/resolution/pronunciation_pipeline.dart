@@ -1,4 +1,5 @@
 import 'package:pixez/page/novel/tts/pronunciation/matching/overlap_resolver.dart';
+import 'package:pixez/page/novel/tts/pronunciation/matching/phrase_trie.dart';
 import 'package:pixez/page/novel/tts/pronunciation/matching/pronunciation_compiler.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
@@ -220,23 +221,36 @@ class PronunciationPipeline {
     return merged;
   }
 
+  /// The sentence around a candidate, or a bounded window when the paragraph
+  /// has no sentence break. The window never collapses onto the candidate
+  /// itself: the analyzer needs the following okurigana to tell `悟った` from
+  /// `悟は`.
   NovelTtsSourceRange _sentenceWindow(String source, int start, int end) {
+    const margin = PronunciationLimits.maxRegionChars ~/ 2;
+    final floor = start - margin < 0 ? 0 : start - margin;
+    final ceiling = end + margin > source.length ? source.length : end + margin;
     var from = start;
-    while (from > 0 && !_isSentenceEnd(source[from - 1])) {
+    while (from > floor && !_isSentenceEnd(source[from - 1])) {
       from--;
     }
     var to = end;
-    while (to < source.length && !_isSentenceEnd(source[to])) {
+    while (to < ceiling && !_isSentenceEnd(source[to])) {
       to++;
     }
-    if (to < source.length) {
+    if (to < ceiling) {
       to++;
     }
-    if (to - from > PronunciationLimits.maxRegionChars) {
-      from = start;
-      to = end;
+    return NovelTtsSourceRange(
+      _scalarStart(source, from),
+      _scalarStart(source, to),
+    );
+  }
+
+  int _scalarStart(String source, int index) {
+    if (index <= 0 || index >= source.length) {
+      return index.clamp(0, source.length);
     }
-    return NovelTtsSourceRange(from, to);
+    return isUtf16ScalarStart(source, index) ? index : index - 1;
   }
 
   bool _isSentenceEnd(String char) {

@@ -9,7 +9,10 @@ import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dar
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
 import 'package:pixez/page/novel/tts/pronunciation/morphology/boundary_only_japanese_analyzer.dart';
+import 'package:pixez/page/novel/tts/pronunciation/morphology/japanese_morphology_analyzer.dart';
+import 'package:pixez/page/novel/tts/pronunciation/morphology/lexicon_japanese_analyzer.dart';
 import 'package:pixez/page/novel/tts/pronunciation/morphology/morphology_offset_mapper.dart';
+import 'package:pixez/page/novel/tts/pronunciation/morphology/pronunciation_worker.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/morphology_token.dart';
 import 'package:pixez/page/novel/tts/pronunciation/resolution/pronunciation_pipeline.dart';
 import 'package:pixez/page/novel/tts/pronunciation/resolution/pronunciation_renderer.dart';
@@ -111,15 +114,167 @@ void main() {
     expect(await spoken('悟ってしまった。'), '悟ってしまった。');
   });
 
-  test('global single-kanji alias does not accept a particle alone', () async {
-    expect(
-      await spoken('悟は笑った。', aliasScope: PronunciationScopeType.global),
-      '悟は笑った。',
+  test('a global single-kanji alias behaves like a work-scoped one', () async {
+    const global = PronunciationScopeType.global;
+    expect(await spoken('悟は笑った。', aliasScope: global), 'さとるは笑った。');
+    expect(await spoken('悟さん', aliasScope: global), 'さとるさん');
+    expect(await spoken('悟と話した。', aliasScope: global), 'さとると話した。');
+    expect(await spoken('真相を悟った。', aliasScope: global), '真相を悟った。');
+    expect(await spoken('孫悟空が来た。', aliasScope: global), '孫悟空が来た。');
+    expect(await spoken('覚悟を決めた。', aliasScope: global), '覚悟を決めた。');
+  });
+
+  test('the analyzer reports part of speech and dictionary forms', () async {
+    final analyzer = LexiconJapaneseAnalyzer();
+    await analyzer.warmUp();
+    expect(analyzer.supportsPartOfSpeech, isTrue);
+    expect(analyzer.capability, 'lexicon-pos');
+
+    MorphologyToken tokenFor(String text, String surface) {
+      return analyzer
+          .tokenize(text)
+          .firstWhere((token) => token.surface == surface);
+    }
+
+    final verb = tokenFor('真相を悟った。', '悟っ');
+    expect(verb.partOfSpeech, contains('動詞'));
+    expect(verb.basicForm, '悟る');
+    expect(verb.conjugationType, '五段・ラ行');
+
+    final noun = tokenFor('悟は笑った。', '悟');
+    expect(noun.partOfSpeech, contains('名詞'));
+    expect(noun.conjugationType, isNull);
+
+    final adjective = tokenFor('彼は優しい。', '優しい');
+    expect(adjective.partOfSpeech, contains('形容詞'));
+    expect(adjective.basicForm, '優しい');
+
+    expect(tokenFor('孫悟空が来た。', '孫悟空').start, 0);
+    expect(tokenFor('実に美しい。', '実に').partOfSpeech, contains('副詞'));
+  });
+
+  test('an inflection only counts when the auxiliary that needs it follows', () {
+    final analyzer = LexiconJapaneseAnalyzer();
+    List<String> surfaces(String text) =>
+        [for (final token in analyzer.tokenize(text)) token.surface];
+
+    // 直さ is a real 未然形 of 直す, but only in front of a negative.
+    expect(surfaces('直さない。'), contains('直さ'));
+    expect(surfaces('直そう。'), contains('直そ'));
+    expect(surfaces('直せば'), contains('直せ'));
+    // A verb spelled without okurigana is indistinguishable from a name.
+    expect(surfaces('悟は'), contains('悟'));
+  });
+
+  test('homograph aliases apply as names and stay out of other words', () async {
+    Future<String> render(String surface, String reading, String source) async {
+      final snapshot = compiler.compile([
+        phrase(
+          'alias',
+          surface,
+          reading,
+          mode: PronunciationMatchMode.nameAlias,
+          scope: PronunciationScopeType.global,
+          scopeId: null,
+        ),
+      ]);
+      final resolved = await pipeline.resolve(
+        document: NovelTtsTextDocument(displayText: source),
+        snapshot: snapshot,
+      );
+      return renderer.renderAll(
+        source: source,
+        decisions: resolved.appliedDecisions,
+      );
+    }
+
+    expect(await render('恵', 'めぐみ', '恵は笑った。'), 'めぐみは笑った。');
+    expect(await render('恵', 'めぐみ', '恵まれた子だ。'), '恵まれた子だ。');
+    expect(await render('恵', 'めぐみ', '知恵を使う。'), '知恵を使う。');
+    expect(await render('恵', 'めぐみ', '恵みの雨。'), '恵みの雨。');
+
+    expect(await render('愛', 'まなみ', '愛さんが来た。'), 'まなみさんが来た。');
+    expect(await render('愛', 'まなみ', '彼を愛している。'), '彼を愛している。');
+    expect(await render('愛', 'まなみ', '愛らしい笑顔。'), '愛らしい笑顔。');
+    expect(await render('愛', 'まなみ', '恋愛の話。'), '恋愛の話。');
+
+    expect(await render('光', 'ひかる', '光と話した。'), 'ひかると話した。');
+    expect(await render('光', 'ひかる', '目が光った。'), '目が光った。');
+    expect(await render('光', 'ひかる', '観光に行く。'), '観光に行く。');
+
+    expect(await render('望', 'のぞむ', '望は帰った。'), 'のぞむは帰った。');
+    expect(await render('望', 'のぞむ', '平和を望む。'), '平和を望む。');
+    expect(await render('望', 'のぞむ', '望みを託す。'), '望みを託す。');
+    expect(await render('望', 'のぞむ', '希望がある。'), '希望がある。');
+
+    expect(await render('歩', 'あゆむ', '歩くん、行こう。'), 'あゆむくん、行こう。');
+    expect(await render('歩', 'あゆむ', '道を歩いた。'), '道を歩いた。');
+    expect(await render('歩', 'あゆむ', '散歩に出る。'), '散歩に出る。');
+
+    expect(await render('司', 'つかさ', '司の番だ。'), 'つかさの番だ。');
+    expect(await render('司', 'つかさ', '国を司る。'), '国を司る。');
+    expect(await render('司', 'つかさ', '司会を務める。'), '司会を務める。');
+
+    expect(await render('静', 'しずか', '静も来た。'), 'しずかも来た。');
+    expect(await render('静', 'しずか', '静かな夜。'), '静かな夜。');
+    expect(await render('静', 'しずか', '嵐が静まる。'), '嵐が静まる。');
+
+    expect(await render('実', 'みのり', '実さんが来た。'), 'みのりさんが来た。');
+    expect(await render('実', 'みのり', '実に美しい。'), '実に美しい。');
+    expect(await render('実', 'みのり', '実った稲。'), '実った稲。');
+    expect(await render('実', 'みのり', '事実を知る。'), '事実を知る。');
+
+    expect(await render('優', 'ゆう', '優と会った。'), 'ゆうと会った。');
+    expect(await render('優', 'ゆう', '彼は優しい。'), '彼は優しい。');
+    expect(await render('優', 'ゆう', '優れた才能。'), '優れた才能。');
+    expect(await render('優', 'ゆう', '優勝した。'), '優勝した。');
+
+    expect(await render('薫', 'かおる', '薫が笑う。'), 'かおるが笑う。');
+    expect(await render('薫', 'かおる', '風が薫る。'), '風が薫る。');
+
+    expect(await render('誠', 'まこと', '誠が来た。'), 'まことが来た。');
+    expect(await render('誠', 'まこと', '誠実な人。'), '誠実な人。');
+
+    expect(await render('翼', 'つばさ', '翼が呼んだ。'), 'つばさが呼んだ。');
+    expect(await render('楓', 'かえで', '楓と歩く。'), 'かえでと歩く。');
+    expect(await render('葵', 'あおい', '葵は強い。'), 'あおいは強い。');
+  });
+
+  test('aliases degrade to boundaries when the analyzer fails', () async {
+    final pipeline = PronunciationPipeline(
+      worker: PronunciationWorker(analyzer: _BrokenAnalyzer()),
     );
-    expect(
-      await spoken('悟さん', aliasScope: PronunciationScopeType.global),
-      'さとるさん',
-    );
+    final snapshot = compiler.compile([
+      phrase('full', '五条悟', 'ごじょうさとる'),
+      phrase(
+        'alias',
+        '悟',
+        'さとる',
+        mode: PronunciationMatchMode.nameAlias,
+        scope: PronunciationScopeType.global,
+        scopeId: null,
+      ),
+    ], workId: 'work-1');
+    Future<String> render(String source) async {
+      final resolved = await pipeline.resolve(
+        document: NovelTtsTextDocument(displayText: source),
+        snapshot: snapshot,
+      );
+      return renderer.renderAll(
+        source: source,
+        decisions: resolved.appliedDecisions,
+      );
+    }
+
+    // Exact phrases keep working, and the safe alias contexts survive.
+    expect(await render('五条悟は笑った。'), 'ごじょうさとるは笑った。');
+    expect(await render('悟さん'), 'さとるさん');
+    expect(await render('悟は笑った。'), 'さとるは笑った。');
+    // Anything that could be okurigana or a compound is left alone.
+    expect(await render('真相を悟った。'), '真相を悟った。');
+    expect(await render('悟りを開く。'), '悟りを開く。');
+    expect(await render('孫悟空が来た。'), '孫悟空が来た。');
+    expect(pipeline.worker.capability, 'unavailable');
   });
 
   test('explicit ruby wins over a name alias', () async {
@@ -460,4 +615,37 @@ void main() {
     expect(tokens.last.surface, '悟');
     expect(tokens.first.end, 2);
   });
+
+  test('lexicon analyzer keeps surrogate pairs intact', () {
+    final tokens = LexiconJapaneseAnalyzer().tokenize('😀悟った');
+    expect(tokens.first.surface, '😀');
+    expect(tokens.first.end, 2);
+    expect(tokens[1].surface, '悟っ');
+    expect(tokens[1].start, 2);
+  });
+}
+
+class _BrokenAnalyzer implements JapaneseMorphologyAnalyzer {
+  @override
+  String get analyzerId => 'broken';
+
+  @override
+  String get analyzerVersion => '0';
+
+  @override
+  bool get supportsPartOfSpeech => false;
+
+  @override
+  String get capability => 'broken';
+
+  @override
+  Future<void> warmUp() async => throw StateError('no analyzer');
+
+  @override
+  Future<MorphologyResult> analyze(String text, {required String requestId}) {
+    throw StateError('no analyzer');
+  }
+
+  @override
+  Future<void> dispose() async {}
 }

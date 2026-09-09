@@ -13,6 +13,8 @@ int _reasonRank(PronunciationReason reason) {
     case PronunciationReason.workScopedNameContext:
     case PronunciationReason.quotativeNameContext:
       return 2;
+    case PronunciationReason.aliasWithoutConflict:
+      return 1;
     default:
       return 0;
   }
