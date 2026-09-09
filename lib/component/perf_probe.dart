@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/component/app_thread_stats.dart';
 
 const Key perfProbeKey = Key('perfProbe');
 
@@ -96,6 +97,9 @@ class PerfSample {
     required this.downloadQueued,
     required this.downloadRunning,
     required this.ttsRequests,
+    required this.appCpuPercent,
+    required this.appThreads,
+    required this.busiestThread,
     required this.lagMs,
     required this.cpuMicros,
     required this.liveImages,
@@ -125,6 +129,13 @@ class PerfSample {
   final int downloadQueued;
   final int downloadRunning;
   final int ttsRequests;
+
+  /// This whole process, every thread, as a share of one core. Dart only sees
+  /// its own isolate, so this is what catches work on the raster thread, a
+  /// plugin queue, or the Rust HTTP runtime.
+  final double appCpuPercent;
+  final int appThreads;
+  final String busiestThread;
   final double lagMs;
 
   /// How long a fixed amount of arithmetic took. Nothing else on this isolate
@@ -172,6 +183,8 @@ class PerfSample {
           '  $liveImages live ${n(imageCacheMb)}MB',
       'dl     $downloadQueued queued  $downloadRunning running'
           '   tts $ttsRequests req',
+      'proc   ${appCpuPercent.round()}% cpu  $appThreads thr'
+          '${busiestThread.isEmpty ? '' : '  $busiestThread'}',
       'lag ${n(lagMs)}ms  cpu ${cpuMicros}us  rss ${n(rssMb)}MB',
     ];
   }
@@ -212,6 +225,12 @@ class _PerfProbeState extends State<PerfProbe> {
   final List<int> _frameHistory = <int>[];
   double _lagMs = 0;
   int _cpuMicros = 0;
+  double _appCpuPercent = 0;
+  int _appThreads = 0;
+  String _busiestThread = '';
+  double? _lastCpuSeconds;
+  DateTime _lastCpuAt = DateTime.now();
+  bool _sampling = false;
   Timer? _ticker;
   Timer? _lagTimer;
   DateTime _lagScheduledFor = DateTime.now();
@@ -280,6 +299,35 @@ class _PerfProbeState extends State<PerfProbe> {
     _cpuMicros = accumulator == 0 ? 0 : watch.elapsedMicroseconds;
   }
 
+  /// Asks the platform what this process has burned since the last window.
+  /// Runs off the publish path so a slow channel round trip cannot stall it.
+  Future<void> _sampleProcessCpu() async {
+    if (_sampling) return;
+    _sampling = true;
+    try {
+      final sample = await AppThreadStats.sample();
+      if (sample == null || !mounted) return;
+      final now = DateTime.now();
+      final previous = _lastCpuSeconds;
+      if (previous != null) {
+        _appCpuPercent = AppThreadStats.cpuPercentBetween(
+          previous,
+          sample.cpuSeconds,
+          now.difference(_lastCpuAt),
+        );
+      }
+      _lastCpuSeconds = sample.cpuSeconds;
+      _lastCpuAt = now;
+      _appThreads = sample.threads;
+      final busiest = sample.busiest.isEmpty ? null : sample.busiest.first;
+      _busiestThread = busiest == null || busiest.cpuPercent < 1
+          ? ''
+          : '${busiest.name} ${busiest.cpuPercent.round()}%';
+    } finally {
+      _sampling = false;
+    }
+  }
+
   double _refreshRate() {
     try {
       final rate = WidgetsBinding
@@ -335,6 +383,9 @@ class _PerfProbeState extends State<PerfProbe> {
       downloadQueued: PerfCounters.downloadQueued?.call() ?? 0,
       downloadRunning: PerfCounters.downloadRunning?.call() ?? 0,
       ttsRequests: PerfCounters.ttsRequests,
+      appCpuPercent: _appCpuPercent,
+      appThreads: _appThreads,
+      busiestThread: _busiestThread,
       lagMs: _lagMs,
       cpuMicros: _cpuMicros,
       liveImages: imageCache.liveImageCount,
@@ -351,6 +402,7 @@ class _PerfProbeState extends State<PerfProbe> {
     _errorsAtWindowStart = PerfCounters.errors;
     _imageRequestsAtWindowStart = PerfCounters.imageRequests;
     setState(() => _sample = sample);
+    unawaited(_sampleProcessCpu());
   }
 
   @override

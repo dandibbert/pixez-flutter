@@ -22,6 +22,9 @@ PerfSample sample({
   int downloadQueued = 0,
   int downloadRunning = 0,
   int ttsRequests = 0,
+  double appCpuPercent = 0,
+  int appThreads = 0,
+  String busiestThread = '',
   double lagMs = 0,
   int cpuMicros = 0,
   int liveImages = 0,
@@ -47,6 +50,9 @@ PerfSample sample({
     downloadQueued: downloadQueued,
     downloadRunning: downloadRunning,
     ttsRequests: ttsRequests,
+    appCpuPercent: appCpuPercent,
+    appThreads: appThreads,
+    busiestThread: busiestThread,
     lagMs: lagMs,
     cpuMicros: cpuMicros,
     liveImages: liveImages,
@@ -116,6 +122,9 @@ void main() {
       downloadQueued: 5,
       downloadRunning: 2,
       ttsRequests: 63,
+      appCpuPercent: 143.6,
+      appThreads: 38,
+      busiestThread: 'tokio-runtime-w 97%',
       lagMs: 12.5,
       cpuMicros: 214,
       liveImages: 84,
@@ -139,6 +148,9 @@ void main() {
     expect(text, contains('5 queued'));
     expect(text, contains('2 running'));
     expect(text, contains('tts 63 req'));
+    expect(text, contains('144% cpu'));
+    expect(text, contains('38 thr'));
+    expect(text, contains('tokio-runtime-w 97%'));
     expect(text, contains('12.5ms'));
     expect(text, contains('214us'));
     expect(text, contains('84 live'));
