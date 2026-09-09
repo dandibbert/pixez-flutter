@@ -18,7 +18,10 @@ import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
+import 'package:pixez/page/novel/tts/pronunciation/resolution/source_aware_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
@@ -191,6 +194,99 @@ void main() {
     expect(text, contains('漢字'));
     expect(text, isNot(contains('かんじ')));
     expect(text, isNot(contains('pixivimage')));
+  });
+
+  test('a failure while building clips reports an error, not a crash', () async {
+    // Pronunciation resolution and budget splitting run over the whole novel
+    // inside start(). A throw used to escape the play button unhandled.
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 1,
+      ),
+      cacheDir: () async => Directory.systemTemp,
+      splitter: const _ThrowingSplitter(),
+    );
+
+    await expectLater(
+      controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+      ),
+      completes,
+    );
+    expect(controller.status, NovelTtsStatus.error);
+    expect(controller.clips, isEmpty);
+    controller.dispose();
+  });
+
+  test('a runaway TTS response is refused instead of buffered', () async {
+    // A misconfigured custom endpoint can answer a two-sentence clip with a
+    // stream that never ends. Folding it whole is how the process gets killed
+    // for memory, so the read stops at the ceiling.
+    final oversized = Stream<List<int>>.fromIterable([
+      for (var i = 0; i <= novelTtsMaxResponseBytes ~/ (1024 * 1024); i++)
+        Uint8List(1024 * 1024),
+    ]);
+    await expectLater(
+      consolidateHttpClientResponseBytes(_FakeResponse(oversized)),
+      throwsA(isA<NovelTtsSynthException>()),
+    );
+
+    final small = Stream<List<int>>.fromIterable([
+      const [1, 2],
+      const [3, 4],
+    ]);
+    expect(
+      await consolidateHttpClientResponseBytes(_FakeResponse(small)),
+      [1, 2, 3, 4],
+    );
+  });
+
+  test('skipping with no clips left does not throw', () async {
+    // `clamp(0, clips.length - 1)` throws on an empty list, and the argument is
+    // evaluated before `_playFrom` can turn the call away. A session that
+    // outlives its clips is enough to reach it.
+    final audio = _FakeAudio();
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 1,
+        autoContinue: false,
+      ),
+      cacheDir: () async => Directory.systemTemp,
+    );
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+    );
+    expect(controller.clips.length, greaterThan(1));
+    // The session still advertises two chunks, so the advance resolves to
+    // `chunk` and reaches the clamp.
+    controller.clips = const [];
+    audio.files.clear();
+
+    await expectLater(controller.skip(direction: 'next'), completes);
+    await expectLater(controller.skip(direction: 'prev'), completes);
+    controller.dispose();
   });
 
   test('clip audio is cached on disk, not pinned in memory', () async {
@@ -1326,6 +1422,46 @@ void main() {
     expect(taps, 1);
     controller.dispose();
   });
+}
+
+class _ThrowingSplitter extends SourceAwareNovelTtsSplitter {
+  const _ThrowingSplitter();
+
+  @override
+  List<NovelTtsSourceRange> split({
+    required String displayText,
+    required List<PronunciationDecision> appliedDecisions,
+    required TtsTextBudget budget,
+  }) {
+    throw StateError('splitter failed');
+  }
+}
+
+/// Only the body stream matters to `consolidateHttpClientResponseBytes`; the
+/// rest of `HttpClientResponse` is left to `noSuchMethod`.
+class _FakeResponse extends Stream<List<int>> implements HttpClientResponse {
+  _FakeResponse(this._body);
+
+  final Stream<List<int>> _body;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _body.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
 }
 
 class _FakeSynth implements NovelTtsSynthesizer {

@@ -556,6 +556,44 @@ void main() {
     expect(ranges.single.end, 1);
   });
 
+  test('a long protected paragraph splits in order and on reading edges', () {
+    // Half of the offsets sit inside an applied reading, so the splitter has to
+    // take many sequential cuts to get one paragraph under budget. Pins that
+    // the iterative walk hands the clips back in reading order and never cuts
+    // into a reading.
+    const glyphs = 400;
+    final decisions = [
+      for (var i = 0; i < glyphs; i++)
+        PronunciationDecision(
+          start: i * 2,
+          end: i * 2 + 2,
+          surface: '五条',
+          reading: 'ごじょう',
+          ruleId: 'r$i',
+          status: PronunciationDecisionStatus.applied,
+          reason: PronunciationReason.exactPhrase,
+          locked: false,
+        ),
+    ];
+    final ranges = const SourceAwareNovelTtsSplitter().split(
+      displayText: '五条' * glyphs,
+      appliedDecisions: decisions,
+      budget: const RuneTtsTextBudget(20),
+    );
+
+    expect(ranges.length, greaterThan(1));
+    for (var i = 1; i < ranges.length; i++) {
+      expect(ranges[i].start, ranges[i - 1].end);
+    }
+    expect(ranges.first.start, 0);
+    expect(ranges.last.end, glyphs * 2);
+    // No range may start or end inside a protected reading.
+    for (final range in ranges) {
+      expect(range.start.isEven, isTrue);
+      expect(range.end.isEven, isTrue);
+    }
+  });
+
   test('v1 migration classifies kanji aliases and longer phrases', () {
     final rules = const PronunciationMigration().migrateV1(const [
       NovelTtsReading(surface: '五条悟', reading: 'ごじょうさとる'),

@@ -36,14 +36,13 @@ class SourceAwareNovelTtsSplitter {
 
     final out = <NovelTtsSourceRange>[];
     for (final range in ranges) {
-      out.addAll(
-        _fitBudget(
-          displayText: displayText,
-          range: range,
-          applied: appliedDecisions,
-          budget: budget,
-          protected: protected,
-        ),
+      _fitBudget(
+        displayText: displayText,
+        range: range,
+        applied: appliedDecisions,
+        budget: budget,
+        protected: protected,
+        out: out,
       );
     }
     return out;
@@ -119,54 +118,58 @@ class SourceAwareNovelTtsSplitter {
         char == '　';
   }
 
-  List<NovelTtsSourceRange> _fitBudget({
+  /// Cuts [range] into clips that fit [budget], appending them to [out] in
+  /// reading order.
+  ///
+  /// Iterative rather than recursive: a cut can legally advance by a single
+  /// scalar when almost every offset sits inside an applied reading, so the
+  /// depth of the equivalent recursion is bounded only by the length of the
+  /// paragraph, and a stack overflow here would take the whole chapter down.
+  void _fitBudget({
     required String displayText,
     required NovelTtsSourceRange range,
     required List<PronunciationDecision> applied,
     required TtsTextBudget budget,
     required List<(int, int)> protected,
+    required List<NovelTtsSourceRange> out,
   }) {
-    final spoken = renderer.renderRange(
-      source: displayText,
-      range: range,
-      decisions: applied,
-    );
-    final units = budget.measure(spoken);
-    if (units <= budget.maxUnits || units <= budget.maxUnits + _grace(budget)) {
-      return [range];
-    }
-    final cut = _bestBudgetCut(
-      displayText: displayText,
-      range: range,
-      applied: applied,
-      budget: budget,
-      protected: protected,
-    );
-    if (cut == null) {
-      // Nothing left to cut: the range is a single scalar, or every offset in
-      // it sits inside one applied reading. The budget is a latency target,
-      // not a protocol limit, so an over-long clip is the right trade against
-      // dropping the text or failing the whole chapter. Readings may legally
-      // run to `maxReadingScalars` while the budget bottoms out at
-      // `minSplitChars`, so this is reachable from the settings screen alone.
-      return [range];
-    }
-    return [
-      ..._fitBudget(
+    final pending = <NovelTtsSourceRange>[range];
+    while (pending.isNotEmpty) {
+      final next = pending.removeLast();
+      final spoken = renderer.renderRange(
+        source: displayText,
+        range: next,
+        decisions: applied,
+      );
+      final units = budget.measure(spoken);
+      if (units <= budget.maxUnits ||
+          units <= budget.maxUnits + _grace(budget)) {
+        out.add(next);
+        continue;
+      }
+      final cut = _bestBudgetCut(
         displayText: displayText,
-        range: NovelTtsSourceRange(range.start, cut),
+        range: next,
         applied: applied,
         budget: budget,
         protected: protected,
-      ),
-      ..._fitBudget(
-        displayText: displayText,
-        range: NovelTtsSourceRange(cut, range.end),
-        applied: applied,
-        budget: budget,
-        protected: protected,
-      ),
-    ];
+      );
+      if (cut == null) {
+        // Nothing left to cut: the range is a single scalar, or every offset in
+        // it sits inside one applied reading. The budget is a latency target,
+        // not a protocol limit, so an over-long clip is the right trade against
+        // dropping the text or failing the whole chapter. Readings may legally
+        // run to `maxReadingScalars` while the budget bottoms out at
+        // `minSplitChars`, so this is reachable from the settings screen alone.
+        out.add(next);
+        continue;
+      }
+      // Pushed tail first so the head comes back off the stack first and `out`
+      // stays in reading order.
+      pending
+        ..add(NovelTtsSourceRange(cut, next.end))
+        ..add(NovelTtsSourceRange(next.start, cut));
+    }
   }
 
   int _grace(TtsTextBudget budget) {

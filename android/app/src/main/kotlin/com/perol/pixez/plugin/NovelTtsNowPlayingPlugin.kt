@@ -257,7 +257,13 @@ class NovelTtsNowPlayingPlugin {
             .addAction(android.R.drawable.ic_media_next, "Next", action(context, ACTION_NEXT, 3))
             .build()
         foregroundNotification = notification
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        // From API 33 notify() needs POST_NOTIFICATIONS, and it throws a
+        // SecurityException rather than no-opping when the user has denied it.
+        // Reading on without lock-screen controls beats crashing the process.
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        } catch (_: Exception) {
+        }
     }
 
     private fun acquireLocks(context: Context) {

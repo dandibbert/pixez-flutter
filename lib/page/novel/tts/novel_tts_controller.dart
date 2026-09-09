@@ -305,11 +305,20 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       seriesId: seriesId,
       settingsReadings: loaded.readings,
     );
-    final built = await _clipsFromDocuments(
-      documents,
-      loaded.clampedSplitChars,
-      novelId: novelId,
-    );
+    // Pronunciation resolution and budget splitting run over the whole novel
+    // here. A throw from either used to escape `start()` unhandled, and an
+    // unhandled error out of a button handler is a force-close; a chapter that
+    // refuses to read is the far better failure.
+    List<NovelTtsClip> built;
+    try {
+      built = await _clipsFromDocuments(
+        documents,
+        loaded.clampedSplitChars,
+        novelId: novelId,
+      );
+    } catch (_) {
+      built = const [];
+    }
     if (built.isEmpty) {
       status = NovelTtsStatus.error;
       errorMessage = 'empty';
@@ -408,12 +417,17 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
-    final pageClips = await _clipsFromDocuments(
-      [novelTtsDocumentFromText(pageText)],
-      settings.clampedSplitChars,
-      novelId: current.novelId,
-      pageOffset: page,
-    );
+    List<NovelTtsClip> pageClips;
+    try {
+      pageClips = await _clipsFromDocuments(
+        [novelTtsDocumentFromText(pageText)],
+        settings.clampedSplitChars,
+        novelId: current.novelId,
+        pageOffset: page,
+      );
+    } catch (_) {
+      pageClips = const [];
+    }
     if (pageClips.isEmpty) {
       await skip(direction: fromEnd ? 'prev' : 'next');
       return;
@@ -505,6 +519,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _audioReady = false;
     _chapters.clear();
     _loadedSeriesIds.clear();
+    // Held per page for the whole session and only reset by the next `start()`,
+    // so a reader who stops keeps a novel's worth of decisions resident.
+    _pageDecisions.clear();
+    _sessionSnapshot = null;
     await _audio.stop();
     await _nowPlaying.keepAlive(false);
     await _nowPlaying.endBackgroundTask();
@@ -560,6 +578,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
     switch (advance.kind) {
       case NovelTtsAdvanceKind.chunk:
+        // `clamp` throws when the upper bound falls below the lower one, and
+        // the argument is evaluated before `_playFrom` can turn an empty clip
+        // list away. `session.chunks` outliving `clips` is enough to get here.
+        if (clips.isEmpty) {
+          return;
+        }
         await _playFrom(nextIndex.clamp(0, clips.length - 1));
       case NovelTtsAdvanceKind.page:
         onNavigate?.call(
