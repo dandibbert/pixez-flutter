@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/tts/pronunciation/diagnostics/pronunciation_preview.dart';
 import 'package:pixez/page/novel/tts/pronunciation/matching/pronunciation_compiler.dart';
@@ -477,26 +480,28 @@ void main() {
     expect(ranges.first.end, greaterThanOrEqualTo(5));
   });
 
-  test('a single oversized reading is an explicit error', () {
-    expect(
-      () => const SourceAwareNovelTtsSplitter().split(
-        displayText: '悟',
-        appliedDecisions: [
-          PronunciationDecision(
-            start: 0,
-            end: 1,
-            surface: '悟',
-            reading: 'さとるさとるさとるさとる',
-            ruleId: 'a',
-            status: PronunciationDecisionStatus.applied,
-            reason: PronunciationReason.forcedRule,
-            locked: false,
-          ),
-        ],
-        budget: const RuneTtsTextBudget(4),
-      ),
-      throwsA(isA<StateError>()),
+  test('a single oversized reading is spoken, not dropped', () {
+    // One scalar cannot be split, so the budget has to give. Throwing here
+    // used to take the whole chapter down from the settings screen.
+    final ranges = const SourceAwareNovelTtsSplitter().split(
+      displayText: '悟',
+      appliedDecisions: [
+        const PronunciationDecision(
+          start: 0,
+          end: 1,
+          surface: '悟',
+          reading: 'さとるさとるさとるさとる',
+          ruleId: 'a',
+          status: PronunciationDecisionStatus.applied,
+          reason: PronunciationReason.forcedRule,
+          locked: false,
+        ),
+      ],
+      budget: const RuneTtsTextBudget(4),
     );
+    expect(ranges, hasLength(1));
+    expect(ranges.single.start, 0);
+    expect(ranges.single.end, 1);
   });
 
   test('v1 migration classifies kanji aliases and longer phrases', () {
@@ -642,6 +647,78 @@ void main() {
     expect(tokens.first.end, 2);
     expect(tokens[1].surface, '悟っ');
     expect(tokens[1].start, 2);
+  });
+
+  test('the pipeline survives hostile text and reports honest spans', () async {
+    // Astral plane, lone combining marks, zero width spaces, half-width kana,
+    // control characters: whatever a Pixiv novel throws at the reader, the
+    // pipeline has to answer with spans that really index the source.
+    const alphabet = [
+      '悟', '恵', '愛', '静', '実', '五', '条', 'は', 'が', 'った', 'り', 'る',
+      'さん', '「', '」', '。', '！', '？', '\n', ' ', '　', 'ア', 'ｱ', 'ー',
+      '𠮷', '👨‍👩‍👧‍👦', '🎉', '\u{1F600}', '\uFE0F', '\u0301', '\u200B',
+      '\t', 'a', '1', '…', '—', '﷽', '\u3005', '々', 'ゔ', 'ヷ',
+    ];
+    const surfaces = [
+      '悟', '恵', '愛', '静', '実', '五条悟', '𠮷', '👨‍👩‍👧‍👦', 'ア',
+      '\u{1F600}', '\uFE0F', '々', 'は', '。', 'a',
+    ];
+    final random = Random(20260909);
+    final modes = PronunciationMatchMode.values;
+    final scopes = PronunciationScopeType.values;
+
+    String randomText(int units) {
+      final buffer = StringBuffer();
+      while (buffer.length < units) {
+        buffer.write(alphabet[random.nextInt(alphabet.length)]);
+      }
+      return buffer.toString();
+    }
+
+    for (var i = 0; i < 300; i++) {
+      final rules = [
+        for (var r = 0; r < 1 + random.nextInt(4); r++)
+          PronunciationRule(
+            id: 'r$i-$r',
+            surface: surfaces[random.nextInt(surfaces.length)],
+            reading: randomText(1 + random.nextInt(12)),
+            mode: modes[random.nextInt(modes.length)],
+            scope: PronunciationScope(
+              type: scopes[random.nextInt(scopes.length)],
+              scopeId: random.nextBool() ? 'work-1' : null,
+            ),
+            priority: random.nextInt(3),
+            enabled: true,
+            updatedAtEpochMs: i,
+          ),
+      ];
+      final snapshot = compiler.compile(rules, workId: 'work-1', seriesId: 's1');
+      final source = randomText(random.nextInt(400));
+      final resolved = await pipeline.resolve(
+        document: NovelTtsTextDocument(displayText: source),
+        snapshot: snapshot,
+      );
+      renderer.renderAll(
+        source: source,
+        decisions: resolved.appliedDecisions,
+      );
+      const SourceAwareNovelTtsSplitter().split(
+        displayText: source,
+        appliedDecisions: resolved.appliedDecisions,
+        budget: RuneTtsTextBudget(
+          NovelTtsSettings.minSplitChars +
+              random.nextInt(
+                NovelTtsSettings.maxSplitChars -
+                    NovelTtsSettings.minSplitChars,
+              ),
+        ),
+      );
+      for (final decision in resolved.appliedDecisions) {
+        expect(decision.start, inInclusiveRange(0, source.length));
+        expect(decision.end, inInclusiveRange(decision.start, source.length));
+        expect(source.substring(decision.start, decision.end), decision.surface);
+      }
+    }
   });
 }
 

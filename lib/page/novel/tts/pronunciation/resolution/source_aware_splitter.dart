@@ -143,7 +143,13 @@ class SourceAwareNovelTtsSplitter {
       protected: protected,
     );
     if (cut == null) {
-      throw StateError('pronunciation_reading_exceeds_budget');
+      // Nothing left to cut: the range is a single scalar, or every offset in
+      // it sits inside one applied reading. The budget is a latency target,
+      // not a protocol limit, so an over-long clip is the right trade against
+      // dropping the text or failing the whole chapter. Readings may legally
+      // run to `maxReadingScalars` while the budget bottoms out at
+      // `minSplitChars`, so this is reachable from the settings screen alone.
+      return [range];
     }
     return [
       ..._fitBudget(

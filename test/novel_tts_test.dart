@@ -191,6 +191,50 @@ void main() {
     expect(text, isNot(contains('pixivimage')));
   });
 
+  test('a reading longer than the clip budget still reads the page', () async {
+    // Both ends of this are what the settings screen allows: readings may run
+    // to 256 scalars and the clip budget bottoms out at 20.
+    const reading = 'ごじょうさとるとかいうめちゃくちゃつよいじゅじゅつしのおとこ';
+    expect(reading.runes.length, greaterThan(NovelTtsSettings.minSplitChars));
+    final synth = _FakeSynth();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_oversize');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: NovelTtsSettings.minSplitChars,
+        prefetchCount: 1,
+        readings: [
+          NovelTtsReading(
+            surface: '悟',
+            reading: reading,
+            mode: PronunciationMatchMode.exactPhrase,
+          ),
+        ],
+      ),
+      cacheDir: () async => dir,
+    );
+
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '悟は笑った。次の文は普通の長さです。',
+    );
+
+    expect(controller.status, isNot(NovelTtsStatus.error));
+    expect(controller.clips, isNotEmpty);
+    expect(synth.texts.join(), contains(reading));
+
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
   test('controller prefetches the next chunk and can skip to a series', () async {
     final synth = _FakeSynth();
     final audio = _FakeAudio();
