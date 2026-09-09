@@ -16,14 +16,23 @@ class NovelTtsPlaybackService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = NovelTtsNowPlayingPlugin.foregroundNotification
             ?: placeholder()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NovelTtsNowPlayingPlugin.NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
-            )
-        } else {
-            startForeground(NovelTtsNowPlayingPlugin.NOTIFICATION_ID, notification)
+        // From API 31 startForeground throws when the app is not eligible to
+        // start a foreground service, and from API 34 it also throws when the
+        // media playback type is not allowed. Neither is catchable at the call
+        // site in the plugin, so it has to be handled here or the process dies.
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NovelTtsNowPlayingPlugin.NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                )
+            } else {
+                startForeground(NovelTtsNowPlayingPlugin.NOTIFICATION_ID, notification)
+            }
+        } catch (_: Exception) {
+            stopSelf()
+            return START_NOT_STICKY
         }
         return START_STICKY
     }
