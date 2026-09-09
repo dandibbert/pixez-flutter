@@ -221,7 +221,7 @@ class NovelTtsNowPlayingPlugin {
         val notification = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(subtitle.ifEmpty { title })
-            .setContentText(if (artist.isEmpty) title else "$title · $artist")
+            .setContentText(if (artist.isEmpty()) title else "$title · $artist")
             .setContentIntent(contentIntent)
             .setOngoing(isPlaying)
             .setOnlyAlertOnce(true)
