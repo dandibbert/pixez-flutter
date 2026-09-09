@@ -646,6 +646,7 @@ class _ReadingDialogState extends State<_ReadingDialog> {
   late final TextEditingController _reading;
   late final TextEditingController _previewSource;
   late PronunciationMatchMode _mode;
+  final _previewer = PronunciationPreview();
   PronunciationPreviewResult? _preview;
   Timer? _previewTimer;
   var _previewSourceEdited = false;
@@ -720,10 +721,14 @@ class _ReadingDialogState extends State<_ReadingDialog> {
     final snapshot = PronunciationCompiler().compile(
       const PronunciationMigration().migrateV1([rule]),
     );
-    final result = await PronunciationPreview().preview(
-      source: source,
-      snapshot: snapshot,
-    );
+    PronunciationPreviewResult? result;
+    try {
+      result = await _previewer.preview(source: source, snapshot: snapshot);
+    } catch (_) {
+      // A preview that cannot be produced shows nothing. Saving the rule is
+      // still the user's call, and the pipeline degrades on its own at read
+      // time, so there is nothing here worth blocking the dialog over.
+    }
     if (!mounted || generation != _previewGeneration) {
       return;
     }
