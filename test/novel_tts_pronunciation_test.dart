@@ -513,6 +513,26 @@ void main() {
     expect(rules[2].enabled, isFalse);
   });
 
+  test('a mode the user picked is never disabled by the guesser', () {
+    final rules = const PronunciationMigration().migrateV1(const [
+      // The guesser turns a lone kana off, because it cannot tell `あ` in a
+      // name from `あ` in every other word. An explicit mode overrules it.
+      NovelTtsReading(
+        surface: 'あ',
+        reading: 'ア',
+        mode: PronunciationMatchMode.exactPhrase,
+      ),
+      NovelTtsReading(
+        surface: '悟',
+        reading: 'さとる',
+        mode: PronunciationMatchMode.nameAlias,
+      ),
+    ]);
+    expect(rules[0].enabled, isTrue);
+    expect(rules[0].needsReview, isFalse);
+    expect(rules[1].enabled, isTrue);
+  });
+
   test('repository migration is idempotent and keeps a v1 backup', () async {
     final repo = PronunciationRepository();
     final first = await repo.migrateFromSettingsIfNeeded(

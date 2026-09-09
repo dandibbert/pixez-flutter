@@ -159,7 +159,7 @@ class JapaneseNameDisambiguator {
       );
     }
     if (_startsWithAny(after, japaneseNameParticles)) {
-      return _apply(candidate, surface, PronunciationReason.workScopedNameContext);
+      return _apply(candidate, surface, PronunciationReason.nameParticleContext);
     }
     return _apply(candidate, surface, PronunciationReason.aliasWithoutConflict);
   }
@@ -186,7 +186,7 @@ class JapaneseNameDisambiguator {
       return _skip(candidate, surface, PronunciationReason.rejectedInflectionSuffix);
     }
     if (_startsWithAny(after, japaneseNameParticles)) {
-      return _apply(candidate, surface, PronunciationReason.workScopedNameContext);
+      return _apply(candidate, surface, PronunciationReason.nameParticleContext);
     }
     return _skip(candidate, surface, reason);
   }

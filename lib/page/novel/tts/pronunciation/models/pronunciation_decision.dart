@@ -7,7 +7,7 @@ enum PronunciationReason {
   exactPhrase,
   forcedRule,
   morphologyProperName,
-  workScopedNameContext,
+  nameParticleContext,
   quotativeNameContext,
   aliasWithoutConflict,
   rejectedInsideLargerToken,

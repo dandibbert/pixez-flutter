@@ -908,7 +908,7 @@ class _PreviewReport extends StatelessWidget {
       case PronunciationReason.forcedRule:
         return i18n.novel_tts_mode_force;
       case PronunciationReason.morphologyProperName:
-      case PronunciationReason.workScopedNameContext:
+      case PronunciationReason.nameParticleContext:
       case PronunciationReason.quotativeNameContext:
       case PronunciationReason.aliasWithoutConflict:
         return i18n.novel_tts_reason_name;

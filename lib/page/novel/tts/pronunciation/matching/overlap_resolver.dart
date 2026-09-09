@@ -10,7 +10,7 @@ int _reasonRank(PronunciationReason reason) {
     case PronunciationReason.forcedRule:
       return 3;
     case PronunciationReason.morphologyProperName:
-    case PronunciationReason.workScopedNameContext:
+    case PronunciationReason.nameParticleContext:
     case PronunciationReason.quotativeNameContext:
       return 2;
     case PronunciationReason.aliasWithoutConflict:

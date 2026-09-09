@@ -1002,6 +1002,39 @@ void main() {
     expect(NovelTtsSettings.load().readings, [
       const NovelTtsReading(surface: '今日', reading: 'きょう'),
     ]);
+    expect(find.text('Fixed phrase'), findsOneWidget);
+  });
+
+  testWidgets('a lone kanji is saved as a name alias, not a fixed phrase', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsPage(initial: const NovelTtsSettings()),
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'さとる');
+    await tester.pumpAndSettle();
+    // The dropdown has to follow the surface, or the user never sees that the
+    // mark went through the disambiguator.
+    expect(find.text('Name alias'), findsOneWidget);
+
+    await tester.tap(find.byKey(novelTtsReadingSaveKey));
+    await tester.pumpAndSettle();
+    expect(
+      NovelTtsSettings.load().readings.single.mode,
+      PronunciationMatchMode.nameAlias,
+    );
+    expect(find.text('Name alias'), findsOneWidget);
   });
 
   testWidgets('the mark editor previews applied and kept decisions', (
