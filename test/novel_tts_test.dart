@@ -193,6 +193,55 @@ void main() {
     expect(text, isNot(contains('pixivimage')));
   });
 
+  test('clip audio is cached on disk, not pinned in memory', () async {
+    final synth = _FakeSynth();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_cache');
+    NovelTtsController build() => NovelTtsController(
+      synthesizer: synth,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+        prefetchCount: 1,
+      ),
+      cacheDir: () async => dir,
+    );
+    const page = '第一句用来测试缓存。第二句用来测试缓存。';
+
+    final first = build();
+    await first.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: page,
+    );
+    final synthesized = synth.texts.length;
+    expect(synthesized, greaterThan(0));
+    expect(first.inflightAudioCount, 0);
+    first.dispose();
+
+    // The clips are on disk now, so a fresh session must not pay for them
+    // again -- that disk read is what lets the bytes leave memory.
+    final second = build();
+    await second.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: page,
+    );
+    expect(synth.texts.length, synthesized);
+    expect(second.inflightAudioCount, 0);
+    second.dispose();
+
+    await dir.delete(recursive: true);
+  });
+
   test('a reading longer than the clip budget still reads the page', () async {
     // Both ends of this are what the settings screen allows: readings may run
     // to 256 scalars and the clip budget bottoms out at 20.

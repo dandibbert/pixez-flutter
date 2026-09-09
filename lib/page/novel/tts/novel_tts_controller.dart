@@ -1073,20 +1073,51 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<File> _fileForClip(int index) async {
     final spoken = clips[index].spokenText;
+    final cached = await _cachedFile(spoken);
+    if (cached != null) {
+      return cached;
+    }
     final bytes = await _audioBytes(spoken);
     return _writeCache(spoken, bytes);
   }
 
+  /// The clip already on disk, from this session or an earlier one.
+  Future<File?> _cachedFile(String text) async {
+    try {
+      final file = await _cacheFile(text);
+      if (await file.exists() && await file.length() > 0) {
+        return file;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Clips whose bytes are still held in memory. Only non-zero while a
+  /// synthesis request is actually outstanding.
+  int get inflightAudioCount => _inflight.length;
+
   Future<Uint8List> _audioBytes(String text) {
     final key = _cacheKey(text);
-    return _inflight.putIfAbsent(key, () async {
-      await _nowPlaying.beginBackgroundTask();
-      try {
-        return await _synthesizer.synthesize(settings, text);
-      } finally {
-        await _nowPlaying.endBackgroundTask();
-      }
-    });
+    final pending = _inflight[key];
+    if (pending != null) {
+      return pending;
+    }
+    final started = _synthesize(text);
+    _inflight[key] = started;
+    // The map only exists to collapse concurrent requests for one clip. Keeping
+    // the entry after it settles pins that clip's bytes for the whole session,
+    // and a long novel then walks the process into an out-of-memory kill.
+    started.whenComplete(() => _inflight.remove(key)).ignore();
+    return started;
+  }
+
+  Future<Uint8List> _synthesize(String text) async {
+    await _nowPlaying.beginBackgroundTask();
+    try {
+      return await _synthesizer.synthesize(settings, text);
+    } finally {
+      await _nowPlaying.endBackgroundTask();
+    }
   }
 
   String _cacheKey(String text) {
@@ -1097,14 +1128,22 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     return sha1.convert(utf8.encode(material)).toString();
   }
 
-  Future<File> _writeCache(String text, Uint8List bytes) async {
+  Future<File> _cacheFile(String text) async {
     final dir = await (_cacheDir?.call() ?? getTemporaryDirectory());
     final ttsDir = Directory(p.join(dir.path, 'novel_tts'));
     if (!ttsDir.existsSync()) {
       ttsDir.createSync(recursive: true);
     }
-    final file = File(p.join(ttsDir.path, '${_cacheKey(text)}.mp3'));
-    await file.writeAsBytes(bytes, flush: true);
+    return File(p.join(ttsDir.path, '${_cacheKey(text)}.mp3'));
+  }
+
+  Future<File> _writeCache(String text, Uint8List bytes) async {
+    final file = await _cacheFile(text);
+    // Written aside and renamed so a kill mid-write cannot leave a truncated
+    // clip that _cachedFile would later hand to the player as a hit.
+    final temp = File('${file.path}.part');
+    await temp.writeAsBytes(bytes, flush: true);
+    await temp.rename(file.path);
     return file;
   }
 
