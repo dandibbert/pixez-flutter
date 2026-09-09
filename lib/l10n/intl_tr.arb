@@ -434,7 +434,7 @@
   "novel_tts_section_voice": "Ses",
   "novel_tts_section_playback": "Oynatma",
   "novel_tts_section_readings": "Okunuşlar",
-  "novel_tts_readings_hint": "Sentezden önce yazılı biçim okunuşla değiştirilir. Daha uzun eşleşmeler önceliklidir. Örnek: 今日 → きょう",
+  "novel_tts_readings_hint": "Sentezden önce yazımı okunuşla değiştirir. Sabit ifadeler her zaman uygulanır; ad takma adları yalnızca karakterler başka bir kelimeye aitse değişmeden kalır, örneğin 今日=きょう.",
   "novel_tts_readings_empty": "Henüz okunuş işareti yok",
   "novel_tts_reading_surface": "Yazılı biçim",
   "novel_tts_reading_value": "Okunuş",
@@ -450,7 +450,15 @@
   "novel_tts_mode_force": "Force replace (advanced)",
   "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
   "novel_tts_preview_spoken": "Spoken",
-  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_analyzer_lexicon": "Ad tanıma: tam sözlük çözümlemesi. Fiil, sıfat ve bileşik kullanımlar değişmez.",
+  "novel_tts_preview_source": "Önizleme metni",
+  "novel_tts_preview_applied": "değiştirildi",
+  "novel_tts_preview_skipped": "olduğu gibi",
+  "novel_tts_reason_name": "burada bir isim",
+  "novel_tts_reason_verb": "bir fiilin veya sıfatın parçası",
+  "novel_tts_reason_word": "daha uzun bir kelimenin parçası",
+  "novel_tts_reason_uncertain": "yeterince kesin değil",
+  "novel_tts_reason_ruby": "yazarın ruby'si",
   "novel_tts_needs_review": "Review after import",
   "novel_tts_value_other": "Diğer",
   "novel_tts_header_name": "Ad",
@@ -459,5 +467,5 @@
   "novel_tts_insert_placeholder": "Eklemek için dokunun",
   "novel_tts_reading_mode": "Eşleşme kipi",
   "novel_tts_mode_exact_hint": "Bu tam ifadeyi her zaman değiştirir.",
-  "novel_tts_mode_alias_hint": "Kişi adı say. 悟った gibi fiiller değişmez."
+  "novel_tts_mode_alias_hint": "Kişi adı olarak ele al. Karakterler bir fiile, sıfata veya daha uzun bir kelimeye ait olmadıkça uygulanır."
 }

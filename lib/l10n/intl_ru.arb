@@ -433,7 +433,7 @@
   "novel_tts_section_voice": "Голос",
   "novel_tts_section_playback": "Воспроизведение",
   "novel_tts_section_readings": "Произношение",
-  "novel_tts_readings_hint": "Перед синтезом написание заменяется чтением. Более длинные совпадения важнее. Пример: 今日 → きょう",
+  "novel_tts_readings_hint": "Заменяет написание чтением перед синтезом. Фиксированные фразы применяются всегда; имена сохраняются как есть только если знаки входят в другое слово, например 今日=きょう.",
   "novel_tts_readings_empty": "Пока нет пометок произношения",
   "novel_tts_reading_surface": "Написание",
   "novel_tts_reading_value": "Чтение",
@@ -449,7 +449,15 @@
   "novel_tts_mode_force": "Force replace (advanced)",
   "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
   "novel_tts_preview_spoken": "Spoken",
-  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_analyzer_lexicon": "Распознавание имён: полный разбор по словарю. Глагольные, адъективные и составные формы остаются без изменений.",
+  "novel_tts_preview_source": "Текст для предпросмотра",
+  "novel_tts_preview_applied": "заменено",
+  "novel_tts_preview_skipped": "без изменений",
+  "novel_tts_reason_name": "здесь это имя",
+  "novel_tts_reason_verb": "часть глагола или прилагательного",
+  "novel_tts_reason_word": "часть более длинного слова",
+  "novel_tts_reason_uncertain": "недостаточно уверенности",
+  "novel_tts_reason_ruby": "руби автора",
   "novel_tts_needs_review": "Review after import",
   "novel_tts_value_other": "Другое",
   "novel_tts_header_name": "Имя",
@@ -458,5 +466,5 @@
   "novel_tts_insert_placeholder": "Нажмите, чтобы вставить",
   "novel_tts_reading_mode": "Режим совпадения",
   "novel_tts_mode_exact_hint": "Всегда заменять эту точную формулировку.",
-  "novel_tts_mode_alias_hint": "Считать именем. Глаголы вроде 悟った не меняются."
+  "novel_tts_mode_alias_hint": "Считать именем. Применяется, если знаки не входят в глагол, прилагательное или более длинное слово."
 }

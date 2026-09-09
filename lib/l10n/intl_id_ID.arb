@@ -433,7 +433,7 @@
   "novel_tts_section_voice": "Suara",
   "novel_tts_section_playback": "Pemutaran",
   "novel_tts_section_readings": "Bacaan",
-  "novel_tts_readings_hint": "Sebelum sintesis, bentuk tertulis diganti bacaan. Kecocokan lebih panjang menang. Contoh: 今日 → きょう",
+  "novel_tts_readings_hint": "Mengganti tulisan dengan bacaan sebelum sintesis. Frasa tetap selalu diterapkan; alias nama hanya dibiarkan bila karakternya termasuk kata lain, misalnya 今日=きょう.",
   "novel_tts_readings_empty": "Belum ada tanda pengucapan",
   "novel_tts_reading_surface": "Bentuk tertulis",
   "novel_tts_reading_value": "Bacaan",
@@ -449,7 +449,15 @@
   "novel_tts_mode_force": "Force replace (advanced)",
   "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
   "novel_tts_preview_spoken": "Spoken",
-  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_analyzer_lexicon": "Deteksi nama: analisis kamus penuh. Pemakaian sebagai verba, adjektiva, atau kata majemuk tidak diubah.",
+  "novel_tts_preview_source": "Teks pratinjau",
+  "novel_tts_preview_applied": "diganti",
+  "novel_tts_preview_skipped": "tetap seperti aslinya",
+  "novel_tts_reason_name": "di sini adalah nama orang",
+  "novel_tts_reason_verb": "bagian dari verba atau adjektiva",
+  "novel_tts_reason_word": "bagian dari kata yang lebih panjang",
+  "novel_tts_reason_uncertain": "belum cukup pasti",
+  "novel_tts_reason_ruby": "ruby dari penulis",
   "novel_tts_needs_review": "Review after import",
   "novel_tts_value_other": "Lainnya",
   "novel_tts_header_name": "Nama",
@@ -458,5 +466,5 @@
   "novel_tts_insert_placeholder": "Ketuk untuk sisipkan",
   "novel_tts_reading_mode": "Cara mencocokkan",
   "novel_tts_mode_exact_hint": "Selalu ganti tulisan persis ini.",
-  "novel_tts_mode_alias_hint": "Anggap nama orang. Bentuk kata kerja seperti 悟った tidak diubah."
+  "novel_tts_mode_alias_hint": "Perlakukan sebagai nama orang. Diterapkan kecuali karakternya termasuk verba, adjektiva, atau kata yang lebih panjang."
 }

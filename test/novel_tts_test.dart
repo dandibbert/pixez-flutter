@@ -955,6 +955,29 @@ void main() {
     final ko = lookupAppLocalizations(const Locale('ko'));
     expect(ko.novel_tts_custom_body, 'POST 본문 템플릿');
     expect(ko.novel_tts_section_readings, '발음 표기');
+
+    for (final locale in const [
+      Locale('ja'),
+      Locale('zh'),
+      Locale('zh', 'CN'),
+      Locale('zh', 'TW'),
+      Locale('ko'),
+      Locale('de'),
+      Locale('es'),
+      Locale('ru'),
+      Locale('tr'),
+      Locale('vi'),
+      Locale('id'),
+      Locale('fil'),
+    ]) {
+      final l10n = lookupAppLocalizations(locale);
+      expect(l10n.novel_tts_reason_verb, isNot('part of a verb or adjective'));
+      expect(l10n.novel_tts_preview_source, isNot('Preview text'));
+      expect(
+        l10n.novel_tts_analyzer_lexicon,
+        isNot(contains('Smart name matching')),
+      );
+    }
   });
 
   testWidgets('settings page can add a pronunciation mark', (tester) async {
@@ -979,6 +1002,39 @@ void main() {
     expect(NovelTtsSettings.load().readings, [
       const NovelTtsReading(surface: '今日', reading: 'きょう'),
     ]);
+  });
+
+  testWidgets('the mark editor previews applied and kept decisions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsPage(initial: const NovelTtsSettings()),
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'さとる');
+    await tester.enterText(
+      find.byKey(novelTtsReadingPreviewFieldKey),
+      '悟は笑った。真相を悟った。',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final spoken = tester.widget<Text>(
+      find.byKey(novelTtsReadingPreviewSpokenKey),
+    );
+    expect(spoken.data, contains('さとるは笑った。真相を悟った。'));
+    expect(find.textContaining('replaced'), findsOneWidget);
+    expect(find.textContaining('part of a verb'), findsOneWidget);
   });
 
   testWidgets('player bar shows the current subtitle', (tester) async {
