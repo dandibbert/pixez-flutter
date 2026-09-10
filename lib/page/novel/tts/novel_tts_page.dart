@@ -5,6 +5,9 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/diagnostics/pronunciation_preview.dart';
+import 'package:pixez/page/novel/tts/pronunciation/matching/pronunciation_compiler.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_repository.dart';
@@ -23,6 +26,8 @@ const Key novelTtsBulkReadingKey = Key('novelTtsBulkReading');
 const Key novelTtsReadingSurfaceFieldKey = Key('novelTtsReadingSurface');
 const Key novelTtsReadingValueFieldKey = Key('novelTtsReadingValue');
 const Key novelTtsReadingSaveKey = Key('novelTtsReadingSave');
+const Key novelTtsReadingPreviewFieldKey = Key('novelTtsReadingPreview');
+const Key novelTtsReadingPreviewSpokenKey = Key('novelTtsReadingPreviewSpoken');
 
 class NovelTtsPage extends StatefulWidget {
   const NovelTtsPage({super.key, this.initial});
@@ -240,7 +245,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  i18n.novel_tts_analyzer_boundary,
+                  i18n.novel_tts_analyzer_lexicon,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
@@ -639,27 +644,95 @@ class _ReadingDialog extends StatefulWidget {
 class _ReadingDialogState extends State<_ReadingDialog> {
   late final TextEditingController _surface;
   late final TextEditingController _reading;
+  late final TextEditingController _previewSource;
   late PronunciationMatchMode _mode;
+  final _previewer = PronunciationPreview();
+  PronunciationPreviewResult? _preview;
+  Timer? _previewTimer;
+  var _previewSourceEdited = false;
+  var _previewGeneration = 0;
+  var _modeEdited = false;
 
   @override
   void initState() {
     super.initState();
     _surface = TextEditingController(text: widget.initial?.surface ?? '');
     _reading = TextEditingController(text: widget.initial?.reading ?? '');
-    _mode = widget.initial?.mode ??
-        const PronunciationMigration().classifyV1Surface(
-          widget.initial?.surface ?? '',
-        ).mode;
-    if (widget.initial == null) {
-      _mode = PronunciationMatchMode.exactPhrase;
+    _modeEdited = widget.initial?.mode != null;
+    _mode = widget.initial?.mode ?? _modeForSurface(_surface.text);
+    _previewSource = TextEditingController(
+      text: defaultPronunciationPreviewText(_surface.text),
+    );
+    _schedulePreview();
+  }
+
+  /// A written form long enough to be unambiguous is replaced verbatim; a lone
+  /// kanji is a name that has to survive `悟った`, so it goes through the
+  /// disambiguator instead.
+  PronunciationMatchMode _modeForSurface(String surface) {
+    final trimmed = surface.trim();
+    if (trimmed.isEmpty) {
+      return PronunciationMatchMode.exactPhrase;
     }
+    return const PronunciationMigration().classifyV1Surface(trimmed).mode;
   }
 
   @override
   void dispose() {
+    _previewTimer?.cancel();
     _surface.dispose();
     _reading.dispose();
+    _previewSource.dispose();
     super.dispose();
+  }
+
+  void _onRuleChanged() {
+    if (!_previewSourceEdited) {
+      _previewSource.text = defaultPronunciationPreviewText(_surface.text);
+    }
+    if (!_modeEdited) {
+      final auto = _modeForSurface(_surface.text);
+      if (auto != _mode) {
+        setState(() => _mode = auto);
+      }
+    }
+    _schedulePreview();
+  }
+
+  void _schedulePreview() {
+    _previewTimer?.cancel();
+    _previewTimer = Timer(const Duration(milliseconds: 250), _runPreview);
+  }
+
+  Future<void> _runPreview() async {
+    final rule = NovelTtsReading(
+      surface: _surface.text,
+      reading: _reading.text,
+      mode: _mode,
+    ).trimmed();
+    final source = _previewSource.text;
+    if (!rule.isValid || source.trim().isEmpty) {
+      if (mounted) {
+        setState(() => _preview = null);
+      }
+      return;
+    }
+    final generation = ++_previewGeneration;
+    final snapshot = PronunciationCompiler().compile(
+      const PronunciationMigration().migrateV1([rule]),
+    );
+    PronunciationPreviewResult? result;
+    try {
+      result = await _previewer.preview(source: source, snapshot: snapshot);
+    } catch (_) {
+      // A preview that cannot be produced shows nothing. Saving the rule is
+      // still the user's call, and the pipeline degrades on its own at read
+      // time, so there is nothing here worth blocking the dialog over.
+    }
+    if (!mounted || generation != _previewGeneration) {
+      return;
+    }
+    setState(() => _preview = result);
   }
 
   @override
@@ -683,6 +756,7 @@ class _ReadingDialogState extends State<_ReadingDialog> {
                 labelText: i18n.novel_tts_reading_surface,
                 border: const OutlineInputBorder(),
               ),
+              onChanged: (_) => _onRuleChanged(),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -692,9 +766,13 @@ class _ReadingDialogState extends State<_ReadingDialog> {
                 labelText: i18n.novel_tts_reading_value,
                 border: const OutlineInputBorder(),
               ),
+              onChanged: (_) => _onRuleChanged(),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<PronunciationMatchMode>(
+              // The field keeps its own value, so it has to be rebuilt when the
+              // surface picks a different mode for the user.
+              key: ValueKey(_mode),
               initialValue: _mode,
               decoration: InputDecoration(
                 labelText: i18n.novel_tts_reading_mode,
@@ -716,7 +794,11 @@ class _ReadingDialogState extends State<_ReadingDialog> {
               ],
               onChanged: (value) {
                 if (value != null) {
-                  setState(() => _mode = value);
+                  setState(() {
+                    _mode = value;
+                    _modeEdited = true;
+                  });
+                  _onRuleChanged();
                 }
               },
             ),
@@ -738,6 +820,22 @@ class _ReadingDialogState extends State<_ReadingDialog> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            TextField(
+              key: novelTtsReadingPreviewFieldKey,
+              controller: _previewSource,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: i18n.novel_tts_preview_source,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) {
+                _previewSourceEdited = true;
+                _schedulePreview();
+              },
+            ),
+            if (_preview case final preview?) _PreviewReport(preview: preview),
           ],
         ),
       ),
@@ -763,6 +861,76 @@ class _ReadingDialogState extends State<_ReadingDialog> {
         ),
       ],
     );
+  }
+}
+
+class _PreviewReport extends StatelessWidget {
+  const _PreviewReport({required this.preview});
+
+  final PronunciationPreviewResult preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = I18n.of(context);
+    final theme = Theme.of(context);
+    final decisions = [...preview.resolved.allDecisions]
+      ..sort((a, b) => a.start.compareTo(b.start));
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${i18n.novel_tts_preview_spoken}: ${preview.spoken}',
+            key: novelTtsReadingPreviewSpokenKey,
+            style: theme.textTheme.bodyMedium,
+          ),
+          for (final decision in decisions)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${decision.surface} · '
+                '${decision.isApplied ? i18n.novel_tts_preview_applied : i18n.novel_tts_preview_skipped}'
+                ' · ${_reasonLabel(i18n, decision.reason)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: decision.isApplied
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _reasonLabel(AppLocalizations i18n, PronunciationReason reason) {
+    switch (reason) {
+      case PronunciationReason.explicitRuby:
+        return i18n.novel_tts_reason_ruby;
+      case PronunciationReason.exactPhrase:
+        return i18n.novel_tts_mode_exact;
+      case PronunciationReason.forcedRule:
+        return i18n.novel_tts_mode_force;
+      case PronunciationReason.morphologyProperName:
+      case PronunciationReason.nameParticleContext:
+      case PronunciationReason.quotativeNameContext:
+      case PronunciationReason.aliasWithoutConflict:
+        return i18n.novel_tts_reason_name;
+      case PronunciationReason.rejectedVerbOrAdjective:
+      case PronunciationReason.rejectedInflectionSuffix:
+        return i18n.novel_tts_reason_verb;
+      case PronunciationReason.rejectedInsideLargerToken:
+        return i18n.novel_tts_reason_word;
+      case PronunciationReason.rejectedOverlap:
+      case PronunciationReason.rejectedLowConfidence:
+      case PronunciationReason.analyzerUnavailable:
+      case PronunciationReason.analyzerTimeout:
+      case PronunciationReason.invalidAnalyzerOffsets:
+      case PronunciationReason.invalidSourceRange:
+      case PronunciationReason.staleSession:
+        return i18n.novel_tts_reason_uncertain;
+    }
   }
 }
 

@@ -1,14 +1,14 @@
 import 'package:pixez/page/novel/tts/pronunciation/models/morphology_token.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
-import 'package:pixez/page/novel/tts/pronunciation/morphology/boundary_only_japanese_analyzer.dart';
 import 'package:pixez/page/novel/tts/pronunciation/morphology/japanese_morphology_analyzer.dart';
+import 'package:pixez/page/novel/tts/pronunciation/morphology/lexicon_japanese_analyzer.dart';
 import 'package:pixez/page/novel/tts/pronunciation/morphology/morphology_offset_mapper.dart';
 
 class PronunciationWorker {
   PronunciationWorker({
     JapaneseMorphologyAnalyzer? analyzer,
     MorphologyOffsetMapper mapper = const MorphologyOffsetMapper(),
-  }) : _analyzer = analyzer ?? BoundaryOnlyJapaneseAnalyzer(),
+  }) : _analyzer = analyzer ?? LexiconJapaneseAnalyzer(),
        _mapper = mapper;
 
   final JapaneseMorphologyAnalyzer _analyzer;

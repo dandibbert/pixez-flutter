@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/prefer.dart';
@@ -16,7 +18,10 @@ import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
+import 'package:pixez/page/novel/tts/pronunciation/resolution/source_aware_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_splitter.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
@@ -189,6 +194,305 @@ void main() {
     expect(text, contains('漢字'));
     expect(text, isNot(contains('かんじ')));
     expect(text, isNot(contains('pixivimage')));
+  });
+
+  test('the first clip advances even if it ends during prefetch', () async {
+    // The clip that opens a chapter is usually a title line, so it is short,
+    // and prefetching the clips behind it is several network round trips. The
+    // player therefore runs dry before the queue is filled, and the advance has
+    // to happen off the completion event rather than off the playlist.
+    final gate = Completer<void>();
+    final synth = _SlowSynth(gate.future);
+    final audio = _QueueAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_first_clip');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 3,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    // The opening clip is synthesized and starts playing; the rest are still
+    // in flight behind the gate.
+    synth.release();
+    final started = controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText:
+          '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+    );
+    await _until(() => audio.playlist.isNotEmpty);
+    expect(controller.clips.length, greaterThan(2));
+    expect(audio.playlist, hasLength(1));
+    expect(controller.clipIndex, 0);
+
+    // Clip 0 runs out while the prefetch is still waiting on the network.
+    audio.finishCurrentClip();
+    await _until(() => false, timeout: const Duration(milliseconds: 100));
+
+    gate.complete();
+    await started;
+    await _until(
+      () =>
+          controller.clipIndex == 1 &&
+          controller.status == NovelTtsStatus.playing,
+    );
+
+    expect(
+      controller.clipIndex,
+      1,
+      reason: 'the reader is stuck on the first clip of the chapter',
+    );
+    expect(controller.status, NovelTtsStatus.playing);
+    expect(controller.errorMessage, isNull);
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('a clip ending during a manual skip does not cost a clip', () async {
+    // The mirror of the case above: while a skip is fetching the clip the user
+    // asked for, the clip they are leaving runs out on its own. Replaying that
+    // event would advance a second time and swallow the requested clip.
+    final gate = Completer<void>();
+    final synth = _SlowSynth(gate.future);
+    final audio = _QueueAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_skip_race');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 3,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    synth.release();
+    unawaited(
+      controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText:
+            '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+      ),
+    );
+    await _until(() => audio.playlist.isNotEmpty);
+    expect(controller.clipIndex, 0);
+
+    // The queue never filled, so this takes the resynthesize path rather than
+    // a seek inside the playlist.
+    final skipped = controller.skip(direction: 'next');
+    await _until(() => controller.status == NovelTtsStatus.synthesizing);
+    audio.finishCurrentClip();
+
+    gate.complete();
+    await skipped;
+    await _until(() => controller.status == NovelTtsStatus.playing);
+
+    expect(controller.clipIndex, 1, reason: 'the requested clip was skipped');
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('a failure while building clips reports an error, not a crash', () async {
+    // Pronunciation resolution and budget splitting run over the whole novel
+    // inside start(). A throw used to escape the play button unhandled.
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 1,
+      ),
+      cacheDir: () async => Directory.systemTemp,
+      splitter: const _ThrowingSplitter(),
+    );
+
+    await expectLater(
+      controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+      ),
+      completes,
+    );
+    expect(controller.status, NovelTtsStatus.error);
+    expect(controller.clips, isEmpty);
+    controller.dispose();
+  });
+
+  test('a runaway TTS response is refused instead of buffered', () async {
+    // A misconfigured custom endpoint can answer a two-sentence clip with a
+    // stream that never ends. Folding it whole is how the process gets killed
+    // for memory, so the read stops at the ceiling.
+    final oversized = Stream<List<int>>.fromIterable([
+      for (var i = 0; i <= novelTtsMaxResponseBytes ~/ (1024 * 1024); i++)
+        Uint8List(1024 * 1024),
+    ]);
+    await expectLater(
+      consolidateHttpClientResponseBytes(_FakeResponse(oversized)),
+      throwsA(isA<NovelTtsSynthException>()),
+    );
+
+    final small = Stream<List<int>>.fromIterable([
+      const [1, 2],
+      const [3, 4],
+    ]);
+    expect(
+      await consolidateHttpClientResponseBytes(_FakeResponse(small)),
+      [1, 2, 3, 4],
+    );
+  });
+
+  test('skipping with no clips left does not throw', () async {
+    // `clamp(0, clips.length - 1)` throws on an empty list, and the argument is
+    // evaluated before `_playFrom` can turn the call away. A session that
+    // outlives its clips is enough to reach it.
+    final audio = _FakeAudio();
+    final controller = NovelTtsController(
+      synthesizer: _FakeSynth(),
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 1,
+        autoContinue: false,
+      ),
+      cacheDir: () async => Directory.systemTemp,
+    );
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+    );
+    expect(controller.clips.length, greaterThan(1));
+    // The session still advertises two chunks, so the advance resolves to
+    // `chunk` and reaches the clamp.
+    controller.clips = const [];
+    audio.files.clear();
+
+    await expectLater(controller.skip(direction: 'next'), completes);
+    await expectLater(controller.skip(direction: 'prev'), completes);
+    controller.dispose();
+  });
+
+  test('clip audio is cached on disk, not pinned in memory', () async {
+    final synth = _FakeSynth();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_cache');
+    NovelTtsController build() => NovelTtsController(
+      synthesizer: synth,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 40,
+        prefetchCount: 1,
+      ),
+      cacheDir: () async => dir,
+    );
+    const page = '第一句用来测试缓存。第二句用来测试缓存。';
+
+    final first = build();
+    await first.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: page,
+    );
+    final synthesized = synth.texts.length;
+    expect(synthesized, greaterThan(0));
+    expect(first.inflightAudioCount, 0);
+    first.dispose();
+
+    // The clips are on disk now, so a fresh session must not pay for them
+    // again -- that disk read is what lets the bytes leave memory.
+    final second = build();
+    await second.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: page,
+    );
+    expect(synth.texts.length, synthesized);
+    expect(second.inflightAudioCount, 0);
+    second.dispose();
+
+    await dir.delete(recursive: true);
+  });
+
+  test('a reading longer than the clip budget still reads the page', () async {
+    // Both ends of this are what the settings screen allows: readings may run
+    // to 256 scalars and the clip budget bottoms out at 20.
+    const reading = 'ごじょうさとるとかいうめちゃくちゃつよいじゅじゅつしのおとこ';
+    expect(reading.runes.length, greaterThan(NovelTtsSettings.minSplitChars));
+    final synth = _FakeSynth();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_oversize');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: _FakeAudio(),
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: NovelTtsSettings.minSplitChars,
+        prefetchCount: 1,
+        readings: [
+          NovelTtsReading(
+            surface: '悟',
+            reading: reading,
+            mode: PronunciationMatchMode.exactPhrase,
+          ),
+        ],
+      ),
+      cacheDir: () async => dir,
+    );
+
+    await controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText: '悟は笑った。次の文は普通の長さです。',
+    );
+
+    expect(controller.status, isNot(NovelTtsStatus.error));
+    expect(controller.clips, isNotEmpty);
+    expect(synth.texts.join(), contains(reading));
+
+    controller.dispose();
+    await dir.delete(recursive: true);
   });
 
   test('controller prefetches the next chunk and can skip to a series', () async {
@@ -955,6 +1259,29 @@ void main() {
     final ko = lookupAppLocalizations(const Locale('ko'));
     expect(ko.novel_tts_custom_body, 'POST 본문 템플릿');
     expect(ko.novel_tts_section_readings, '발음 표기');
+
+    for (final locale in const [
+      Locale('ja'),
+      Locale('zh'),
+      Locale('zh', 'CN'),
+      Locale('zh', 'TW'),
+      Locale('ko'),
+      Locale('de'),
+      Locale('es'),
+      Locale('ru'),
+      Locale('tr'),
+      Locale('vi'),
+      Locale('id'),
+      Locale('fil'),
+    ]) {
+      final l10n = lookupAppLocalizations(locale);
+      expect(l10n.novel_tts_reason_verb, isNot('part of a verb or adjective'));
+      expect(l10n.novel_tts_preview_source, isNot('Preview text'));
+      expect(
+        l10n.novel_tts_analyzer_lexicon,
+        isNot(contains('Smart name matching')),
+      );
+    }
   });
 
   testWidgets('settings page can add a pronunciation mark', (tester) async {
@@ -979,6 +1306,143 @@ void main() {
     expect(NovelTtsSettings.load().readings, [
       const NovelTtsReading(surface: '今日', reading: 'きょう'),
     ]);
+    expect(find.text('Fixed phrase'), findsOneWidget);
+  });
+
+  testWidgets('a lone kanji is saved as a name alias, not a fixed phrase', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsPage(initial: const NovelTtsSettings()),
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'さとる');
+    await tester.pumpAndSettle();
+    // The dropdown has to follow the surface, or the user never sees that the
+    // mark went through the disambiguator.
+    expect(find.text('Name alias'), findsOneWidget);
+
+    await tester.tap(find.byKey(novelTtsReadingSaveKey));
+    await tester.pumpAndSettle();
+    expect(
+      NovelTtsSettings.load().readings.single.mode,
+      PronunciationMatchMode.nameAlias,
+    );
+    expect(find.text('Name alias'), findsOneWidget);
+  });
+
+  testWidgets('captures the mark editor previewing a name alias', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 940);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Droid Sans Fallback has no Latin, so the separators in the decision list
+    // need a second family behind it.
+    for (final (family, path) in [
+      ('Latin', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+      ('CJK', '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf'),
+    ]) {
+      final file = File(path);
+      if (!file.existsSync()) {
+        return;
+      }
+      final loader = FontLoader(family)
+        ..addFont(Future<ByteData>.value(ByteData.view(file.readAsBytesSync().buffer)));
+      await loader.load();
+    }
+
+    const captureKey = Key('tts-mark-editor-capture');
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: captureKey,
+        child: MaterialApp(
+          theme: ThemeData(
+            useMaterial3: true,
+            fontFamily: 'Latin',
+            fontFamilyFallback: const ['CJK'],
+          ),
+          locale: const Locale('ja'),
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: NovelTtsPage(initial: const NovelTtsSettings()),
+        ),
+      ),
+    );
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'さとる');
+    await tester.enterText(
+      find.byKey(novelTtsReadingPreviewFieldKey),
+      '悟は笑った。真相を悟った。悟さんが来た。',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(captureKey),
+    );
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 2);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final file = File(
+        '/opt/cursor/artifacts/tts_mark_editor_name_alias_preview.png',
+      );
+      file.parent.createSync(recursive: true);
+      file.writeAsBytesSync(bytes!.buffer.asUint8List());
+      expect(file.existsSync(), isTrue);
+    });
+  });
+
+  testWidgets('the mark editor previews applied and kept decisions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelTtsPage(initial: const NovelTtsSettings()),
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(novelTtsAddReadingKey));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
+    await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'さとる');
+    await tester.enterText(
+      find.byKey(novelTtsReadingPreviewFieldKey),
+      '悟は笑った。真相を悟った。',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final spoken = tester.widget<Text>(
+      find.byKey(novelTtsReadingPreviewSpokenKey),
+    );
+    expect(spoken.data, contains('さとるは笑った。真相を悟った。'));
+    expect(find.textContaining('replaced'), findsOneWidget);
+    expect(find.textContaining('part of a verb'), findsOneWidget);
   });
 
   testWidgets('player bar shows the current subtitle', (tester) async {
@@ -1071,6 +1535,173 @@ void main() {
     expect(taps, 1);
     controller.dispose();
   });
+}
+
+/// Waits for [ready], polling the real event loop so file I/O can settle.
+/// Returns quietly on timeout and leaves the assertion to the caller.
+Future<void> _until(
+  bool Function() ready, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!ready() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
+/// Synthesis that only answers once [release] has been called for that clip,
+/// so a test can hold the prefetch open while the first clip plays out.
+class _SlowSynth implements NovelTtsSynthesizer {
+  _SlowSynth(this._gate);
+
+  final Future<void> _gate;
+  final texts = <String>[];
+  var _released = 0;
+
+  void release() => _released++;
+
+  @override
+  Future<Uint8List> synthesize(NovelTtsSettings settings, String text) async {
+    texts.add(text);
+    if (_released > 0) {
+      _released--;
+      return Uint8List.fromList(const [1, 2, 3, 4]);
+    }
+    await _gate;
+    return Uint8List.fromList(const [1, 2, 3, 4]);
+  }
+}
+
+/// Models how just_audio actually drives a queue: `playFiles` replaces the
+/// playlist, `enqueue` appends to it, and a clip that ends either advances the
+/// playlist index or, when it was the last entry, reports the queue complete.
+/// A playlist that has completed does not restart when something is appended
+/// to it afterwards.
+class _QueueAudio implements NovelTtsAudioPlayer {
+  final playlist = <String>[];
+  var index = 0;
+  var completed = false;
+  final _completedEvents = StreamController<void>.broadcast();
+  final _clipIndex = StreamController<int>.broadcast();
+
+  void finishCurrentClip() {
+    if (index + 1 < playlist.length) {
+      index++;
+      _clipIndex.add(index);
+      return;
+    }
+    completed = true;
+    _completedEvents.add(null);
+  }
+
+  @override
+  Stream<void> get onComplete => _completedEvents.stream;
+
+  @override
+  Stream<int> get onClipIndex => _clipIndex.stream;
+
+  @override
+  void listen() {}
+
+  @override
+  Future<void> playFile(String path) => playFiles([path]);
+
+  @override
+  Future<void> playFiles(List<String> paths) async {
+    playlist
+      ..clear()
+      ..addAll(paths);
+    index = 0;
+    completed = false;
+  }
+
+  @override
+  Future<void> enqueue(String path) async {
+    playlist.add(path);
+  }
+
+  @override
+  Future<bool> seekNext() async {
+    if (index + 1 >= playlist.length) {
+      return false;
+    }
+    index++;
+    return true;
+  }
+
+  @override
+  Future<bool> seekPrevious() async {
+    if (index <= 0) {
+      return false;
+    }
+    index--;
+    return true;
+  }
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> resume() async {}
+
+  @override
+  Future<void> stop() async {
+    playlist.clear();
+    index = 0;
+    completed = false;
+  }
+
+  @override
+  Future<Duration?> get duration async => const Duration(seconds: 1);
+
+  @override
+  Future<Duration?> get position async => Duration.zero;
+
+  @override
+  Future<void> dispose() async {
+    await _completedEvents.close();
+    await _clipIndex.close();
+  }
+}
+
+class _ThrowingSplitter extends SourceAwareNovelTtsSplitter {
+  const _ThrowingSplitter();
+
+  @override
+  List<NovelTtsSourceRange> split({
+    required String displayText,
+    required List<PronunciationDecision> appliedDecisions,
+    required TtsTextBudget budget,
+  }) {
+    throw StateError('splitter failed');
+  }
+}
+
+/// Only the body stream matters to `consolidateHttpClientResponseBytes`; the
+/// rest of `HttpClientResponse` is left to `noSuchMethod`.
+class _FakeResponse extends Stream<List<int>> implements HttpClientResponse {
+  _FakeResponse(this._body);
+
+  final Stream<List<int>> _body;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _body.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
 }
 
 class _FakeSynth implements NovelTtsSynthesizer {

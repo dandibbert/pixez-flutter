@@ -15,6 +15,16 @@ class PronunciationPreviewResult {
   final ResolvedPronunciationText resolved;
 }
 
+/// Sentence frames that show what a rule does without asking the user to type
+/// Japanese: a plain particle, a shout, and an honorific.
+String defaultPronunciationPreviewText(String surface) {
+  final base = surface.trim();
+  if (base.isEmpty) {
+    return '';
+  }
+  return '$baseは笑った。「$base！」$baseさんが来た。';
+}
+
 class PronunciationPreview {
   PronunciationPreview({
     PronunciationPipeline? pipeline,

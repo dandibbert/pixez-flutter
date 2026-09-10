@@ -36,6 +36,9 @@ class NovelTtsNowPlayingPlugin {
         private const val ACTION_PREV = "com.perol.pixez.tts.PREV"
         private const val ACTION_STOP = "com.perol.pixez.tts.STOP"
 
+        /// 44 byte wav header plus one second of 8 kHz 16 bit mono silence.
+        private const val EXPECTED_SILENCE_BYTES = 44L + 8000L * 2L
+
         @Volatile
         var foregroundNotification: Notification? = null
 
@@ -143,16 +146,25 @@ class NovelTtsNowPlayingPlugin {
 
     private fun endKeepAlive() {
         val context = appContext ?: return
-        keepAlivePlayer?.stop()
-        keepAlivePlayer?.release()
+        try {
+            keepAlivePlayer?.stop()
+            keepAlivePlayer?.release()
+        } catch (_: Exception) {
+        }
         keepAlivePlayer = null
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release()
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+            if (wifiLock?.isHeld == true) {
+                wifiLock?.release()
+            }
+        } catch (_: Exception) {
         }
-        if (wifiLock?.isHeld == true) {
-            wifiLock?.release()
+        try {
+            context.stopService(Intent(context, NovelTtsPlaybackService::class.java))
+        } catch (_: Exception) {
         }
-        context.stopService(Intent(context, NovelTtsPlaybackService::class.java))
     }
 
     private fun update(args: Map<*, *>) {
@@ -211,17 +223,22 @@ class NovelTtsNowPlayingPlugin {
         subtitle: String,
         isPlaying: Boolean,
     ) {
+        // getLaunchIntentForPackage is declared nullable, and PendingIntent
+        // rejects a null intent, so the notification goes out without a tap
+        // target rather than taking the process down.
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            0,
-            launch,
-            PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag(),
-        )
+        val contentIntent = launch?.let {
+            PendingIntent.getActivity(
+                context,
+                0,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag(),
+            )
+        }
         val notification = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(subtitle.ifEmpty { title })
-            .setContentText(if (artist.isEmpty) title else "$title · $artist")
+            .setContentText(if (artist.isEmpty()) title else "$title · $artist")
             .setContentIntent(contentIntent)
             .setOngoing(isPlaying)
             .setOnlyAlertOnce(true)
@@ -240,52 +257,103 @@ class NovelTtsNowPlayingPlugin {
             .addAction(android.R.drawable.ic_media_next, "Next", action(context, ACTION_NEXT, 3))
             .build()
         foregroundNotification = notification
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        // From API 33 notify() needs POST_NOTIFICATIONS, and it throws a
+        // SecurityException rather than no-opping when the user has denied it.
+        // Reading on without lock-screen controls beats crashing the process.
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        } catch (_: Exception) {
+        }
     }
 
     private fun acquireLocks(context: Context) {
-        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (wakeLock == null) {
-            wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pixez:novel_tts").apply {
-                setReferenceCounted(false)
+        // Both casts and both acquires are best effort: a device that refuses a
+        // lock should still read the chapter.
+        try {
+            val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            if (wakeLock == null && power != null) {
+                wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pixez:novel_tts").apply {
+                    setReferenceCounted(false)
+                }
             }
-        }
-        if (wakeLock?.isHeld != true) {
-            wakeLock?.acquire(6 * 60 * 60 * 1000L)
-        }
-        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        if (wifiLock == null) {
-            @Suppress("DEPRECATION")
-            wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "pixez:novel_tts").apply {
-                setReferenceCounted(false)
+            if (wakeLock?.isHeld != true) {
+                wakeLock?.acquire(6 * 60 * 60 * 1000L)
             }
+        } catch (_: Exception) {
         }
-        if (wifiLock?.isHeld != true) {
-            wifiLock?.acquire()
+        try {
+            val wifi = context.applicationContext
+                .getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            if (wifiLock == null && wifi != null) {
+                @Suppress("DEPRECATION")
+                wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "pixez:novel_tts").apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wifiLock?.isHeld != true) {
+                wifiLock?.acquire()
+            }
+        } catch (_: Exception) {
         }
     }
 
     private fun startSilentPlayer(context: Context) {
-        if (keepAlivePlayer != null) {
-            keepAlivePlayer?.start()
-            return
+        val existing = keepAlivePlayer
+        if (existing != null) {
+            // A player that errored out throws from start() instead of playing.
+            try {
+                existing.start()
+                return
+            } catch (_: Exception) {
+                try {
+                    existing.release()
+                } catch (_: Exception) {
+                }
+                keepAlivePlayer = null
+            }
         }
-        val file = File(context.cacheDir, "novel_tts_silence.wav")
-        if (!file.exists()) {
-            file.writeBytes(silenceWav())
-        }
-        keepAlivePlayer = MediaPlayer().apply {
-            setDataSource(file.absolutePath)
-            isLooping = true
-            setVolume(0.01f, 0.01f)
-            setAudioAttributes(
+        val file = silenceFile(context) ?: return
+        val player = MediaPlayer()
+        try {
+            player.setDataSource(file.absolutePath)
+            player.isLooping = true
+            player.setVolume(0.01f, 0.01f)
+            player.setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build(),
             )
-            prepare()
-            start()
+            player.prepare()
+            player.start()
+            keepAlivePlayer = player
+        } catch (_: Exception) {
+            // prepare() throws IOException on a truncated file and
+            // IllegalStateException on a bad state. Reading a chapter without
+            // the keep-alive tone is a far better outcome than dying here.
+            try {
+                player.release()
+            } catch (_: Exception) {
+            }
+            keepAlivePlayer = null
+            file.delete()
+        }
+    }
+
+    /// The tone is written through a temp file: a half-written wav left behind
+    /// by a kill would otherwise exist(), fail prepare(), and keep failing.
+    private fun silenceFile(context: Context): File? {
+        val file = File(context.cacheDir, "novel_tts_silence.wav")
+        if (file.length() == EXPECTED_SILENCE_BYTES) {
+            return file
+        }
+        return try {
+            val temp = File.createTempFile("novel_tts_silence", ".wav", context.cacheDir)
+            temp.writeBytes(silenceWav())
+            file.delete()
+            if (temp.renameTo(file)) file else temp
+        } catch (_: Exception) {
+            null
         }
     }
 

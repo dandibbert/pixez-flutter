@@ -433,7 +433,7 @@
   "novel_tts_section_voice": "음성",
   "novel_tts_section_playback": "재생",
   "novel_tts_section_readings": "발음 표기",
-  "novel_tts_readings_hint": "합성 전에 표기를 읽기로 바꿉니다. 더 긴 단어가 우선합니다. 예: 今日 → きょう",
+  "novel_tts_readings_hint": "합성 전에 표기를 읽기로 바꿉니다. 고정 어구는 항상 적용되고, 이름 별칭은 다른 단어의 일부로 판단될 때만 원문을 남깁니다. 예: 今日=きょう",
   "novel_tts_readings_empty": "발음 표기가 없습니다",
   "novel_tts_reading_surface": "표기",
   "novel_tts_reading_value": "읽기",
@@ -449,7 +449,15 @@
   "novel_tts_mode_force": "Force replace (advanced)",
   "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
   "novel_tts_preview_spoken": "Spoken",
-  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_analyzer_lexicon": "이름 판정: 사전 형태 분석. 동사·형용사·복합어로 쓰이면 원문을 그대로 읽습니다.",
+  "novel_tts_preview_source": "미리 보기 문장",
+  "novel_tts_preview_applied": "교체됨",
+  "novel_tts_preview_skipped": "원문 유지",
+  "novel_tts_reason_name": "여기서는 사람 이름",
+  "novel_tts_reason_verb": "동사·형용사의 일부",
+  "novel_tts_reason_word": "더 긴 단어의 일부",
+  "novel_tts_reason_uncertain": "판단할 수 없음",
+  "novel_tts_reason_ruby": "작가가 붙인 루비",
   "novel_tts_needs_review": "Review after import",
   "novel_tts_value_other": "기타",
   "novel_tts_header_name": "이름",
@@ -458,5 +466,5 @@
   "novel_tts_insert_placeholder": "눌러서 넣기",
   "novel_tts_reading_mode": "일치 방식",
   "novel_tts_mode_exact_hint": "이 표기가 나오면 항상 바꿉니다.",
-  "novel_tts_mode_alias_hint": "사람 이름으로 봅니다. 悟った 같은 동사는 그대로 둡니다."
+  "novel_tts_mode_alias_hint": "사람 이름으로 처리합니다. 동사·형용사·더 긴 단어의 일부가 아니면 교체합니다."
 }
