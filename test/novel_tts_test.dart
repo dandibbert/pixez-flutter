@@ -196,6 +196,119 @@ void main() {
     expect(text, isNot(contains('pixivimage')));
   });
 
+  test('the first clip advances even if it ends during prefetch', () async {
+    // The clip that opens a chapter is usually a title line, so it is short,
+    // and prefetching the clips behind it is several network round trips. The
+    // player therefore runs dry before the queue is filled, and the advance has
+    // to happen off the completion event rather than off the playlist.
+    final gate = Completer<void>();
+    final synth = _SlowSynth(gate.future);
+    final audio = _QueueAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_first_clip');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 3,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    // The opening clip is synthesized and starts playing; the rest are still
+    // in flight behind the gate.
+    synth.release();
+    final started = controller.start(
+      novelId: 1,
+      title: 'Title',
+      author: 'Author',
+      page: 1,
+      totalPages: 1,
+      pageText:
+          '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+    );
+    await _until(() => audio.playlist.isNotEmpty);
+    expect(controller.clips.length, greaterThan(2));
+    expect(audio.playlist, hasLength(1));
+    expect(controller.clipIndex, 0);
+
+    // Clip 0 runs out while the prefetch is still waiting on the network.
+    audio.finishCurrentClip();
+    await _until(() => false, timeout: const Duration(milliseconds: 100));
+
+    gate.complete();
+    await started;
+    await _until(
+      () =>
+          controller.clipIndex == 1 &&
+          controller.status == NovelTtsStatus.playing,
+    );
+
+    expect(
+      controller.clipIndex,
+      1,
+      reason: 'the reader is stuck on the first clip of the chapter',
+    );
+    expect(controller.status, NovelTtsStatus.playing);
+    expect(controller.errorMessage, isNull);
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
+  test('a clip ending during a manual skip does not cost a clip', () async {
+    // The mirror of the case above: while a skip is fetching the clip the user
+    // asked for, the clip they are leaving runs out on its own. Replaying that
+    // event would advance a second time and swallow the requested clip.
+    final gate = Completer<void>();
+    final synth = _SlowSynth(gate.future);
+    final audio = _QueueAudio();
+    final dir = await Directory.systemTemp.createTemp('novel_tts_skip_race');
+    final controller = NovelTtsController(
+      synthesizer: synth,
+      audio: audio,
+      nowPlaying: NovelTtsNowPlaying(),
+      settingsLoader: () => const NovelTtsSettings(
+        provider: NovelTtsProvider.custom,
+        customUrl: 'https://example/tts?t={text}',
+        splitChars: 20,
+        prefetchCount: 3,
+      ),
+      cacheDir: () async => dir,
+    );
+
+    synth.release();
+    unawaited(
+      controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText:
+            '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+      ),
+    );
+    await _until(() => audio.playlist.isNotEmpty);
+    expect(controller.clipIndex, 0);
+
+    // The queue never filled, so this takes the resynthesize path rather than
+    // a seek inside the playlist.
+    final skipped = controller.skip(direction: 'next');
+    await _until(() => controller.status == NovelTtsStatus.synthesizing);
+    audio.finishCurrentClip();
+
+    gate.complete();
+    await skipped;
+    await _until(() => controller.status == NovelTtsStatus.playing);
+
+    expect(controller.clipIndex, 1, reason: 'the requested clip was skipped');
+    controller.dispose();
+    await dir.delete(recursive: true);
+  });
+
   test('a failure while building clips reports an error, not a crash', () async {
     // Pronunciation resolution and budget splitting run over the whole novel
     // inside start(). A throw used to escape the play button unhandled.
@@ -1422,6 +1535,133 @@ void main() {
     expect(taps, 1);
     controller.dispose();
   });
+}
+
+/// Waits for [ready], polling the real event loop so file I/O can settle.
+/// Returns quietly on timeout and leaves the assertion to the caller.
+Future<void> _until(
+  bool Function() ready, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!ready() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
+/// Synthesis that only answers once [release] has been called for that clip,
+/// so a test can hold the prefetch open while the first clip plays out.
+class _SlowSynth implements NovelTtsSynthesizer {
+  _SlowSynth(this._gate);
+
+  final Future<void> _gate;
+  final texts = <String>[];
+  var _released = 0;
+
+  void release() => _released++;
+
+  @override
+  Future<Uint8List> synthesize(NovelTtsSettings settings, String text) async {
+    texts.add(text);
+    if (_released > 0) {
+      _released--;
+      return Uint8List.fromList(const [1, 2, 3, 4]);
+    }
+    await _gate;
+    return Uint8List.fromList(const [1, 2, 3, 4]);
+  }
+}
+
+/// Models how just_audio actually drives a queue: `playFiles` replaces the
+/// playlist, `enqueue` appends to it, and a clip that ends either advances the
+/// playlist index or, when it was the last entry, reports the queue complete.
+/// A playlist that has completed does not restart when something is appended
+/// to it afterwards.
+class _QueueAudio implements NovelTtsAudioPlayer {
+  final playlist = <String>[];
+  var index = 0;
+  var completed = false;
+  final _completedEvents = StreamController<void>.broadcast();
+  final _clipIndex = StreamController<int>.broadcast();
+
+  void finishCurrentClip() {
+    if (index + 1 < playlist.length) {
+      index++;
+      _clipIndex.add(index);
+      return;
+    }
+    completed = true;
+    _completedEvents.add(null);
+  }
+
+  @override
+  Stream<void> get onComplete => _completedEvents.stream;
+
+  @override
+  Stream<int> get onClipIndex => _clipIndex.stream;
+
+  @override
+  void listen() {}
+
+  @override
+  Future<void> playFile(String path) => playFiles([path]);
+
+  @override
+  Future<void> playFiles(List<String> paths) async {
+    playlist
+      ..clear()
+      ..addAll(paths);
+    index = 0;
+    completed = false;
+  }
+
+  @override
+  Future<void> enqueue(String path) async {
+    playlist.add(path);
+  }
+
+  @override
+  Future<bool> seekNext() async {
+    if (index + 1 >= playlist.length) {
+      return false;
+    }
+    index++;
+    return true;
+  }
+
+  @override
+  Future<bool> seekPrevious() async {
+    if (index <= 0) {
+      return false;
+    }
+    index--;
+    return true;
+  }
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> resume() async {}
+
+  @override
+  Future<void> stop() async {
+    playlist.clear();
+    index = 0;
+    completed = false;
+  }
+
+  @override
+  Future<Duration?> get duration async => const Duration(seconds: 1);
+
+  @override
+  Future<Duration?> get position async => Duration.zero;
+
+  @override
+  Future<void> dispose() async {
+    await _completedEvents.close();
+    await _clipIndex.close();
+  }
 }
 
 class _ThrowingSplitter extends SourceAwareNovelTtsSplitter {
