@@ -119,12 +119,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _offsetDisposer?.call();
     _tts.removeListener(_onTtsProgress);
-    if (identical(_tts.onNavigate, _onTtsNavigate)) {
+    if (_tts.onNavigate == _onTtsNavigate) {
       _tts.onNavigate = null;
     }
-    if (identical(_tts.onLoadChapter, _loadTtsChapter)) {
+    if (_tts.onLoadChapter == _loadTtsChapter) {
       _tts.onLoadChapter = null;
     }
+    _prefetchedTtsStores.clear();
     if (_novelStore.positionBooked) {
       _novelStore.bookPosition(_currentPage.toDouble());
     }
@@ -332,15 +333,21 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   }
 
   Future<NovelTtsChapter?> _loadTtsChapter(int id) async {
+    if (!mounted) return null;
     final store = _prefetchedTtsStores[id] ?? NovelStore(id, null);
     if (store.novel == null || store.spans.isEmpty) {
       await store.fetch();
     }
     final novel = store.novel;
-    if (novel == null || store.spans.isEmpty) {
+    if (!mounted || novel == null || store.spans.isEmpty) {
       return null;
     }
+    _prefetchedTtsStores.remove(id);
     _prefetchedTtsStores[id] = store;
+    // Keep only neighboring chapters while the reader is retained by a route.
+    while (_prefetchedTtsStores.length > 2) {
+      _prefetchedTtsStores.remove(_prefetchedTtsStores.keys.first);
+    }
     final pages = NovelReaderSplitCache().pages(store.spans);
     final navigation = store.novelTextResponse?.seriesNavigation;
     return NovelTtsChapter(

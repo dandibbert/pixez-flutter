@@ -1,0 +1,70 @@
+name: Flutter checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Resolve dependencies
+        run: flutter pub get --no-example --enforce-lockfile
+      - name: Generate rhttp files
+        working-directory: plugins/rhttp/rhttp
+        run: |
+          flutter pub get
+          dart run build_runner build
+      - name: Generate app files
+        run: dart run build_runner build
+      - name: Prepare widget screenshot directory
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-droid-fallback
+          sudo mkdir -p /opt/cursor/artifacts
+          sudo chown "$USER" /opt/cursor/artifacts
+      - name: Check changed Dart formatting
+        id: format
+        env:
+          FORMAT_BASE: ${{ github.event.pull_request.base.sha || 'origin/master' }}
+        run: |
+          git diff --name-only --diff-filter=ACM -z "$FORMAT_BASE" HEAD -- \
+            '*.dart' ':!plugins/**' ':!**/*.g.dart' ':!**/*.freezed.dart' \
+            | xargs -0 -r dart format
+          git diff -- '*.dart' > "$RUNNER_TEMP/dart-format.patch"
+          test ! -s "$RUNNER_TEMP/dart-format.patch"
+      - name: Analyze
+        if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Test
+        if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
+        run: flutter test --reporter expanded
+      - name: Upload formatting patch
+        if: ${{ !cancelled() && steps.format.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: dart-format-patch
+          path: ${{ runner.temp }}/dart-format.patch
+      - name: Upload widget screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: widget-screenshots
+          path: /opt/cursor/artifacts/*.png
+          if-no-files-found: ignore

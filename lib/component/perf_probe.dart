@@ -212,7 +212,7 @@ class PerfProbe extends StatefulWidget {
   State<PerfProbe> createState() => _PerfProbeState();
 }
 
-class _PerfProbeState extends State<PerfProbe> {
+class _PerfProbeState extends State<PerfProbe> with WidgetsBindingObserver {
   int _frames = 0;
   double _buildTotal = 0;
   double _buildMax = 0;
@@ -235,26 +235,66 @@ class _PerfProbeState extends State<PerfProbe> {
   Timer? _lagTimer;
   DateTime _lagScheduledFor = DateTime.now();
   PerfSample? _sample;
+  bool _active = false;
+  int _samplingGeneration = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle == null || lifecycle == AppLifecycleState.resumed) {
+      _startSampling();
+    }
+  }
+
+  void _startSampling() {
+    if (_active) return;
+    _active = true;
+    _samplingGeneration++;
+    _frames = 0;
+    _buildTotal = _buildMax = _rasterTotal = _rasterMax = 0;
+    _pointerEvents = 0;
+    _frameHistory.clear();
+    _lastCpuSeconds = null;
+    _appCpuPercent = 0;
+    _requestsAtWindowStart = PerfCounters.requests;
+    _errorsAtWindowStart = PerfCounters.errors;
+    _imageRequestsAtWindowStart = PerfCounters.imageRequests;
     SchedulerBinding.instance.addTimingsCallback(_onTimings);
     _ticker = Timer.periodic(widget.window, (_) => _publish());
     _scheduleLagProbe();
   }
 
-  @override
-  void dispose() {
+  void _stopSampling() {
+    if (!_active) return;
+    _active = false;
+    _samplingGeneration++;
     SchedulerBinding.instance.removeTimingsCallback(_onTimings);
     _ticker?.cancel();
     _lagTimer?.cancel();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startSampling();
+    } else {
+      _stopSampling();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopSampling();
     super.dispose();
   }
 
   /// A timer that should fire on time. If the isolate is busy with work that
   /// never produces a frame, this is what reveals it.
   void _scheduleLagProbe() {
+    if (!_active) return;
     const period = Duration(milliseconds: 250);
     _lagScheduledFor = DateTime.now().add(period);
     _lagTimer = Timer(period, () {
@@ -304,9 +344,11 @@ class _PerfProbeState extends State<PerfProbe> {
   Future<void> _sampleProcessCpu() async {
     if (_sampling) return;
     _sampling = true;
+    final generation = _samplingGeneration;
     try {
       final sample = await AppThreadStats.sample();
-      if (sample == null || !mounted) return;
+      if (sample == null || !mounted || !_active ||
+          generation != _samplingGeneration) return;
       final now = DateTime.now();
       final previous = _lastCpuSeconds;
       if (previous != null) {
@@ -343,7 +385,7 @@ class _PerfProbeState extends State<PerfProbe> {
   }
 
   void _publish() {
-    if (!mounted) return;
+    if (!mounted || !_active) return;
     final frames = _frames;
     final refreshRate = _refreshRate();
     _measureCpu();

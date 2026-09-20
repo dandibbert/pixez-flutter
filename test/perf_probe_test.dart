@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/component/perf_probe.dart';
+import 'package:pixez/component/app_thread_stats.dart';
 
 PerfSample sample({
   int frames = 0,
@@ -269,5 +270,31 @@ void main() {
       findsNothing,
       reason: 'the tap should have been counted',
     );
+  });
+
+  testWidgets('diagnostics stop sampling while background audio continues', (
+    tester,
+  ) async {
+    var samples = 0;
+    AppThreadStats.debugSampler = () async {
+      samples++;
+      return const AppCpuSample(cpuSeconds: 1, threads: 1, busiest: []);
+    };
+    addTearDown(() => AppThreadStats.debugSampler = null);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpWidget(const MaterialApp(
+      home: PerfProbe(window: Duration(seconds: 1), child: Text('reader')),
+    ));
+    await tester.pump(const Duration(seconds: 1));
+    expect(samples, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(const Duration(minutes: 5));
+    expect(samples, 1, reason: 'diagnostics must not wake background playback');
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 1));
+    expect(samples, 2);
+    await tester.pumpWidget(const SizedBox());
   });
 }
