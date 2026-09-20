@@ -9,7 +9,7 @@ enum NovelTtsProvider { microsoft, openai, custom }
 
 class NovelTtsSettings {
   static const prefKey = 'novel_tts_settings_json';
-  static Future<void> _writeQueue = Future<void>.value();
+  static Future<void>? _writeQueue;
   static NovelTtsSettings? _pendingSettings;
   static int _saveRevision = 0;
   static const defaultSplitChars = 200;
@@ -345,15 +345,20 @@ class NovelTtsSettings {
     final raw = jsonEncode(toJson());
     final revision = ++_saveRevision;
     _pendingSettings = this;
-    final write = _writeQueue.then((_) async {
+    // Keep only active work. Retaining a completed Future also retains the
+    // zone that created it, which can outlive the page or widget-test clock.
+    final previous = _writeQueue ?? Future<void>.value();
+    final write = previous.then((_) async {
       final preferences = await Prefer.getInstance();
       if (!await preferences.setString(prefKey, raw)) {
         throw StateError('Could not save speech settings');
       }
     });
     // A failed write must not prevent the next settings change being saved.
-    _writeQueue = write.catchError((Object _) {});
+    final settled = write.catchError((Object _) {});
+    _writeQueue = settled;
     return write.whenComplete(() {
+      if (identical(_writeQueue, settled)) _writeQueue = null;
       if (revision == _saveRevision) _pendingSettings = null;
     });
   }

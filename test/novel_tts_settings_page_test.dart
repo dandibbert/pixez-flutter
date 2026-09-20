@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -95,9 +94,18 @@ void main() {
     await tester.pump();
     final pending = NovelTtsSettings.load();
     final selected = pending.selectVoicePreset(pending.activeVoicePresets.first);
-    await selected.save();
-    // Finishing the reverse route transition disposes the old settings page.
+    var saved = false;
+    Object? saveError;
+    selected.save().then<void>(
+      (_) { saved = true; },
+      onError: (Object error) { saveError = error; },
+    );
+    // Drive fake-clock microtasks while the reverse route transition disposes
+    // the old page. Awaiting the queued write before pumping can deadlock the
+    // test; asserting its completion also makes a stuck queue fail explicitly.
     await tester.pumpAndSettle();
+    expect(saveError, isNull);
+    expect(saved, isTrue, reason: 'The newer settings write must finish');
     expect(NovelTtsSettings.load().customVoice, 'a');
     expect(tester.takeException(), isNull);
   });

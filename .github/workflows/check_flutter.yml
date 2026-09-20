@@ -54,6 +54,12 @@ jobs:
               done
           git diff -- '*.dart' > "$RUNNER_TEMP/dart-format.patch"
           test ! -s "$RUNNER_TEMP/dart-format.patch"
+      - name: Upload formatting patch
+        if: ${{ !cancelled() && steps.format.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: dart-format-patch
+          path: ${{ runner.temp }}/dart-format.patch
       - name: Analyze
         id: analyze
         if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
@@ -62,13 +68,7 @@ jobs:
           flutter analyze --no-fatal-infos --no-fatal-warnings test
       - name: Test
         if: ${{ !cancelled() && steps.analyze.outcome == 'success' }}
-        run: flutter test --reporter expanded
-      - name: Upload formatting patch
-        if: ${{ !cancelled() && steps.format.outcome == 'failure' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: dart-format-patch
-          path: ${{ runner.temp }}/dart-format.patch
+        run: flutter test --reporter expanded --timeout 2m
       - name: Upload widget screenshots
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
