@@ -171,8 +171,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _clipSub = _audio.onClipIndex.listen(_onQueuedClip);
     final events = _audio;
     if (events is NovelTtsAudioEvents) {
-      _playingSub = events.onPlaying.listen(_onPlatformPlaying);
-      _errorSub = events.onError.listen(_onAudioError);
+      final audioEvents = events as NovelTtsAudioEvents;
+      _playingSub = audioEvents.onPlaying.listen(_onPlatformPlaying);
+      _errorSub = audioEvents.onError.listen(_onAudioError);
     }
     _nowPlaying.onRemote = _onRemote;
     _nowPlaying.bind();
@@ -294,7 +295,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   void _cancelSynthesis() {
     final synth = _synthesizer;
-    if (synth is NovelTtsCancellableSynthesizer) synth.cancelPending();
+    if (synth is NovelTtsCancellableSynthesizer) {
+      (synth as NovelTtsCancellableSynthesizer).cancelPending();
+    }
     _inflight.clear();
   }
 
@@ -1573,7 +1576,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     clips = const [];
     session = null;
     final synth = _synthesizer;
-    if (synth is NovelTtsCancellableSynthesizer) synth.dispose();
+    if (synth is NovelTtsCancellableSynthesizer) {
+      (synth as NovelTtsCancellableSynthesizer).dispose();
+    }
     unawaited(_nowPlaying.keepAlive(false));
     unawaited(_nowPlaying.endBackgroundTask());
     unawaited(_nowPlaying.stop());

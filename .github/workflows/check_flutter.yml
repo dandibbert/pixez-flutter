@@ -43,10 +43,11 @@ jobs:
         id: format
         env:
           FORMAT_BASE: ${{ github.event.pull_request.base.sha || 'origin/master' }}
+          FORMAT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           # Do not reformat entire upstream files just because a sync merge
           # included them. Check Dart files edited by commits on this branch.
-          git log --first-parent --no-merges --format= --name-only "$FORMAT_BASE..HEAD" -- \
+          git log --first-parent --no-merges --format= --name-only "$FORMAT_BASE..$FORMAT_HEAD" -- \
             '*.dart' ':!plugins/**' ':!**/*.g.dart' ':!**/*.freezed.dart' \
             | sort -u | sed '/^$/d' | while IFS= read -r file; do
                 if [ -f "$file" ]; then dart format "$file"; fi
@@ -54,12 +55,13 @@ jobs:
           git diff -- '*.dart' > "$RUNNER_TEMP/dart-format.patch"
           test ! -s "$RUNNER_TEMP/dart-format.patch"
       - name: Analyze
+        id: analyze
         if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
         run: |
           flutter analyze --no-fatal-infos --no-fatal-warnings lib
           flutter analyze --no-fatal-infos --no-fatal-warnings test
       - name: Test
-        if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
+        if: ${{ !cancelled() && steps.analyze.outcome == 'success' }}
         run: flutter test --reporter expanded
       - name: Upload formatting patch
         if: ${{ !cancelled() && steps.format.outcome == 'failure' }}
