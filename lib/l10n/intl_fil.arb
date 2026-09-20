@@ -466,5 +466,12 @@
   "novel_tts_insert_placeholder": "I-tap para isingit",
   "novel_tts_reading_mode": "Paraan ng match",
   "novel_tts_mode_exact_hint": "Palaging palitan ang eksaktong sulat na ito.",
-  "novel_tts_mode_alias_hint": "Ituring na pangalan ng tao. Ilalapat maliban kung bahagi ang mga karakter ng pandiwa, pang-uri, o mas mahabang salita."
+  "novel_tts_mode_alias_hint": "Ituring na pangalan ng tao. Ilalapat maliban kung bahagi ang mga karakter ng pandiwa, pang-uri, o mas mahabang salita.",
+  "date_preset_none": "Walang limitasyon",
+  "date_preset_1day": "1 araw",
+  "date_preset_1week": "1 linggo",
+  "date_preset_1month": "1 buwan",
+  "date_preset_6months": "6 na buwan",
+  "date_preset_1year": "1 taon",
+  "date_preset_custom": "Pumili ng saklaw ng petsa"
 }

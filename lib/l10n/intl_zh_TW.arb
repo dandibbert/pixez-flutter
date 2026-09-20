@@ -509,5 +509,12 @@
   "novel_tts_insert_placeholder": "點一下插入",
   "novel_tts_reading_mode": "匹配方式",
   "novel_tts_mode_exact_hint": "只要出現這段字就替換。",
-  "novel_tts_mode_alias_hint": "按人名處理。除非這些字屬於動詞、形容詞或更長的詞，否則都會替換。"
+  "novel_tts_mode_alias_hint": "按人名處理。除非這些字屬於動詞、形容詞或更長的詞，否則都會替換。",
+  "date_preset_none": "不限",
+  "date_preset_1day": "1天",
+  "date_preset_1week": "1週",
+  "date_preset_1month": "1個月",
+  "date_preset_6months": "6個月",
+  "date_preset_1year": "1年",
+  "date_preset_custom": "指定期間"
 }

@@ -173,5 +173,13 @@ void main() {
       expect(week.start, DateTime.utc(2026, 8, 21));
       expect(NovelSearchQuery.dateRangeForPreset(0, now: now), isNull);
     });
+
+    test('upstream bookmark shortcuts keep the fork API query format', () {
+      expect(NovelSearchQuery.bookmarkPresets, contains(100000));
+      const query = NovelSearchQuery(word: 'test', bookmarkNumMin: 100000);
+      final restored = NovelSearchQuery.tryDecode(query.encode())!;
+      expect(restored.bookmarkNumMin, 100000);
+      expect(restored.requestWord, 'test');
+    });
   });
 }

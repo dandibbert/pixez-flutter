@@ -501,5 +501,12 @@
   "novel_tts_insert_placeholder": "Tap to insert",
   "novel_tts_reading_mode": "Match mode",
   "novel_tts_mode_exact_hint": "Always replace this exact wording.",
-  "novel_tts_mode_alias_hint": "Treat as a person name. Applies unless the characters belong to a verb, an adjective, or a longer word."
+  "novel_tts_mode_alias_hint": "Treat as a person name. Applies unless the characters belong to a verb, an adjective, or a longer word.",
+  "date_preset_none": "All time",
+  "date_preset_1day": "1 day",
+  "date_preset_1week": "1 week",
+  "date_preset_1month": "1 month",
+  "date_preset_6months": "6 months",
+  "date_preset_1year": "1 year",
+  "date_preset_custom": "Custom range"
 }

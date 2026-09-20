@@ -457,5 +457,12 @@
   "novel_tts_insert_placeholder": "Toca para insertar",
   "novel_tts_reading_mode": "Modo de coincidencia",
   "novel_tts_mode_exact_hint": "Siempre sustituye este texto exacto.",
-  "novel_tts_mode_alias_hint": "Tratar como nombre de persona. Se aplica salvo que los caracteres formen un verbo, un adjetivo o una palabra más larga."
+  "novel_tts_mode_alias_hint": "Tratar como nombre de persona. Se aplica salvo que los caracteres formen un verbo, un adjetivo o una palabra más larga.",
+  "date_preset_none": "Sin límite",
+  "date_preset_1day": "1 día",
+  "date_preset_1week": "1 semana",
+  "date_preset_1month": "1 mes",
+  "date_preset_6months": "6 meses",
+  "date_preset_1year": "1 año",
+  "date_preset_custom": "Intervalo personalizado"
 }

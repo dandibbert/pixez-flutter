@@ -36,34 +36,42 @@ class _BookTagPageState extends State<BookTagPage>
   Widget build(BuildContext context) {
     return Observer(
       builder: (_) {
-      return NavigationView(
-        pane: NavigationPane(
-          selected: _index,
-          onChanged: (value) => setState(() {
-            _index = value;
-          }),
-          items: [
-            for (var i in bookTagStore.bookTagList)
-              PaneItem(
-                icon: Icon(FluentIcons.tag),
+        final tags = bookTagStore.bookTagList;
+        if (tags.isEmpty) {
+          return ScaffoldPage(
+            content: Center(child: Text(I18n.of(context).no_result)),
+          );
+        }
+        final selected = _index.clamp(0, tags.length - 1);
+
+        return NavigationView(
+          pane: NavigationPane(
+            selected: selected,
+            onChanged: (value) => setState(() {
+              _index = value;
+            }),
+            items: [
+              for (var tag in tags)
+                PaneItem(
+                  icon: const Icon(FluentIcons.tag),
                   body: ResultIllustList(
                     initialQuery: IllustSearchQuery(
-                      word: i,
+                      word: tag,
                       mode: userSetting.searchResultMode,
                     ),
                   ),
-                title: Text(i),
+                  title: Text(tag),
                 ),
-          ],
-          footerItems: [
-            PaneItemAction(
-              icon: Icon(FluentIcons.edit),
-              onTap: () => _showEditDialog(context),
-            ),
-          ],
-          displayMode: PaneDisplayMode.top,
-        ),
-      );
+            ],
+            footerItems: [
+              PaneItemAction(
+                icon: const Icon(FluentIcons.edit),
+                onTap: () => _showEditDialog(context),
+              ),
+            ],
+            displayMode: PaneDisplayMode.top,
+          ),
+        );
       },
     );
   }

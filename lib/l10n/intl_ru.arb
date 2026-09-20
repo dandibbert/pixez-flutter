@@ -466,5 +466,12 @@
   "novel_tts_insert_placeholder": "Нажмите, чтобы вставить",
   "novel_tts_reading_mode": "Режим совпадения",
   "novel_tts_mode_exact_hint": "Всегда заменять эту точную формулировку.",
-  "novel_tts_mode_alias_hint": "Считать именем. Применяется, если знаки не входят в глагол, прилагательное или более длинное слово."
+  "novel_tts_mode_alias_hint": "Считать именем. Применяется, если знаки не входят в глагол, прилагательное или более длинное слово.",
+  "date_preset_none": "За всё время",
+  "date_preset_1day": "1 день",
+  "date_preset_1week": "1 неделя",
+  "date_preset_1month": "1 месяц",
+  "date_preset_6months": "6 месяцев",
+  "date_preset_1year": "1 год",
+  "date_preset_custom": "Указать период"
 }

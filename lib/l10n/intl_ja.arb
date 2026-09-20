@@ -484,5 +484,12 @@
   "novel_tts_insert_placeholder": "タップして挿入",
   "novel_tts_reading_mode": "一致方法",
   "novel_tts_mode_exact_hint": "この表記が現れたら必ず置き換えます。",
-  "novel_tts_mode_alias_hint": "人名として扱います。動詞・形容詞・熟語の一部でない限り置き換えます。"
+  "novel_tts_mode_alias_hint": "人名として扱います。動詞・形容詞・熟語の一部でない限り置き換えます。",
+  "date_preset_none": "指定なし",
+  "date_preset_1day": "1日",
+  "date_preset_1week": "1週間",
+  "date_preset_1month": "1ヶ月",
+  "date_preset_6months": "6ヶ月",
+  "date_preset_1year": "1年",
+  "date_preset_custom": "期間指定"
 }

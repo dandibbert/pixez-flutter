@@ -466,5 +466,12 @@
   "novel_tts_insert_placeholder": "Chạm để chèn",
   "novel_tts_reading_mode": "Cách khớp",
   "novel_tts_mode_exact_hint": "Luôn thay đúng cụm chữ này.",
-  "novel_tts_mode_alias_hint": "Coi là tên người. Áp dụng trừ khi các ký tự thuộc một động từ, tính từ hoặc từ dài hơn."
+  "novel_tts_mode_alias_hint": "Coi là tên người. Áp dụng trừ khi các ký tự thuộc một động từ, tính từ hoặc từ dài hơn.",
+  "date_preset_none": "Không giới hạn",
+  "date_preset_1day": "1 ngày",
+  "date_preset_1week": "1 tuần",
+  "date_preset_1month": "1 tháng",
+  "date_preset_6months": "6 tháng",
+  "date_preset_1year": "1 năm",
+  "date_preset_custom": "Khoảng thời gian tùy chỉnh"
 }

@@ -466,5 +466,12 @@
   "novel_tts_insert_placeholder": "Ketuk untuk sisipkan",
   "novel_tts_reading_mode": "Cara mencocokkan",
   "novel_tts_mode_exact_hint": "Selalu ganti tulisan persis ini.",
-  "novel_tts_mode_alias_hint": "Perlakukan sebagai nama orang. Diterapkan kecuali karakternya termasuk verba, adjektiva, atau kata yang lebih panjang."
+  "novel_tts_mode_alias_hint": "Perlakukan sebagai nama orang. Diterapkan kecuali karakternya termasuk verba, adjektiva, atau kata yang lebih panjang.",
+  "date_preset_none": "Semua waktu",
+  "date_preset_1day": "1 hari",
+  "date_preset_1week": "1 minggu",
+  "date_preset_1month": "1 bulan",
+  "date_preset_6months": "6 bulan",
+  "date_preset_1year": "1 tahun",
+  "date_preset_custom": "Rentang khusus"
 }
