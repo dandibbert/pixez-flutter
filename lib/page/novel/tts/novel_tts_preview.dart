@@ -33,16 +33,19 @@ class NovelTtsPreview {
     Directory? directory;
     AudioPlayer? player;
     try {
-      final bytes = await NovelTtsHttpSynthesizer(client: client)
-          .synthesize(settings, text)
-          .timeout(const Duration(seconds: 30));
+      final bytes = await NovelTtsHttpSynthesizer(
+        client: client,
+      ).synthesize(settings, text).timeout(const Duration(seconds: 30));
       if (_cancelled) return;
       final temporary = await getTemporaryDirectory();
       if (_cancelled) return;
-      directory = await Directory('${temporary.path}/novel_tts_preview_')
-          .createTemp();
+      directory = await Directory(
+        '${temporary.path}/novel_tts_preview_',
+      ).createTemp();
       if (_cancelled) return;
-      final file = await File('${directory.path}/preview.mp3').writeAsBytes(bytes);
+      final file = await File(
+        '${directory.path}/preview.mp3',
+      ).writeAsBytes(bytes);
       if (_cancelled) return;
       player = AudioPlayer();
       _player = player;

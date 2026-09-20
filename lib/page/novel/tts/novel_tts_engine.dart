@@ -112,7 +112,8 @@ NovelTtsRequest buildNovelTtsRequest(NovelTtsSettings settings, String text) {
 
 Uri _ttsUri(String value) {
   final uri = Uri.tryParse(value);
-  if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') ||
+  if (uri == null ||
+      (uri.scheme != 'https' && uri.scheme != 'http') ||
       uri.host.isEmpty) {
     throw const NovelTtsConfigException('TTS URL must be an HTTP or HTTPS URL');
   }
@@ -189,15 +190,12 @@ NovelTtsRequest _customRequest(NovelTtsSettings settings, String text) {
   if (method != 'GET' && settings.customBody.trim().isNotEmpty) {
     var contentType = settings.customContentType;
     for (final header in headers.entries) {
-      if (header.key.toLowerCase() == 'content-type') contentType = header.value;
+      if (header.key.toLowerCase() == 'content-type')
+        contentType = header.value;
     }
     final rendered = contentType.toLowerCase().contains('json')
         ? applyNovelTtsJsonTemplate(settings.customBody, vars)
-        : applyNovelTtsTemplate(
-            settings.customBody,
-            vars,
-            encodeValues: false,
-          );
+        : applyNovelTtsTemplate(settings.customBody, vars, encodeValues: false);
     body = utf8.encode(rendered);
     headers.putIfAbsent(
       'Content-Type',
@@ -259,8 +257,9 @@ class NovelTtsHttpSynthesizer
     final request = buildNovelTtsRequest(settings, text);
     final generation = _generation;
     PerfCounters.ttsRequests++;
-    final client = _client ?? (HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10));
+    final client =
+        _client ??
+        (HttpClient()..connectionTimeout = const Duration(seconds: 10));
     final owned = _client == null;
     if (owned) _ownedClients.add(client);
     HttpClientRequest? activeRequest;
@@ -293,11 +292,14 @@ class NovelTtsHttpSynthesizer
           throw NovelTtsSynthException('TTS error: ${_briefError(bytes)}');
         }
         return bytes;
-      })().timeout(requestTimeout, onTimeout: () {
-        expired = true;
-        activeRequest?.abort();
-        throw const NovelTtsSynthException('TTS request timed out');
-      });
+      })().timeout(
+        requestTimeout,
+        onTimeout: () {
+          expired = true;
+          activeRequest?.abort();
+          throw const NovelTtsSynthException('TTS request timed out');
+        },
+      );
     } catch (_) {
       activeRequest?.abort();
       rethrow;
@@ -354,10 +356,9 @@ bool _looksLikeJsonError(List<int> bytes) {
 }
 
 String _briefError(List<int> bytes) {
-  final text = utf8.decode(
-    bytes.take(960).toList(),
-    allowMalformed: true,
-  ).trim();
+  final text = utf8
+      .decode(bytes.take(960).toList(), allowMalformed: true)
+      .trim();
   if (text.length <= 240) {
     return text;
   }

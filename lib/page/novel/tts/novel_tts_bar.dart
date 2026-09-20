@@ -36,11 +36,12 @@ class NovelTtsBar extends StatelessWidget {
       NovelTtsStatus.synthesizing => i18n.novel_tts_synthesizing,
       NovelTtsStatus.playing => i18n.novel_tts_playing,
       NovelTtsStatus.paused => i18n.novel_tts_pause,
-      NovelTtsStatus.error => controller.errorMessage == 'not_configured'
-          ? i18n.novel_tts_not_configured
-          : controller.errorMessage == 'empty'
-          ? i18n.novel_tts_empty
-          : i18n.novel_tts_error,
+      NovelTtsStatus.error =>
+        controller.errorMessage == 'not_configured'
+            ? i18n.novel_tts_not_configured
+            : controller.errorMessage == 'empty'
+            ? i18n.novel_tts_empty
+            : i18n.novel_tts_error,
       NovelTtsStatus.idle => '',
     };
     return Material(
@@ -161,18 +162,25 @@ class NovelTtsBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(i18n.novel_tts_quick_voice,
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                i18n.novel_tts_quick_voice,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               if (settings.activeVoicePresets.isEmpty)
-                Padding(padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(i18n.novel_tts_no_saved_voices)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(i18n.novel_tts_no_saved_voices),
+                ),
               for (final preset in settings.activeVoicePresets)
                 ListTile(
                   title: Text(preset.name),
                   subtitle: preset.voice.isEmpty ? null : Text(preset.voice),
-                  leading: Icon(settings.isVoicePresetSelected(preset)
-                      ? Icons.radio_button_checked : Icons.radio_button_off),
+                  leading: Icon(
+                    settings.isVoicePresetSelected(preset)
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                  ),
                   onTap: () => Navigator.pop(context, preset),
                 ),
               TextButton.icon(
@@ -195,14 +203,19 @@ class NovelTtsBar extends StatelessWidget {
 }
 
 Future<void> openNovelTtsSettings(BuildContext context) {
-  final fluentTheme = context.findAncestorWidgetOfExactType<fluent.FluentTheme>();
-  final theme = fluentTheme == null ? Theme.of(context) : ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: fluentTheme.data.accentColor.normal,
-      brightness: fluentTheme.data.brightness,
-    ),
-  );
+  final fluentTheme = context
+      .findAncestorWidgetOfExactType<fluent.FluentTheme>();
+  final theme = fluentTheme == null
+      ? Theme.of(context)
+      : ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: fluentTheme.data.accentColor.normal,
+            brightness: fluentTheme.data.brightness,
+          ),
+        );
   return Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => Theme(data: theme, child: const NovelTtsPage())),
+    MaterialPageRoute(
+      builder: (_) => Theme(data: theme, child: const NovelTtsPage()),
+    ),
   );
 }

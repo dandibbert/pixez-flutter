@@ -48,7 +48,10 @@ void main() {
   testWidgets('closing a reader releases its chapter loader and navigation', (
     tester,
   ) async {
-    final controller = NovelTtsController(audio: _Audio(), nowPlaying: _NowPlaying());
+    final controller = NovelTtsController(
+      audio: _Audio(),
+      nowPlaying: _NowPlaying(),
+    );
     NovelTtsController.debugInstance = controller;
     addTearDown(() {
       NovelTtsController.debugInstance = null;
@@ -61,13 +64,20 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     expect(controller.onNavigate, isNull);
     expect(controller.onLoadChapter, same(loadNovelTtsChapter));
-    expect(await loader(99), isNull, reason: 'a stale loader must not fetch after disposal');
+    expect(
+      await loader(99),
+      isNull,
+      reason: 'a stale loader must not fetch after disposal',
+    );
   });
 
   testWidgets('closing an old reader preserves a newer playback owner', (
     tester,
   ) async {
-    final controller = NovelTtsController(audio: _Audio(), nowPlaying: _NowPlaying());
+    final controller = NovelTtsController(
+      audio: _Audio(),
+      nowPlaying: _NowPlaying(),
+    );
     NovelTtsController.debugInstance = controller;
     addTearDown(() {
       NovelTtsController.debugInstance = null;
@@ -84,40 +94,57 @@ void main() {
   });
 
   for (final covered in [false, true]) {
-    testWidgets(covered
-        ? 'a chapter change cannot replace an open settings route'
-        : 'background playback cannot navigate an unrelated reader', (tester) async {
-      final controller = NovelTtsController(audio: _Audio(), nowPlaying: _NowPlaying());
-      controller.session = NovelTtsSession(
-        novelId: covered ? 1 : 42,
-        title: 'playing book', author: 'author', page: 1,
-        totalPages: 2, chunks: const ['text'],
-      );
-      NovelTtsController.debugInstance = controller;
-      addTearDown(() {
-        NovelTtsController.debugInstance = null;
-        controller.dispose();
-      });
-      await tester.pumpWidget(_reader());
-      if (covered) {
-        final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
-        navigator.push(MaterialPageRoute<void>(
-          builder: (_) => const Scaffold(body: Text('voice settings')),
-        ));
+    testWidgets(
+      covered
+          ? 'a chapter change cannot replace an open settings route'
+          : 'background playback cannot navigate an unrelated reader',
+      (tester) async {
+        final controller = NovelTtsController(
+          audio: _Audio(),
+          nowPlaying: _NowPlaying(),
+        );
+        controller.session = NovelTtsSession(
+          novelId: covered ? 1 : 42,
+          title: 'playing book',
+          author: 'author',
+          page: 1,
+          totalPages: 2,
+          chunks: const ['text'],
+        );
+        NovelTtsController.debugInstance = controller;
+        addTearDown(() {
+          NovelTtsController.debugInstance = null;
+          controller.dispose();
+        });
+        await tester.pumpWidget(_reader());
+        if (covered) {
+          final navigator = tester.state<NavigatorState>(
+            find.byType(Navigator).first,
+          );
+          navigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => const Scaffold(body: Text('voice settings')),
+            ),
+          );
+          await tester.pumpAndSettle();
+        }
+        controller.onNavigate!(
+          const NovelTtsNavigate(
+            kind: NovelTtsNavigateKind.series,
+            seriesNovelId: 2,
+            keepPlaying: true,
+          ),
+        );
         await tester.pumpAndSettle();
-      }
-      controller.onNavigate!(const NovelTtsNavigate(
-        kind: NovelTtsNavigateKind.series, seriesNovelId: 2, keepPlaying: true,
-      ));
-      await tester.pumpAndSettle();
-      if (covered) {
-        expect(find.text('voice settings'), findsOneWidget);
-      }
-      final reader = tester.widget<NovelViewerPage>(
-        find.byType(NovelViewerPage, skipOffstage: false),
-      );
-      expect(reader.id, 1);
-      await tester.pumpWidget(const SizedBox());
-    });
+        if (covered) {
+          expect(find.text('voice settings'), findsOneWidget);
+        }
+        final reader = tester.widget<NovelViewerPage>(
+          find.byType(NovelViewerPage, skipOffstage: false),
+        );
+        expect(reader.id, 1);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   }
 }

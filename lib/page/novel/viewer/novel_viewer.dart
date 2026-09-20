@@ -174,10 +174,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void _openSeriesNovel(int id, {NovelStore? store}) {
     Navigator.of(context, rootNavigator: true).pushReplacement(
       MaterialPageRoute(
-        builder: (BuildContext context) => NovelViewerPage(
-          id: id,
-          novelStore: store ?? NovelStore(id, null),
-        ),
+        builder: (BuildContext context) =>
+            NovelViewerPage(id: id, novelStore: store ?? NovelStore(id, null)),
       ),
     );
   }
@@ -205,7 +203,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void _onTtsNavigate(NovelTtsNavigate navigate) {
     // Background playback must not replace settings or a different novel the
     // user is browsing. The subtitle remains an explicit way back to playback.
-    if (!mounted || !_followTtsNavigation ||
+    if (!mounted ||
+        !_followTtsNavigation ||
         ModalRoute.of(context)?.isCurrent != true) {
       return;
     }
@@ -254,6 +253,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         });
       }
     }
+
     if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
       apply();
     } else {
@@ -638,7 +638,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pageIndex = clampNovelPage(_currentPage, totalPages) - 1;
     final pageSpans = pages.isEmpty ? <NovelSpansData>[] : pages[pageIndex];
     final blocks = _splitCache.blocks(pageSpans, pageIndex);
-    final followClip = _tts.isActive &&
+    final followClip =
+        _tts.isActive &&
         _tts.session?.novelId == widget.id &&
         _tts.session?.page == _currentPage;
     final clipHighlights = followClip

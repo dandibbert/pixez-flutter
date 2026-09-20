@@ -64,43 +64,52 @@ void main() {
         nextSeriesId: next,
       );
 
-  test('real audio adapter prunes played sources without repeating indexes', () async {
-    final native = _NativeAudio();
-    final audio = JustAudioNovelTtsPlayer(player: native);
-    final indexes = <int>[];
-    final subscription = audio.onClipIndex.listen(indexes.add);
-    addTearDown(subscription.cancel);
-    addTearDown(audio.dispose);
-    await audio.playFiles(['/0.mp3', '/1.mp3', '/2.mp3', '/3.mp3']);
-    expect(native.source!.useLazyPreparation, isTrue);
-    for (var tag = 1; tag <= 20; tag++) {
-      native.advanceTo(tag);
-      await _until(() => indexes.isNotEmpty && indexes.last == tag);
-      await _until(() =>
-          (native.source!.children.first as IndexedAudioSource).tag == tag - 1);
-      expect(native.source!.children.length, lessThanOrEqualTo(5));
-      // A sequence update caused by removing old sources retains its tag.
-      native.advanceTo(tag);
-      await audio.enqueue('/${tag + 3}.mp3');
-    }
-    expect(indexes, List.generate(20, (index) => index + 1));
-    await audio.stop();
-    expect(native.source!.children, isEmpty);
-  });
+  test(
+    'real audio adapter prunes played sources without repeating indexes',
+    () async {
+      final native = _NativeAudio();
+      final audio = JustAudioNovelTtsPlayer(player: native);
+      final indexes = <int>[];
+      final subscription = audio.onClipIndex.listen(indexes.add);
+      addTearDown(subscription.cancel);
+      addTearDown(audio.dispose);
+      await audio.playFiles(['/0.mp3', '/1.mp3', '/2.mp3', '/3.mp3']);
+      expect(native.source!.useLazyPreparation, isTrue);
+      for (var tag = 1; tag <= 20; tag++) {
+        native.advanceTo(tag);
+        await _until(() => indexes.isNotEmpty && indexes.last == tag);
+        await _until(
+          () =>
+              (native.source!.children.first as IndexedAudioSource).tag ==
+              tag - 1,
+        );
+        expect(native.source!.children.length, lessThanOrEqualTo(5));
+        // A sequence update caused by removing old sources retains its tag.
+        native.advanceTo(tag);
+        await audio.enqueue('/${tag + 3}.mp3');
+      }
+      expect(indexes, List.generate(20, (index) => index + 1));
+      await audio.stop();
+      expect(native.source!.children, isEmpty);
+    },
+  );
 
-  test('stop during source preparation cannot start playback afterwards', () async {
-    final native = _NativeAudio()..prepare = Completer<void>();
-    final audio = JustAudioNovelTtsPlayer(player: native);
-    addTearDown(audio.dispose);
-    final starting = audio.playFile('/waiting.mp3');
-    await _until(() => native.source != null);
-    final stopping = audio.stop();
-    native.prepare!.complete();
-    await starting;
-    await stopping;
-    expect(native.playCount, 0);
-    expect(native.source!.children, isEmpty);
-  });
+  test(
+    'stop during source preparation cannot start playback afterwards',
+    () async {
+      final native = _NativeAudio()..prepare = Completer<void>();
+      final audio = JustAudioNovelTtsPlayer(player: native);
+      addTearDown(audio.dispose);
+      final starting = audio.playFile('/waiting.mp3');
+      await _until(() => native.source != null);
+      final stopping = audio.stop();
+      native.prepare!.complete();
+      await starting;
+      await stopping;
+      expect(native.playCount, 0);
+      expect(native.source!.children, isEmpty);
+    },
+  );
 
   test('stop invalidates a start waiting for pronunciation settings', () async {
     final repository = _DelayedRepository();
@@ -117,46 +126,56 @@ void main() {
     expect(audio.playCount, 0);
   });
 
-  test('a stale series loader cannot append to a replacement session', () async {
-    final reader = controller();
-    addTearDown(reader.dispose);
-    final chapter = Completer<NovelTtsChapter?>();
-    var loading = false;
-    reader.onLoadChapter = (_) {
-      loading = true;
-      return chapter.future;
-    };
-    final original = start(reader, next: 2);
-    await _until(() => loading);
-    await start(reader, id: 99);
-    chapter.complete(const NovelTtsChapter(
-      novelId: 2,
-      title: 'Stale chapter',
-      author: 'Author',
-      pageTexts: ['过期的章节。'],
-    ));
-    await original;
-    expect(reader.session?.novelId, 99);
-    expect(reader.clips.every((clip) => clip.novelId == 99), isTrue);
-  });
+  test(
+    'a stale series loader cannot append to a replacement session',
+    () async {
+      final reader = controller();
+      addTearDown(reader.dispose);
+      final chapter = Completer<NovelTtsChapter?>();
+      var loading = false;
+      reader.onLoadChapter = (_) {
+        loading = true;
+        return chapter.future;
+      };
+      final original = start(reader, next: 2);
+      await _until(() => loading);
+      await start(reader, id: 99);
+      chapter.complete(
+        const NovelTtsChapter(
+          novelId: 2,
+          title: 'Stale chapter',
+          author: 'Author',
+          pageTexts: ['过期的章节。'],
+        ),
+      );
+      await original;
+      expect(reader.session?.novelId, 99);
+      expect(reader.clips.every((clip) => clip.novelId == 99), isTrue);
+    },
+  );
 
-  test('reattaching a page preserves the same page number in a prefetched chapter', () async {
-    final reader = controller();
-    addTearDown(reader.dispose);
-    reader.onLoadChapter = (_) async => const NovelTtsChapter(
-      novelId: 2,
-      title: 'Second',
-      author: 'Author',
-      pageTexts: ['下一章的第一页。'],
-    );
-    await start(reader, next: 2);
-    expect(reader.clips.map((clip) => clip.novelId), contains(2));
-    await reader.attachPage(page: 1, totalPages: 1, pageText: '本章更新后的第一页。');
-    expect(reader.currentClip?.novelId, 1);
-    expect(reader.currentClip?.text, '本章更新后的第一页。');
-    expect(reader.clips.where((clip) => clip.novelId == 2).single.text,
-        '下一章的第一页。');
-  });
+  test(
+    'reattaching a page preserves the same page number in a prefetched chapter',
+    () async {
+      final reader = controller();
+      addTearDown(reader.dispose);
+      reader.onLoadChapter = (_) async => const NovelTtsChapter(
+        novelId: 2,
+        title: 'Second',
+        author: 'Author',
+        pageTexts: ['下一章的第一页。'],
+      );
+      await start(reader, next: 2);
+      expect(reader.clips.map((clip) => clip.novelId), contains(2));
+      await reader.attachPage(page: 1, totalPages: 1, pageText: '本章更新后的第一页。');
+      expect(reader.currentClip?.novelId, 1);
+      expect(reader.currentClip?.text, '本章更新后的第一页。');
+      expect(
+        reader.clips.where((clip) => clip.novelId == 2).single.text,
+        '下一章的第一页。',
+      );
+    },
+  );
 
   test('dispose during synthesis never revives the player', () async {
     final synth = _Synth()..gate = Completer<void>();
@@ -194,67 +213,84 @@ void main() {
     final reader = controller(synth: synth, settings: () => settings);
     addTearDown(reader.dispose);
     await start(reader);
-    settings = settings.copyWith(customUrl: 'https://example.test/b?text={text}');
+    settings = settings.copyWith(
+      customUrl: 'https://example.test/b?text={text}',
+    );
     await reader.applySettings();
     expect(synth.requests, hasLength(2));
     expect(synth.requests.last.customUrl, contains('/b?'));
     expect(reader.status, NovelTtsStatus.playing);
   });
 
-  test('changing a voice while paused replaces audio and stays paused', () async {
-    final synth = _Synth();
-    final audio = _Audio();
-    var settings = _settings;
-    final reader = controller(synth: synth, audio: audio, settings: () => settings);
-    addTearDown(reader.dispose);
-    await start(reader);
-    await reader.pause();
-    settings = settings.copyWith(customVoice: 'second');
-    await reader.applySettings();
-    expect(synth.requests.last.customVoice, 'second');
-    expect(audio.playCount, 2);
-    expect(reader.status, NovelTtsStatus.paused);
-  });
+  test(
+    'changing a voice while paused replaces audio and stays paused',
+    () async {
+      final synth = _Synth();
+      final audio = _Audio();
+      var settings = _settings;
+      final reader = controller(
+        synth: synth,
+        audio: audio,
+        settings: () => settings,
+      );
+      addTearDown(reader.dispose);
+      await start(reader);
+      await reader.pause();
+      settings = settings.copyWith(customVoice: 'second');
+      await reader.applySettings();
+      expect(synth.requests.last.customVoice, 'second');
+      expect(audio.playCount, 2);
+      expect(reader.status, NovelTtsStatus.paused);
+    },
+  );
 
-  test('a seek index event arriving before seek returns advances once', () async {
-    final audio = _Audio()..emitOnSeek = true;
-    final reader = controller(audio: audio);
-    addTearDown(reader.dispose);
-    await reader.start(
-      novelId: 1,
-      title: 'Story',
-      author: 'Author',
-      page: 1,
-      totalPages: 1,
-      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
-    );
-    await reader.skip(direction: 'next');
-    expect(reader.clipIndex, 1);
-  });
-
-  test('continuous series retains only previous/current/prefetched chapters', () async {
-    final audio = _Audio()..emitOnSeek = true;
-    final reader = controller(audio: audio);
-    addTearDown(reader.dispose);
-    reader.onLoadChapter = (id) async => NovelTtsChapter(
-      novelId: id,
-      title: 'Story $id',
-      author: 'Author',
-      pageTexts: ['第 $id 章。'],
-      prevSeriesId: id - 1,
-      nextSeriesId: id < 20 ? id + 1 : null,
-    );
-    await start(reader, next: 2);
-    for (var id = 2; id <= 20; id++) {
-      await _until(() => reader.clips.any((clip) => clip.novelId == id));
+  test(
+    'a seek index event arriving before seek returns advances once',
+    () async {
+      final audio = _Audio()..emitOnSeek = true;
+      final reader = controller(audio: audio);
+      addTearDown(reader.dispose);
+      await reader.start(
+        novelId: 1,
+        title: 'Story',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+      );
       await reader.skip(direction: 'next');
-      await _until(() => reader.session?.novelId == id);
-      expect(reader.clips.map((clip) => clip.novelId).toSet().length,
-          lessThanOrEqualTo(3));
-    }
-    expect(reader.session?.novelId, 20);
-    await reader.stop();
-  });
+      expect(reader.clipIndex, 1);
+    },
+  );
+
+  test(
+    'continuous series retains only previous/current/prefetched chapters',
+    () async {
+      final audio = _Audio()..emitOnSeek = true;
+      final reader = controller(audio: audio);
+      addTearDown(reader.dispose);
+      reader.onLoadChapter = (id) async => NovelTtsChapter(
+        novelId: id,
+        title: 'Story $id',
+        author: 'Author',
+        pageTexts: ['第 $id 章。'],
+        prevSeriesId: id - 1,
+        nextSeriesId: id < 20 ? id + 1 : null,
+      );
+      await start(reader, next: 2);
+      for (var id = 2; id <= 20; id++) {
+        await _until(() => reader.clips.any((clip) => clip.novelId == id));
+        await reader.skip(direction: 'next');
+        await _until(() => reader.session?.novelId == id);
+        expect(
+          reader.clips.map((clip) => clip.novelId).toSet().length,
+          lessThanOrEqualTo(3),
+        );
+      }
+      expect(reader.session?.novelId, 20);
+      await reader.stop();
+    },
+  );
 
   test('gap keepalive ends when audio is ready and when paused', () async {
     final nowPlaying = _NowPlaying();
@@ -267,69 +303,94 @@ void main() {
     expect(nowPlaying.keepAliveStates.last, isFalse);
   });
 
-  test('platform interruptions update state and preserve automatic resume', () async {
-    final audio = _Audio();
-    final reader = controller(audio: audio);
-    addTearDown(reader.dispose);
-    await start(reader);
-    audio.playing.add(false);
-    expect(reader.status, NovelTtsStatus.paused);
-    audio.playing.add(true);
-    expect(reader.status, NovelTtsStatus.playing);
-    await reader.pause();
-    audio.playing.add(true);
-    expect(reader.status, NovelTtsStatus.paused,
-        reason: 'A user pause must not be undone by a late platform event');
-  });
+  test(
+    'platform interruptions update state and preserve automatic resume',
+    () async {
+      final audio = _Audio();
+      final reader = controller(audio: audio);
+      addTearDown(reader.dispose);
+      await start(reader);
+      audio.playing.add(false);
+      expect(reader.status, NovelTtsStatus.paused);
+      audio.playing.add(true);
+      expect(reader.status, NovelTtsStatus.playing);
+      await reader.pause();
+      audio.playing.add(true);
+      expect(
+        reader.status,
+        NovelTtsStatus.paused,
+        reason: 'A user pause must not be undone by a late platform event',
+      );
+    },
+  );
 
-  test('asynchronous playback errors leave a recoverable error state', () async {
-    final audio = _Audio();
-    final nowPlaying = _NowPlaying();
-    final reader = controller(audio: audio, nowPlaying: nowPlaying);
-    addTearDown(reader.dispose);
-    await start(reader);
-    audio.errors.add(StateError('decoder failed'));
-    await _until(() => reader.status == NovelTtsStatus.error);
-    expect(reader.errorMessage, contains('decoder failed'));
-    await _until(() => nowPlaying.keepAliveStates.last == false);
-    await start(reader);
-    expect(reader.status, NovelTtsStatus.playing);
-  });
+  test(
+    'asynchronous playback errors leave a recoverable error state',
+    () async {
+      final audio = _Audio();
+      final nowPlaying = _NowPlaying();
+      final reader = controller(audio: audio, nowPlaying: nowPlaying);
+      addTearDown(reader.dispose);
+      await start(reader);
+      audio.errors.add(StateError('decoder failed'));
+      await _until(() => reader.status == NovelTtsStatus.error);
+      expect(reader.errorMessage, contains('decoder failed'));
+      await _until(() => nowPlaying.keepAliveStates.last == false);
+      await start(reader);
+      expect(reader.status, NovelTtsStatus.playing);
+    },
+  );
 
-  test('applying readings rebuilds spoken clips at the current position', () async {
-    var settings = _settings;
-    final reader = controller(settings: () => settings);
-    addTearDown(reader.dispose);
-    await start(reader);
-    await reader.pause();
-    settings = settings.copyWith(readings: const [
-      NovelTtsReading(surface: '第 1 章', reading: '第一章'),
-    ]);
-    await reader.applySettings();
-    expect(reader.currentClip?.spokenText, '第一章。');
-    expect(reader.status, NovelTtsStatus.paused);
-  });
+  test(
+    'applying readings rebuilds spoken clips at the current position',
+    () async {
+      var settings = _settings;
+      final reader = controller(settings: () => settings);
+      addTearDown(reader.dispose);
+      await start(reader);
+      await reader.pause();
+      settings = settings.copyWith(
+        readings: const [NovelTtsReading(surface: '第 1 章', reading: '第一章')],
+      );
+      await reader.applySettings();
+      expect(reader.currentClip?.spokenText, '第一章。');
+      expect(reader.status, NovelTtsStatus.paused);
+    },
+  );
 
   test('custom JSON bodies escape text without expanding its placeholders', () {
-    final request = buildNovelTtsRequest(_settings.copyWith(
-      customMethod: 'POST',
-      customUrl: 'https://example.test/tts',
-      customContentType: 'application/json',
-      customBody: '{"text":"{text}","voice":"{voice}"}',
-    ), 'He said "{voice}".\nNext line');
+    final request = buildNovelTtsRequest(
+      _settings.copyWith(
+        customMethod: 'POST',
+        customUrl: 'https://example.test/tts',
+        customContentType: 'application/json',
+        customBody: '{"text":"{text}","voice":"{voice}"}',
+      ),
+      'He said "{voice}".\nNext line',
+    );
     final body = jsonDecode(utf8.decode(request.body!));
     expect(body['text'], 'He said "{voice}".\nNext line');
     expect(body['voice'], 'first');
   });
 
   test('GET cannot rely on a text placeholder in an unsent body', () {
-    expect(() => buildNovelTtsRequest(_settings.copyWith(
-      customUrl: 'https://example.test/tts',
-      customBody: '{text}',
-    ), 'Hello'), throwsA(isA<NovelTtsConfigException>()));
-    expect(() => buildNovelTtsRequest(_settings.copyWith(
-      customUrl: 'file:///tmp/{text}',
-    ), 'Hello'), throwsA(isA<NovelTtsConfigException>()));
+    expect(
+      () => buildNovelTtsRequest(
+        _settings.copyWith(
+          customUrl: 'https://example.test/tts',
+          customBody: '{text}',
+        ),
+        'Hello',
+      ),
+      throwsA(isA<NovelTtsConfigException>()),
+    );
+    expect(
+      () => buildNovelTtsRequest(
+        _settings.copyWith(customUrl: 'file:///tmp/{text}'),
+        'Hello',
+      ),
+      throwsA(isA<NovelTtsConfigException>()),
+    );
   });
 
   test('a response that stops producing bytes times out', () async {
@@ -391,8 +452,12 @@ class _Audio implements NovelTtsAudioPlayer, NovelTtsAudioEvents {
     count = paths.length;
     index = 0;
   }
+
   @override
-  Future<void> enqueue(String path) async { count++; }
+  Future<void> enqueue(String path) async {
+    count++;
+  }
+
   @override
   Future<bool> seekNext() async {
     if (index + 1 >= count) return false;
@@ -400,6 +465,7 @@ class _Audio implements NovelTtsAudioPlayer, NovelTtsAudioEvents {
     if (emitOnSeek) _indexes.add(index);
     return true;
   }
+
   @override
   Future<bool> seekPrevious() async => false;
   @override
@@ -407,7 +473,11 @@ class _Audio implements NovelTtsAudioPlayer, NovelTtsAudioEvents {
   @override
   Future<void> resume() async {}
   @override
-  Future<void> stop() async { count = 0; index = 0; }
+  Future<void> stop() async {
+    count = 0;
+    index = 0;
+  }
+
   @override
   Future<Duration?> get duration async => const Duration(seconds: 1);
   @override
@@ -443,7 +513,9 @@ class _DelayedRepository extends PronunciationRepository {
 class _NowPlaying extends NovelTtsNowPlaying {
   final keepAliveStates = <bool>[];
   @override
-  Future<void> keepAlive(bool enabled) async { keepAliveStates.add(enabled); }
+  Future<void> keepAlive(bool enabled) async {
+    keepAliveStates.add(enabled);
+  }
 }
 
 class _Response extends Stream<List<int>> implements HttpClientResponse {
@@ -455,8 +527,12 @@ class _Response extends Stream<List<int>> implements HttpClientResponse {
     Function? onError,
     void Function()? onDone,
     bool? cancelOnError,
-  }) => body.listen(onData, onError: onError, onDone: onDone,
-      cancelOnError: cancelOnError);
+  }) => body.listen(
+    onData,
+    onError: onError,
+    onDone: onDone,
+    cancelOnError: cancelOnError,
+  );
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -489,29 +565,37 @@ class _NativeAudio extends Fake implements AudioPlayer {
   void advanceTo(int tag) {
     currentTag = tag;
     final children = source!.children.cast<IndexedAudioSource>();
-    sequences.add(SequenceState(
-      sequence: List.of(children),
-      currentIndex: currentIndex,
-      shuffleIndices: List.generate(children.length, (index) => index),
-      shuffleModeEnabled: false,
-      loopMode: LoopMode.off,
-    ));
+    sequences.add(
+      SequenceState(
+        sequence: List.of(children),
+        currentIndex: currentIndex,
+        shuffleIndices: List.generate(children.length, (index) => index),
+        shuffleModeEnabled: false,
+        loopMode: LoopMode.off,
+      ),
+    );
   }
 
   @override
-  Future<Duration?> setAudioSource(AudioSource audioSource, {
+  Future<Duration?> setAudioSource(
+    AudioSource audioSource, {
     bool preload = true,
     int? initialIndex,
     Duration? initialPosition,
   }) async {
     source = audioSource as ConcatenatingAudioSource;
     currentTag = source!.children.isEmpty
-        ? null : (source!.children.first as IndexedAudioSource).tag as int;
+        ? null
+        : (source!.children.first as IndexedAudioSource).tag as int;
     if (preload) await prepare?.future;
     return const Duration(seconds: 1);
   }
+
   @override
-  Future<void> play() async { playCount++; }
+  Future<void> play() async {
+    playCount++;
+  }
+
   @override
   Future<void> pause() async {}
   @override

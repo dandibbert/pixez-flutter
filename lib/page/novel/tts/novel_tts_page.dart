@@ -72,11 +72,25 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     _settings = widget.initial ?? NovelTtsSettings.load();
     final values = _settings.toJson();
     for (final name in [
-      'splitChars', 'microsoftKey', 'microsoftRegion', 'microsoftVoice',
-      'microsoftLanguage', 'microsoftRate', 'openaiBaseUrl', 'openaiApiKey',
-      'openaiModel', 'openaiVoice', 'openaiSpeed', 'customUrl', 'customVoice',
-      'customLanguage', 'customSpeed', 'customModel', 'customHeaders',
-      'customBody', 'customContentType',
+      'splitChars',
+      'microsoftKey',
+      'microsoftRegion',
+      'microsoftVoice',
+      'microsoftLanguage',
+      'microsoftRate',
+      'openaiBaseUrl',
+      'openaiApiKey',
+      'openaiModel',
+      'openaiVoice',
+      'openaiSpeed',
+      'customUrl',
+      'customVoice',
+      'customLanguage',
+      'customSpeed',
+      'customModel',
+      'customHeaders',
+      'customBody',
+      'customContentType',
     ]) {
       _fields[name] = TextEditingController(text: '${values[name]}');
     }
@@ -113,7 +127,10 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     });
   }
 
-  Future<void> _persist(NovelTtsSettings next, {bool updateState = true}) async {
+  Future<void> _persist(
+    NovelTtsSettings next, {
+    bool updateState = true,
+  }) async {
     _persistTimer?.cancel();
     _settings = next;
     _lastEnqueuedJson = jsonEncode(next.toJson());
@@ -124,11 +141,17 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       // the reading bar. A second page-local queue could overwrite newer input.
       await next.save();
       if (mounted && updateState && revision == _saveRevision) {
-        setState(() { _saving = false; _saveFailed = false; });
+        setState(() {
+          _saving = false;
+          _saveFailed = false;
+        });
       }
     } catch (_) {
       if (mounted && updateState && revision == _saveRevision) {
-        setState(() { _saving = false; _saveFailed = true; });
+        setState(() {
+          _saving = false;
+          _saveFailed = true;
+        });
       }
     }
   }
@@ -136,12 +159,15 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   NovelTtsSettings _draft() {
     final values = _settings.toJson();
     for (final entry in _fields.entries) {
-      if (entry.key != 'preview' && entry.key != 'splitChars' &&
-          entry.key != 'openaiSpeed') values[entry.key] = entry.value.text;
+      if (entry.key != 'preview' &&
+          entry.key != 'splitChars' &&
+          entry.key != 'openaiSpeed')
+        values[entry.key] = entry.value.text;
     }
-    values['splitChars'] = int.tryParse(_field('splitChars').text.trim()) ??
-        _settings.splitChars;
-    values['openaiSpeed'] = double.tryParse(_field('openaiSpeed').text.trim()) ??
+    values['splitChars'] =
+        int.tryParse(_field('splitChars').text.trim()) ?? _settings.splitChars;
+    values['openaiSpeed'] =
+        double.tryParse(_field('openaiSpeed').text.trim()) ??
         _settings.openaiSpeed;
     return NovelTtsSettings.fromJson(values);
   }
@@ -149,9 +175,16 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   void _syncVoiceFields(NovelTtsSettings next) {
     final values = next.toJson();
     for (final name in [
-      'microsoftVoice', 'microsoftLanguage', 'microsoftRate',
-      'openaiVoice', 'openaiModel', 'openaiSpeed',
-      'customVoice', 'customLanguage', 'customSpeed', 'customModel',
+      'microsoftVoice',
+      'microsoftLanguage',
+      'microsoftRate',
+      'openaiVoice',
+      'openaiModel',
+      'openaiSpeed',
+      'customVoice',
+      'customLanguage',
+      'customSpeed',
+      'customModel',
     ]) {
       _field(name).text = '${values[name]}';
     }
@@ -191,16 +224,21 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       setState(() => _previewError = i18n.novel_tts_preview_failed);
       return;
     }
-    setState(() { _previewRunning = true; _previewError = null; });
+    setState(() {
+      _previewRunning = true;
+      _previewError = null;
+    });
     try {
       await NovelTtsController.maybeInstance?.pause();
       if (!mounted || generation != _previewGeneration) return;
       _preview ??= NovelTtsPreview();
       await _preview!.play(settings, text);
     } on TimeoutException {
-      if (mounted && generation == _previewGeneration) setState(() => _previewError = i18n.novel_tts_preview_timeout);
+      if (mounted && generation == _previewGeneration)
+        setState(() => _previewError = i18n.novel_tts_preview_timeout);
     } catch (_) {
-      if (mounted && generation == _previewGeneration) setState(() => _previewError = i18n.novel_tts_preview_failed);
+      if (mounted && generation == _previewGeneration)
+        setState(() => _previewError = i18n.novel_tts_preview_failed);
     } finally {
       if (mounted && generation == _previewGeneration) {
         setState(() => _previewRunning = false);
@@ -230,187 +268,252 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
         if (didPop) unawaited(_finishEditing());
       },
       child: Scaffold(
-      key: novelTtsSettingsPageKey,
-      appBar: AppBar(title: Text(i18n.novel_tts_settings)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ListTile(
-                    key: novelTtsSaveStatusKey,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(_saveFailed ? Icons.error_outline :
-                        _saving ? Icons.sync : Icons.check_circle_outline),
-                    title: Text(_saveFailed ? i18n.novel_tts_save_failed :
-                        _saving ? i18n.novel_tts_saving : i18n.novel_tts_saved),
-                    subtitle: Text(i18n.novel_tts_settings_apply_hint),
-                    onTap: _saveFailed ? () => _persist(_draft()) : null,
-                  ),
-                  _Section(
-                    title: i18n.novel_tts_connection,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(i18n.novel_tts_connection_hint),
-                        const SizedBox(height: 12),
-                        Wrap(spacing: 8, runSpacing: 8, children: [
-                          for (final provider in NovelTtsProvider.values)
-                            _ProviderChip(
-                              key: switch (provider) {
-                                NovelTtsProvider.microsoft => novelTtsProviderMicrosoftKey,
-                                NovelTtsProvider.openai => novelTtsProviderOpenaiKey,
-                                NovelTtsProvider.custom => novelTtsProviderCustomKey,
-                              },
-                              selected: _settings.provider == provider,
-                              label: switch (provider) {
-                                NovelTtsProvider.microsoft => i18n.novel_tts_provider_microsoft,
-                                NovelTtsProvider.openai => i18n.novel_tts_provider_openai,
-                                NovelTtsProvider.custom => i18n.novel_tts_provider_custom,
-                              },
-                              onTap: () => _persist(_draft().copyWith(provider: provider)),
+        key: novelTtsSettingsPageKey,
+        appBar: AppBar(title: Text(i18n.novel_tts_settings)),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ListTile(
+                      key: novelTtsSaveStatusKey,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        _saveFailed
+                            ? Icons.error_outline
+                            : _saving
+                            ? Icons.sync
+                            : Icons.check_circle_outline,
+                      ),
+                      title: Text(
+                        _saveFailed
+                            ? i18n.novel_tts_save_failed
+                            : _saving
+                            ? i18n.novel_tts_saving
+                            : i18n.novel_tts_saved,
+                      ),
+                      subtitle: Text(i18n.novel_tts_settings_apply_hint),
+                      onTap: _saveFailed ? () => _persist(_draft()) : null,
+                    ),
+                    _Section(
+                      title: i18n.novel_tts_connection,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(i18n.novel_tts_connection_hint),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final provider in NovelTtsProvider.values)
+                                _ProviderChip(
+                                  key: switch (provider) {
+                                    NovelTtsProvider.microsoft =>
+                                      novelTtsProviderMicrosoftKey,
+                                    NovelTtsProvider.openai =>
+                                      novelTtsProviderOpenaiKey,
+                                    NovelTtsProvider.custom =>
+                                      novelTtsProviderCustomKey,
+                                  },
+                                  selected: _settings.provider == provider,
+                                  label: switch (provider) {
+                                    NovelTtsProvider.microsoft =>
+                                      i18n.novel_tts_provider_microsoft,
+                                    NovelTtsProvider.openai =>
+                                      i18n.novel_tts_provider_openai,
+                                    NovelTtsProvider.custom =>
+                                      i18n.novel_tts_provider_custom,
+                                  },
+                                  onTap: () => _persist(
+                                    _draft().copyWith(provider: provider),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ..._connectionFields(i18n),
+                        ],
+                      ),
+                    ),
+                    _Section(
+                      title: i18n.novel_tts_section_voice,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            i18n.novel_tts_voice_presets,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            i18n.novel_tts_voice_presets_hint,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            key: novelTtsVoicePresetsKey,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final preset in draft.activeVoicePresets)
+                                InputChip(
+                                  label: Text(preset.name),
+                                  selected: draft.isVoicePresetSelected(preset),
+                                  onPressed: () {
+                                    final next = _draft().selectVoicePreset(
+                                      preset,
+                                    );
+                                    _syncVoiceFields(next);
+                                    unawaited(_persist(next));
+                                  },
+                                  deleteButtonTooltipMessage:
+                                      i18n.novel_tts_delete_voice,
+                                  onDeleted: () => _persist(
+                                    _draft().removeVoicePreset(preset),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ..._voiceFields(i18n),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              key: novelTtsSaveVoiceKey,
+                              onPressed: _saveVoice,
+                              icon: const Icon(Icons.add),
+                              label: Text(i18n.novel_tts_save_voice),
                             ),
-                        ]),
-                        const SizedBox(height: 16),
-                        ..._connectionFields(i18n),
-                      ],
-                    ),
-                  ),
-                  _Section(
-                    title: i18n.novel_tts_section_voice,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(i18n.novel_tts_voice_presets,
-                            style: Theme.of(context).textTheme.titleSmall),
-                        const SizedBox(height: 4),
-                        Text(i18n.novel_tts_voice_presets_hint,
-                            style: Theme.of(context).textTheme.bodySmall),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          key: novelTtsVoicePresetsKey,
-                          spacing: 8, runSpacing: 8,
-                          children: [
-                            for (final preset in draft.activeVoicePresets)
-                              InputChip(
-                                label: Text(preset.name),
-                                selected: draft.isVoicePresetSelected(preset),
-                                onPressed: () {
-                                  final next = _draft().selectVoicePreset(preset);
-                                  _syncVoiceFields(next);
-                                  unawaited(_persist(next));
-                                },
-                                deleteButtonTooltipMessage: i18n.novel_tts_delete_voice,
-                                onDeleted: () => _persist(_draft().removeVoicePreset(preset)),
+                          ),
+                          const Divider(height: 32),
+                          TextField(
+                            controller: _field('preview'),
+                            minLines: 2,
+                            maxLines: 4,
+                            maxLength: 160,
+                            decoration: InputDecoration(
+                              labelText: i18n.novel_tts_preview_text,
+                              hintText: i18n.novel_tts_preview_sample,
+                              helperText: i18n.novel_tts_preview_hint,
+                              helperMaxLines: 5,
+                              border: const OutlineInputBorder(),
+                            ),
+                          ),
+                          if (_previewError != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                _previewError!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        ..._voiceFields(i18n),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            key: novelTtsSaveVoiceKey,
-                            onPressed: _saveVoice,
-                            icon: const Icon(Icons.add),
-                            label: Text(i18n.novel_tts_save_voice),
+                            ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: FilledButton.tonalIcon(
+                              key: novelTtsPreviewVoiceKey,
+                              onPressed: _previewVoice,
+                              icon: Icon(
+                                _previewRunning
+                                    ? Icons.stop
+                                    : Icons.volume_up_outlined,
+                              ),
+                              label: Text(
+                                _previewRunning
+                                    ? i18n.novel_tts_stop
+                                    : i18n.novel_tts_preview_voice,
+                              ),
+                            ),
                           ),
-                        ),
-                        const Divider(height: 32),
-                        TextField(
-                          controller: _field('preview'),
-                          minLines: 2, maxLines: 4, maxLength: 160,
-                          decoration: InputDecoration(
-                            labelText: i18n.novel_tts_preview_text,
-                            hintText: i18n.novel_tts_preview_sample,
-                            helperText: i18n.novel_tts_preview_hint,
-                            helperMaxLines: 5,
-                            border: const OutlineInputBorder(),
-                          ),
-                        ),
-                        if (_previewError != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(_previewError!, style: TextStyle(
-                                color: Theme.of(context).colorScheme.error)),
-                          ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilledButton.tonalIcon(
-                            key: novelTtsPreviewVoiceKey,
-                            onPressed: _previewVoice,
-                            icon: Icon(_previewRunning ? Icons.stop : Icons.volume_up_outlined),
-                            label: Text(_previewRunning ? i18n.novel_tts_stop : i18n.novel_tts_preview_voice),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  _Section(
-                    title: i18n.novel_tts_section_playback,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          key: novelTtsSplitCharsFieldKey,
-                          controller: _field('splitChars'),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(4)],
-                          decoration: InputDecoration(
-                            labelText: i18n.novel_tts_split_chars,
-                            helperText: i18n.novel_tts_split_range,
-                            helperMaxLines: 3,
-                            border: const OutlineInputBorder(),
+                    _Section(
+                      title: i18n.novel_tts_section_playback,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextField(
+                            key: novelTtsSplitCharsFieldKey,
+                            controller: _field('splitChars'),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(4),
+                            ],
+                            decoration: InputDecoration(
+                              labelText: i18n.novel_tts_split_chars,
+                              helperText: i18n.novel_tts_split_range,
+                              helperMaxLines: 3,
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => _schedulePersist(),
+                            onEditingComplete: _commitSplitChars,
+                            onSubmitted: (_) => _commitSplitChars(),
                           ),
-                          onChanged: (_) => _schedulePersist(),
-                          onEditingComplete: _commitSplitChars,
-                          onSubmitted: (_) => _commitSplitChars(),
-                        ),
-                        const SizedBox(height: 16),
-                        Text('${i18n.novel_tts_prefetch}: ${_settings.prefetchCount}'),
-                        Text(i18n.novel_tts_prefetch_hint,
-                            style: Theme.of(context).textTheme.bodySmall),
-                        Slider(
-                          value: _settings.prefetchCount.clamp(1, 4).toDouble(),
-                          min: 1, max: 4, divisions: 3,
-                          label: '${_settings.prefetchCount}',
-                          onChanged: (value) => _persist(_draft().copyWith(prefetchCount: value.round())),
-                        ),
-                        SwitchListTile(
-                          key: novelTtsAutoContinueKey,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(i18n.novel_tts_auto_continue),
-                          subtitle: Text(i18n.novel_tts_lock_screen_hint),
-                          value: _settings.autoContinue,
-                          onChanged: (value) => _persist(_draft().copyWith(autoContinue: value)),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          Text(
+                            '${i18n.novel_tts_prefetch}: ${_settings.prefetchCount}',
+                          ),
+                          Text(
+                            i18n.novel_tts_prefetch_hint,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Slider(
+                            value: _settings.prefetchCount
+                                .clamp(1, 4)
+                                .toDouble(),
+                            min: 1,
+                            max: 4,
+                            divisions: 3,
+                            label: '${_settings.prefetchCount}',
+                            onChanged: (value) => _persist(
+                              _draft().copyWith(prefetchCount: value.round()),
+                            ),
+                          ),
+                          SwitchListTile(
+                            key: novelTtsAutoContinueKey,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(i18n.novel_tts_auto_continue),
+                            subtitle: Text(i18n.novel_tts_lock_screen_hint),
+                            value: _settings.autoContinue,
+                            onChanged: (value) => _persist(
+                              _draft().copyWith(autoContinue: value),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  _Section(
-                    key: novelTtsReadingsSectionKey,
-                    title: i18n.novel_tts_section_readings,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(i18n.novel_tts_analyzer_lexicon,
-                            style: Theme.of(context).textTheme.bodySmall),
-                        const SizedBox(height: 8),
-                        _ReadingsEditor(readings: _settings.readings, onChanged: _setReadings),
-                      ],
+                    _Section(
+                      key: novelTtsReadingsSectionKey,
+                      title: i18n.novel_tts_section_readings,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            i18n.novel_tts_analyzer_lexicon,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 8),
+                          _ReadingsEditor(
+                            readings: _settings.readings,
+                            onChanged: _setReadings,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -427,7 +530,11 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       case NovelTtsProvider.microsoft:
         return [
           _box('microsoftKey', i18n.novel_tts_microsoft_key, obscure: true),
-          _choice('microsoftRegion', i18n.novel_tts_microsoft_region, microsoftRegionChoices),
+          _choice(
+            'microsoftRegion',
+            i18n.novel_tts_microsoft_region,
+            microsoftRegionChoices,
+          ),
         ];
       case NovelTtsProvider.openai:
         return [
@@ -454,34 +561,64 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
               _schedulePersist();
             },
           ),
-          _choice('microsoftLanguage', i18n.novel_tts_microsoft_language, microsoftLanguageChoices),
-          Text('${i18n.novel_tts_microsoft_rate}: ${formatMicrosoftRatePercent(rate)}'),
-          Slider(value: rate, min: -50, max: 50, divisions: 20,
+          _choice(
+            'microsoftLanguage',
+            i18n.novel_tts_microsoft_language,
+            microsoftLanguageChoices,
+          ),
+          Text(
+            '${i18n.novel_tts_microsoft_rate}: ${formatMicrosoftRatePercent(rate)}',
+          ),
+          Slider(
+            value: rate,
+            min: -50,
+            max: 50,
+            divisions: 20,
             label: formatMicrosoftRatePercent(rate),
             onChanged: (value) {
               _field('microsoftRate').text = formatMicrosoftRatePercent(value);
               _schedulePersist();
-            }),
+            },
+          ),
         ];
       case NovelTtsProvider.openai:
         final speed = _draft().openaiSpeed;
         return [
-          _choice('openaiVoice', i18n.novel_tts_openai_voice, openaiVoiceChoices),
-          _choice('openaiModel', i18n.novel_tts_openai_model, openaiModelChoices),
+          _choice(
+            'openaiVoice',
+            i18n.novel_tts_openai_voice,
+            openaiVoiceChoices,
+          ),
+          _choice(
+            'openaiModel',
+            i18n.novel_tts_openai_model,
+            openaiModelChoices,
+          ),
           Text('${i18n.novel_tts_openai_speed}: ${speed.toStringAsFixed(2)}×'),
-          Slider(value: speed, min: 0.25, max: 4, divisions: 15,
+          Slider(
+            value: speed,
+            min: 0.25,
+            max: 4,
+            divisions: 15,
             label: '${speed.toStringAsFixed(2)}×',
             onChanged: (value) {
               _field('openaiSpeed').text = value.toStringAsFixed(2);
               _schedulePersist();
-            }),
+            },
+          ),
         ];
       case NovelTtsProvider.custom:
         return [
-          _box('customVoice', i18n.novel_tts_voice_id,
-              fieldKey: novelTtsCustomVoiceKey, helper: i18n.novel_tts_voice_id_hint),
-          Text(i18n.novel_tts_custom_values_hint,
-              style: Theme.of(context).textTheme.bodySmall),
+          _box(
+            'customVoice',
+            i18n.novel_tts_voice_id,
+            fieldKey: novelTtsCustomVoiceKey,
+            helper: i18n.novel_tts_voice_id_hint,
+          ),
+          Text(
+            i18n.novel_tts_custom_values_hint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 12),
           _box('customLanguage', i18n.novel_tts_voice_language),
           _box('customSpeed', i18n.novel_tts_voice_speed),
@@ -493,17 +630,28 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   List<Widget> _customConnection(AppLocalizations i18n) {
     final url = _field('customUrl').text.trim();
     final uri = Uri.tryParse(url);
-    final validUrl = uri != null && (uri.scheme == 'http' || uri.scheme == 'https') &&
+    final validUrl =
+        uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.isNotEmpty;
-    final hasText = novelTtsTemplateHasTextPlaceholder(url) ||
+    final hasText =
+        novelTtsTemplateHasTextPlaceholder(url) ||
         (_settings.customMethod == 'POST' &&
-          novelTtsTemplateHasTextPlaceholder(_field('customBody').text));
+            novelTtsTemplateHasTextPlaceholder(_field('customBody').text));
     return [
-      _box('customUrl', i18n.novel_tts_custom_url,
-        fieldKey: novelTtsCustomUrlFieldKey, minLines: 2, url: true,
+      _box(
+        'customUrl',
+        i18n.novel_tts_custom_url,
+        fieldKey: novelTtsCustomUrlFieldKey,
+        minLines: 2,
+        url: true,
         helper: i18n.novel_tts_custom_url_hint,
-        error: url.isNotEmpty && !validUrl ? i18n.novel_tts_url_invalid :
-            !hasText ? i18n.novel_tts_text_required : null),
+        error: url.isNotEmpty && !validUrl
+            ? i18n.novel_tts_url_invalid
+            : !hasText
+            ? i18n.novel_tts_text_required
+            : null,
+      ),
       NovelTtsPlaceholderChips(
         caption: i18n.novel_tts_insert_placeholder,
         onInsert: (token) {
@@ -513,19 +661,26 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       ),
       DropdownButtonFormField<String>(
         initialValue: _settings.customMethod == 'POST' ? 'POST' : 'GET',
-        decoration: InputDecoration(labelText: i18n.novel_tts_custom_method,
-            border: const OutlineInputBorder()),
-        items: const [DropdownMenuItem(value: 'GET', child: Text('GET')),
-            DropdownMenuItem(value: 'POST', child: Text('POST'))],
+        decoration: InputDecoration(
+          labelText: i18n.novel_tts_custom_method,
+          border: const OutlineInputBorder(),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'GET', child: Text('GET')),
+          DropdownMenuItem(value: 'POST', child: Text('POST')),
+        ],
         onChanged: (value) {
-          if (value != null) unawaited(_persist(_draft().copyWith(customMethod: value)));
+          if (value != null)
+            unawaited(_persist(_draft().copyWith(customMethod: value)));
         },
       ),
       NovelTtsAdvancedPanel(
         title: i18n.novel_tts_advanced,
         children: [
-          Text(i18n.novel_tts_custom_headers,
-              style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            i18n.novel_tts_custom_headers,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
           NovelTtsHeaderListEditor(
             initial: _field('customHeaders').text,
@@ -538,8 +693,10 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
             },
           ),
           if (_settings.customMethod == 'GET')
-            Padding(padding: const EdgeInsets.only(bottom: 12),
-              child: Text(i18n.novel_tts_get_body_ignored)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(i18n.novel_tts_get_body_ignored),
+            ),
           _box('customBody', i18n.novel_tts_custom_body, minLines: 3),
           NovelTtsPlaceholderChips(
             caption: i18n.novel_tts_insert_placeholder,
@@ -549,19 +706,33 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
               _schedulePersist();
             },
           ),
-          _choice('customContentType', i18n.novel_tts_custom_content_type, contentTypeChoices),
+          _choice(
+            'customContentType',
+            i18n.novel_tts_custom_content_type,
+            contentTypeChoices,
+          ),
         ],
       ),
     ];
   }
 
   Widget _choice(String name, String label, List<NovelTtsChoice> choices) =>
-      NovelTtsChoiceField(label: label, controller: _field(name),
-          choices: choices, onChanged: (_) => _schedulePersist());
+      NovelTtsChoiceField(
+        label: label,
+        controller: _field(name),
+        choices: choices,
+        onChanged: (_) => _schedulePersist(),
+      );
 
-  Widget _box(String name, String label, {
-    Key? fieldKey, bool obscure = false, int minLines = 1,
-    bool url = false, String? helper, String? error,
+  Widget _box(
+    String name,
+    String label, {
+    Key? fieldKey,
+    bool obscure = false,
+    int minLines = 1,
+    bool url = false,
+    String? helper,
+    String? error,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -574,9 +745,14 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
         keyboardType: url ? TextInputType.url : null,
         minLines: minLines,
         maxLines: minLines > 1 ? minLines + 2 : 1,
-        decoration: InputDecoration(labelText: label, helperText: helper,
-          helperMaxLines: 5, errorText: error, errorMaxLines: 4,
-          border: const OutlineInputBorder()),
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helper,
+          helperMaxLines: 5,
+          errorText: error,
+          errorMaxLines: 4,
+          border: const OutlineInputBorder(),
+        ),
         onChanged: (_) => _schedulePersist(),
         onEditingComplete: () => _persist(_draft()),
         onSubmitted: (_) => _persist(_draft()),
@@ -594,10 +770,15 @@ class _VoiceNameDialog extends StatefulWidget {
 }
 
 class _VoiceNameDialogState extends State<_VoiceNameDialog> {
-  late final TextEditingController _name = TextEditingController(text: widget.initial);
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initial,
+  );
 
   @override
-  void dispose() { _name.dispose(); super.dispose(); }
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -606,20 +787,34 @@ class _VoiceNameDialogState extends State<_VoiceNameDialog> {
       title: Text(i18n.novel_tts_save_voice),
       content: SingleChildScrollView(
         child: TextField(
-          key: novelTtsVoiceNameKey, controller: _name, autofocus: true,
+          key: novelTtsVoiceNameKey,
+          controller: _name,
+          autofocus: true,
           maxLength: 48,
-          decoration: InputDecoration(labelText: i18n.novel_tts_voice_name,
+          decoration: InputDecoration(
+            labelText: i18n.novel_tts_voice_name,
             hintText: i18n.novel_tts_voice_name_hint,
-            helperText: i18n.novel_tts_voice_name_exists, helperMaxLines: 4),
+            helperText: i18n.novel_tts_voice_name_exists,
+            helperMaxLines: 4,
+          ),
           onChanged: (_) => setState(() {}),
-          onSubmitted: (_) { if (_name.text.trim().isNotEmpty) Navigator.pop(context, _name.text.trim()); },
+          onSubmitted: (_) {
+            if (_name.text.trim().isNotEmpty)
+              Navigator.pop(context, _name.text.trim());
+          },
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(i18n.cancel)),
-        FilledButton(onPressed: _name.text.trim().isEmpty ? null :
-            () => Navigator.pop(context, _name.text.trim()),
-            child: Text(i18n.novel_tts_reading_save)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(i18n.cancel),
+        ),
+        FilledButton(
+          onPressed: _name.text.trim().isEmpty
+              ? null
+              : () => Navigator.pop(context, _name.text.trim()),
+          child: Text(i18n.novel_tts_reading_save),
+        ),
       ],
     );
   }
@@ -685,24 +880,23 @@ class _ReadingsEditor extends StatelessWidget {
               ),
             ),
           )
-        else
-          ...[
-            for (var i = 0; i < readings.length; i++)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('${readings[i].surface}  →  ${readings[i].reading}'),
-                subtitle: Text(_modeLabel(i18n, readings[i])),
-                onTap: () => _edit(context, index: i),
-                trailing: IconButton(
-                  tooltip: i18n.novel_tts_reading_delete,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () {
-                    final next = [...readings]..removeAt(i);
-                    onChanged(next);
-                  },
-                ),
+        else ...[
+          for (var i = 0; i < readings.length; i++)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('${readings[i].surface}  →  ${readings[i].reading}'),
+              subtitle: Text(_modeLabel(i18n, readings[i])),
+              onTap: () => _edit(context, index: i),
+              trailing: IconButton(
+                tooltip: i18n.novel_tts_reading_delete,
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () {
+                  final next = [...readings]..removeAt(i);
+                  onChanged(next);
+                },
               ),
-          ],
+            ),
+        ],
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -725,7 +919,8 @@ class _ReadingsEditor extends StatelessWidget {
   }
 
   String _modeLabel(AppLocalizations i18n, NovelTtsReading reading) {
-    final mode = reading.mode ??
+    final mode =
+        reading.mode ??
         const PronunciationMigration().classifyV1Surface(reading.surface).mode;
     switch (mode) {
       case PronunciationMatchMode.exactPhrase:

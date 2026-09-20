@@ -32,8 +32,9 @@ class NovelTtsTemplateVars {
 }
 
 final _placeholderPattern = RegExp(r'\{([A-Za-z]+)\}|%@([A-Za-z]+)?');
-final _jsonTemplatePartPattern =
-    RegExp(r'"(?:[^"\\]|\\.)*"|\{([A-Za-z]+)\}|%@([A-Za-z]+)?');
+final _jsonTemplatePartPattern = RegExp(
+  r'"(?:[^"\\]|\\.)*"|\{([A-Za-z]+)\}|%@([A-Za-z]+)?',
+);
 
 class _NovelTtsTemplateRenderer {
   _NovelTtsTemplateRenderer(this.vars);
@@ -63,7 +64,9 @@ String applyNovelTtsTemplate(
   String template,
   NovelTtsTemplateVars vars, {
   required bool encodeValues,
-}) => _NovelTtsTemplateRenderer(vars).render(template, encodeValues: encodeValues);
+}) => _NovelTtsTemplateRenderer(
+  vars,
+).render(template, encodeValues: encodeValues);
 
 bool novelTtsTemplateHasTextPlaceholder(String template) =>
     _placeholderPattern.allMatches(template).any((match) {
@@ -78,8 +81,9 @@ String applyNovelTtsJsonTemplate(String template, NovelTtsTemplateVars vars) {
   final rendered = template.replaceAllMapped(_jsonTemplatePartPattern, (match) {
     final token = match.group(0)!;
     if (token.startsWith('"')) {
-      return jsonEncode(renderer.render(jsonDecode(token) as String,
-          encodeValues: false));
+      return jsonEncode(
+        renderer.render(jsonDecode(token) as String, encodeValues: false),
+      );
     }
     final replacement = renderer.value(match.group(1) ?? match.group(2));
     if (replacement == null) return token;

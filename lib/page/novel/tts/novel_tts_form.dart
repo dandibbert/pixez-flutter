@@ -175,14 +175,18 @@ class NovelTtsPlaceholderChips extends StatelessWidget {
             children: [
               for (final name in novelTtsPlaceholderTokens)
                 ActionChip(
-                  key: name == 'text' && useTextKey ? novelTtsInsertTextChipKey : null,
-                  label: Text('${switch (name) {
-                    'text' => I18n.of(context).novel_tts_token_text,
-                    'voice' => I18n.of(context).novel_tts_token_voice,
-                    'lang' => I18n.of(context).novel_tts_token_language,
-                    'speed' => I18n.of(context).novel_tts_token_speed,
-                    _ => I18n.of(context).novel_tts_token_model,
-                  }} {$name}'),
+                  key: name == 'text' && useTextKey
+                      ? novelTtsInsertTextChipKey
+                      : null,
+                  label: Text(
+                    '${switch (name) {
+                      'text' => I18n.of(context).novel_tts_token_text,
+                      'voice' => I18n.of(context).novel_tts_token_voice,
+                      'lang' => I18n.of(context).novel_tts_token_language,
+                      'speed' => I18n.of(context).novel_tts_token_speed,
+                      _ => I18n.of(context).novel_tts_token_model,
+                    }} {$name}',
+                  ),
                   onPressed: () => onInsert('{$name}'),
                 ),
             ],
@@ -326,29 +330,37 @@ class _NovelTtsHeaderListEditorState extends State<NovelTtsHeaderListEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(children: [
-                  Expanded(child: TextField(
-                    key: i == 0 ? novelTtsHeaderNameFieldKey : null,
-                    controller: _rows[i].name,
-                    autocorrect: false,
-                    decoration: InputDecoration(labelText: widget.nameLabel,
-                        border: const OutlineInputBorder()),
-                    onChanged: (_) => _emit(),
-                  )),
-                  IconButton(
-                    tooltip: I18n.of(context).novel_tts_reading_delete,
-                    onPressed: () => _remove(i),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                ]),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: i == 0 ? novelTtsHeaderNameFieldKey : null,
+                        controller: _rows[i].name,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          labelText: widget.nameLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => _emit(),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: I18n.of(context).novel_tts_reading_delete,
+                      onPressed: () => _remove(i),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   key: i == 0 ? novelTtsHeaderValueFieldKey : null,
                   controller: _rows[i].value,
                   autocorrect: false,
                   enableSuggestions: false,
-                  decoration: InputDecoration(labelText: widget.valueLabel,
-                      border: const OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: widget.valueLabel,
+                    border: const OutlineInputBorder(),
+                  ),
                   onChanged: (_) => _emit(),
                 ),
               ],

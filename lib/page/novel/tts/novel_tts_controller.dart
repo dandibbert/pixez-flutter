@@ -63,8 +63,7 @@ class NovelTtsClip {
   final int sourceEnd;
   final String pronunciationFingerprint;
 
-  String get spokenTextHash =>
-      sha1.convert(utf8.encode(spokenText)).toString();
+  String get spokenTextHash => sha1.convert(utf8.encode(spokenText)).toString();
 }
 
 class NovelTtsChapter {
@@ -160,7 +159,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
        _cacheDir = cacheDir,
        _pronunciationRepository =
            pronunciationRepository ?? PronunciationRepository(),
-       _pronunciationPipeline = pronunciationPipeline ?? PronunciationPipeline(),
+       _pronunciationPipeline =
+           pronunciationPipeline ?? PronunciationPipeline(),
        _splitter = splitter ?? const SourceAwareNovelTtsSplitter(),
        _renderer = const PronunciationRenderer() {
     _audio.listen();
@@ -273,9 +273,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   bool get isActive =>
-      !_disposed && (status == NovelTtsStatus.playing ||
-      status == NovelTtsStatus.paused ||
-      status == NovelTtsStatus.synthesizing);
+      !_disposed &&
+      (status == NovelTtsStatus.playing ||
+          status == NovelTtsStatus.paused ||
+          status == NovelTtsStatus.synthesizing);
 
   String get subtitle {
     if (clips.isEmpty) {
@@ -289,8 +290,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   bool _isSession(int generation) =>
       !_disposed && generation == _sessionGeneration;
 
-  bool _isPlayback(int generation) =>
-      !_disposed && generation == _generation;
+  bool _isPlayback(int generation) => !_disposed && generation == _generation;
 
   void _cancelSynthesis() {
     final synth = _synthesizer;
@@ -325,10 +325,16 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     final previous = _playbackSettings;
     final current = currentClip;
     final chapter = current == null ? null : _chapters[current.novelId];
-    if (previous != null && current != null && chapter != null &&
+    if (previous != null &&
+        current != null &&
+        chapter != null &&
         (previous.splitChars != loaded.splitChars ||
-         jsonEncode(previous.readings.map((item) => item.toJson()).toList()) !=
-             jsonEncode(loaded.readings.map((item) => item.toJson()).toList()))) {
+            jsonEncode(
+                  previous.readings.map((item) => item.toJson()).toList(),
+                ) !=
+                jsonEncode(
+                  loaded.readings.map((item) => item.toJson()).toList(),
+                ))) {
       final restarting = start(
         novelId: chapter.novelId,
         title: chapter.title,
@@ -478,7 +484,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       startChunk: startChunk,
       startNeedle: startNeedle,
       startOffset: startOffset,
-      pageDisplayText: documents[page.clamp(1, documents.length) - 1].displayText,
+      pageDisplayText:
+          documents[page.clamp(1, documents.length) - 1].displayText,
     );
     session = session!.copyWith(
       chunks: [
@@ -549,8 +556,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       prevSeriesId: prevSeriesId,
       nextSeriesId: nextSeriesId,
     );
-    final firstCurrent = clips.indexWhere((clip) => clip.novelId == current.novelId);
-    final lastCurrent = clips.lastIndexWhere((clip) => clip.novelId == current.novelId);
+    final firstCurrent = clips.indexWhere(
+      (clip) => clip.novelId == current.novelId,
+    );
+    final lastCurrent = clips.lastIndexWhere(
+      (clip) => clip.novelId == current.novelId,
+    );
     if (firstCurrent < 0) return;
     final chapterClips = clips.sublist(firstCurrent, lastCurrent + 1);
     clips = [
@@ -566,7 +577,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (chapter != null) {
       final texts = List<String>.generate(
         totalPages,
-        (index) => index < chapter.pageTexts.length ? chapter.pageTexts[index] : '',
+        (index) =>
+            index < chapter.pageTexts.length ? chapter.pageTexts[index] : '',
       );
       if (page > 0 && page <= texts.length) texts[page - 1] = pageText;
       _chapters[current.novelId] = NovelTtsChapter(
@@ -615,7 +627,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> pause() async {
     if (status != NovelTtsStatus.playing &&
-        status != NovelTtsStatus.synthesizing) return;
+        status != NovelTtsStatus.synthesizing)
+      return;
     final generation = _generation;
     _userPaused = true;
     _holdAfterReady = true;
@@ -821,7 +834,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       for (final index in _queuedClips)
         '${_cacheKey(clips[index].spokenText, loaded)}.mp3',
     };
-    _protectedCachePaths.removeWhere((path) => !queuedNames.contains(p.basename(path)));
+    _protectedCachePaths.removeWhere(
+      (path) => !queuedNames.contains(p.basename(path)),
+    );
     unawaited(_fillQueue());
     unawaited(_publishNowPlaying());
     notifyListeners();
@@ -1295,9 +1310,8 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     }
     return _indexOf(
       page: page,
-      chunkIndex: startChunk ??
-          _bookmarkChunk(novelId: novelId, page: page) ??
-          0,
+      chunkIndex:
+          startChunk ?? _bookmarkChunk(novelId: novelId, page: page) ?? 0,
     );
   }
 
@@ -1339,13 +1353,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     final local = (cut - clip.sourceStart).clamp(0, clip.text.length);
     final text = clip.text.substring(local);
     final spoken = pageDisplayText == null
-        ? clip.spokenText.substring(
-            local.clamp(0, clip.spokenText.length),
-          )
+        ? clip.spokenText.substring(local.clamp(0, clip.spokenText.length))
         : _renderer.renderRange(
             source: pageDisplayText,
             range: NovelTtsSourceRange(cut, clip.sourceEnd),
-            decisions: _pageDecisions['${clip.novelId}:${clip.page}'] ?? const [],
+            decisions:
+                _pageDecisions['${clip.novelId}:${clip.page}'] ?? const [],
           );
     final next = [...clips];
     next[clipIndex] = NovelTtsClip(
@@ -1465,12 +1478,20 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     final request = buildNovelTtsRequest(loaded, text);
     final headers = request.headers.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
-    return sha256.convert(utf8.encode(jsonEncode([
-      request.method,
-      request.uri.toString(),
-      [for (final header in headers) [header.key, header.value]],
-      request.body == null ? null : base64Encode(request.body!),
-    ]))).toString();
+    return sha256
+        .convert(
+          utf8.encode(
+            jsonEncode([
+              request.method,
+              request.uri.toString(),
+              [
+                for (final header in headers) [header.key, header.value],
+              ],
+              request.body == null ? null : base64Encode(request.body!),
+            ]),
+          ),
+        )
+        .toString();
   }
 
   Future<File> _cacheFile(String key) async {
@@ -1582,7 +1603,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(_nowPlaying.endBackgroundTask());
     unawaited(_nowPlaying.stop());
     unawaited(_audio.dispose());
-    unawaited(_pronunciationPipeline.worker.dispose().catchError((Object _) {}));
+    unawaited(
+      _pronunciationPipeline.worker.dispose().catchError((Object _) {}),
+    );
     super.dispose();
   }
 }

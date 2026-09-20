@@ -64,7 +64,10 @@ class JustAudioNovelTtsPlayer
 
   Future<void> _serialize(Future<void> Function() operation) {
     final result = _operations.then((_) => operation());
-    _operations = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _operations = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
     return result;
   }
 
@@ -139,8 +142,7 @@ class JustAudioNovelTtsPlayer
         final playlist = ConcatenatingAudioSource(
           useLazyPreparation: true,
           children: [
-            for (final path in paths)
-              AudioSource.file(path, tag: _nextIndex++),
+            for (final path in paths) AudioSource.file(path, tag: _nextIndex++),
           ],
         );
         _playlist = playlist;
@@ -171,8 +173,12 @@ class JustAudioNovelTtsPlayer
     final generation = _generation;
     return _serialize(() async {
       final playlist = _playlist;
-      if (_disposed || generation != _generation ||
-          !_armed || _replacing || playlist == null) return;
+      if (_disposed ||
+          generation != _generation ||
+          !_armed ||
+          _replacing ||
+          playlist == null)
+        return;
       await playlist.add(AudioSource.file(path, tag: _nextIndex++));
     });
   }

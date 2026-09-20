@@ -198,19 +198,23 @@ class NovelTtsSettings {
   NovelTtsSettings saveVoicePreset(String name) {
     final preset = voicePreset(name);
     if (preset.name.isEmpty) return this;
-    return copyWith(voicePresets: [
-      for (final existing in voicePresets)
-        if (existing.endpointKey != preset.endpointKey ||
-            existing.name != preset.name) existing,
-      preset,
-    ]);
+    return copyWith(
+      voicePresets: [
+        for (final existing in voicePresets)
+          if (existing.endpointKey != preset.endpointKey ||
+              existing.name != preset.name)
+            existing,
+        preset,
+      ],
+    );
   }
 
   NovelTtsSettings removeVoicePreset(NovelTtsVoicePreset preset) => copyWith(
     voicePresets: [
       for (final existing in voicePresets)
         if (existing.endpointKey != preset.endpointKey ||
-            existing.name != preset.name) existing,
+            existing.name != preset.name)
+          existing,
     ],
   );
 
@@ -225,7 +229,10 @@ class NovelTtsSettings {
       NovelTtsProvider.openai => copyWith(
         openaiVoice: preset.voice,
         openaiModel: preset.model,
-        openaiSpeed: _finiteDouble(double.tryParse(preset.speed), 1).clamp(0.25, 4).toDouble(),
+        openaiSpeed: _finiteDouble(
+          double.tryParse(preset.speed),
+          1,
+        ).clamp(0.25, 4).toDouble(),
       ),
       NovelTtsProvider.custom => copyWith(
         customVoice: preset.voice,
@@ -288,9 +295,10 @@ class NovelTtsSettings {
         (value) => value.name == json['provider'],
         orElse: () => NovelTtsProvider.custom,
       ),
-      splitChars:
-          _finiteInt(json['splitChars'], defaultSplitChars)
-              .clamp(minSplitChars, maxSplitChars).toInt(),
+      splitChars: _finiteInt(
+        json['splitChars'],
+        defaultSplitChars,
+      ).clamp(minSplitChars, maxSplitChars).toInt(),
       autoContinue: json['autoContinue'] as bool? ?? true,
       prefetchCount: _finiteInt(json['prefetchCount'], 4).clamp(1, 4).toInt(),
       microsoftKey: json['microsoftKey'] as String? ?? '',
@@ -304,17 +312,26 @@ class NovelTtsSettings {
       openaiApiKey: json['openaiApiKey'] as String? ?? '',
       openaiModel: json['openaiModel'] as String? ?? 'tts-1',
       openaiVoice: json['openaiVoice'] as String? ?? 'alloy',
-      openaiSpeed: _finiteDouble(json['openaiSpeed'], 1).clamp(0.25, 4).toDouble(),
+      openaiSpeed: _finiteDouble(
+        json['openaiSpeed'],
+        1,
+      ).clamp(0.25, 4).toDouble(),
       customUrl: json['customUrl'] as String? ?? defaultCustomUrl,
       customMethod: (json['customMethod'] as String? ?? 'GET').toUpperCase(),
       customVoice: json['customVoice'] as String? ?? '',
       // Older templates borrowed these values from other providers.
-      customLanguage: json['customLanguage'] as String? ??
-          json['microsoftLanguage'] as String? ?? 'zh-CN',
-      customSpeed: json['customSpeed'] as String? ??
-          json['microsoftRate'] as String? ?? '+0%',
-      customModel: json['customModel'] as String? ??
-          json['openaiModel'] as String? ?? 'tts-1',
+      customLanguage:
+          json['customLanguage'] as String? ??
+          json['microsoftLanguage'] as String? ??
+          'zh-CN',
+      customSpeed:
+          json['customSpeed'] as String? ??
+          json['microsoftRate'] as String? ??
+          '+0%',
+      customModel:
+          json['customModel'] as String? ??
+          json['openaiModel'] as String? ??
+          'tts-1',
       voicePresets: NovelTtsVoicePreset.listFromJson(json['voicePresets']),
       customHeaders: json['customHeaders'] as String? ?? '',
       customBody: json['customBody'] as String? ?? '',
@@ -400,19 +417,26 @@ class NovelTtsVoicePreset {
     if (raw is! List) return const [];
     final result = <NovelTtsVoicePreset>[];
     for (final item in raw) {
-      if (item is! Map || item['name'] is! String ||
-          item['endpointKey'] is! String || item['voice'] is! String) continue;
+      if (item is! Map ||
+          item['name'] is! String ||
+          item['endpointKey'] is! String ||
+          item['voice'] is! String)
+        continue;
       final name = (item['name'] as String).trim();
       final endpointKey = item['endpointKey'] as String;
       if (name.isEmpty || endpointKey.isEmpty) continue;
-      result.add(NovelTtsVoicePreset(
-        name: name,
-        endpointKey: endpointKey,
-        voice: item['voice'] as String,
-        language: item['language'] is String ? item['language'] as String : '',
-        speed: item['speed'] is String ? item['speed'] as String : '',
-        model: item['model'] is String ? item['model'] as String : '',
-      ));
+      result.add(
+        NovelTtsVoicePreset(
+          name: name,
+          endpointKey: endpointKey,
+          voice: item['voice'] as String,
+          language: item['language'] is String
+              ? item['language'] as String
+              : '',
+          speed: item['speed'] is String ? item['speed'] as String : '',
+          model: item['model'] is String ? item['model'] as String : '',
+        ),
+      );
     }
     return result;
   }
