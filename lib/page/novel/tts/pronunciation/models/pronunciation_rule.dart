@@ -4,7 +4,7 @@ enum PronunciationMatchMode { exactPhrase, nameAlias, force }
 
 class PronunciationLimits {
   static const schemaVersion = 2;
-  static const pipelineVersion = 1;
+  static const pipelineVersion = 2;
   static const maxSurfaceScalars = 128;
   static const maxReadingScalars = 256;
   static const maxRegionChars = 800;

@@ -236,14 +236,25 @@ class NovelTtsHttpSynthesizer implements NovelTtsSynthesizer {
   }
 }
 
+/// Ceiling on one clip's audio. A clip is at most a few hundred spoken
+/// characters, so a few megabytes of MP3 is already generous; anything past it
+/// is a misconfigured endpoint or a proxy error page, and buffering it whole is
+/// how a custom URL gets the process killed for memory.
+const novelTtsMaxResponseBytes = 16 * 1024 * 1024;
+
 Future<List<int>> consolidateHttpClientResponseBytes(
   HttpClientResponse response,
-) {
+) async {
   final chunks = <int>[];
-  return response.fold<List<int>>(chunks, (previous, element) {
-    previous.addAll(element);
-    return previous;
-  });
+  await for (final element in response) {
+    chunks.addAll(element);
+    if (chunks.length > novelTtsMaxResponseBytes) {
+      throw NovelTtsSynthException(
+        'TTS response exceeds ${novelTtsMaxResponseBytes ~/ (1024 * 1024)} MB',
+      );
+    }
+  }
+  return chunks;
 }
 
 bool _looksLikeJsonError(List<int> bytes) {

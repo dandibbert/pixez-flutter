@@ -31,9 +31,9 @@ class PronunciationMigration {
           mode: mode,
           scope: const PronunciationScope(type: PronunciationScopeType.global),
           priority: 0,
-          enabled: trimmed.mode == PronunciationMatchMode.force
-              ? true
-              : classified.enabled,
+          // Only the guessed classification may leave a rule off; a mode the
+          // user picked is a mode the user wants applied.
+          enabled: trimmed.mode != null || classified.enabled,
           updatedAtEpochMs: nowMs,
           needsReview: trimmed.mode == null && classified.needsReview,
         ),

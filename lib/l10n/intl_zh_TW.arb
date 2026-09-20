@@ -476,7 +476,7 @@
   "novel_tts_section_voice": "語音庫",
   "novel_tts_section_playback": "播放",
   "novel_tts_section_readings": "讀音標記",
-  "novel_tts_readings_hint": "合成前依這裡的標記替換讀音，較長的詞優先。例如把「今日」讀成「きょう」。",
+  "novel_tts_readings_hint": "合成前把寫法換成讀音。固定短語總會替換；人名別名只在能看出這些字屬於別的詞時才保持原文。例：今日=きょう",
   "novel_tts_readings_empty": "還沒有讀音標記",
   "novel_tts_reading_surface": "寫法",
   "novel_tts_reading_value": "讀音",
@@ -492,7 +492,15 @@
   "novel_tts_mode_force": "Force replace (advanced)",
   "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
   "novel_tts_preview_spoken": "Spoken",
-  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_analyzer_lexicon": "智慧人名判定：詞典級形態分析。作為動詞、形容詞或熟語出現時保持原文。",
+  "novel_tts_preview_source": "預覽文字",
+  "novel_tts_preview_applied": "已替換",
+  "novel_tts_preview_skipped": "保持原文",
+  "novel_tts_reason_name": "此處判定為人名",
+  "novel_tts_reason_verb": "屬於動詞或形容詞",
+  "novel_tts_reason_word": "屬於更長的詞",
+  "novel_tts_reason_uncertain": "無法確定",
+  "novel_tts_reason_ruby": "作者注音",
   "novel_tts_needs_review": "Review after import",
   "novel_tts_value_other": "其他",
   "novel_tts_header_name": "名稱",
@@ -501,5 +509,5 @@
   "novel_tts_insert_placeholder": "點一下插入",
   "novel_tts_reading_mode": "匹配方式",
   "novel_tts_mode_exact_hint": "只要出現這段字就替換。",
-  "novel_tts_mode_alias_hint": "按人名處理。像「悟った」這種動詞用法不會改。"
+  "novel_tts_mode_alias_hint": "按人名處理。除非這些字屬於動詞、形容詞或更長的詞，否則都會替換。"
 }

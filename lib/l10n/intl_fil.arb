@@ -433,7 +433,7 @@
   "novel_tts_section_voice": "Boses",
   "novel_tts_section_playback": "Pag-play",
   "novel_tts_section_readings": "Bigkas",
-  "novel_tts_readings_hint": "Bago mag-synthesize, papalitan ang nakasulat ng bigkas. Mas mahabang tugma ang mananalo. Halimbawa: 今日 → きょう",
+  "novel_tts_readings_hint": "Pinapalitan ang nakasulat na anyo ng pagbasa bago ang synthesis. Palaging inilalapat ang mga fixed na parirala; hindi binabago ang alias ng pangalan kapag bahagi ang mga karakter ng ibang salita, halimbawa 今日=きょう.",
   "novel_tts_readings_empty": "Wala pang marka ng bigkas",
   "novel_tts_reading_surface": "Nakasulat",
   "novel_tts_reading_value": "Bigkas",
@@ -449,7 +449,15 @@
   "novel_tts_mode_force": "Force replace (advanced)",
   "novel_tts_mode_force_warning": "Force-replacing a name like 悟 with さとる would turn 悟った into さとるった.",
   "novel_tts_preview_spoken": "Spoken",
-  "novel_tts_analyzer_boundary": "Smart name matching: boundary mode. Uncertain cases keep the original reading.",
+  "novel_tts_analyzer_lexicon": "Pagtukoy ng pangalan: buong pagsusuri sa diksyunaryo. Hindi binabago ang gamit na pandiwa, pang-uri, o tambalang salita.",
+  "novel_tts_preview_source": "Teksto para sa preview",
+  "novel_tts_preview_applied": "pinalitan",
+  "novel_tts_preview_skipped": "hindi binago",
+  "novel_tts_reason_name": "pangalan ng tao dito",
+  "novel_tts_reason_verb": "bahagi ng pandiwa o pang-uri",
+  "novel_tts_reason_word": "bahagi ng mas mahabang salita",
+  "novel_tts_reason_uncertain": "hindi sapat ang katiyakan",
+  "novel_tts_reason_ruby": "ruby ng awtor",
   "novel_tts_needs_review": "Review after import",
   "novel_tts_value_other": "Iba pa",
   "novel_tts_header_name": "Pangalan",
@@ -458,5 +466,5 @@
   "novel_tts_insert_placeholder": "I-tap para isingit",
   "novel_tts_reading_mode": "Paraan ng match",
   "novel_tts_mode_exact_hint": "Palaging palitan ang eksaktong sulat na ito.",
-  "novel_tts_mode_alias_hint": "Ituring na pangalan. Hindi babaguhin ang 悟った at iba pang pandiwa."
+  "novel_tts_mode_alias_hint": "Ituring na pangalan ng tao. Ilalapat maliban kung bahagi ang mga karakter ng pandiwa, pang-uri, o mas mahabang salita."
 }

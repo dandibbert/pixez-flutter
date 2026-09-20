@@ -213,6 +213,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   var _userPaused = false;
   var _audioReady = false;
   var _advanceDepth = 0;
+  var _cacheWrite = 0;
+  var _disposed = false;
+  int? _pendingCompletion;
   Timer? _nowPlayingTimer;
 
   NovelTtsStatus status = NovelTtsStatus.idle;
@@ -305,11 +308,20 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       seriesId: seriesId,
       settingsReadings: loaded.readings,
     );
-    final built = await _clipsFromDocuments(
-      documents,
-      loaded.clampedSplitChars,
-      novelId: novelId,
-    );
+    // Pronunciation resolution and budget splitting run over the whole novel
+    // here. A throw from either used to escape `start()` unhandled, and an
+    // unhandled error out of a button handler is a force-close; a chapter that
+    // refuses to read is the far better failure.
+    List<NovelTtsClip> built;
+    try {
+      built = await _clipsFromDocuments(
+        documents,
+        loaded.clampedSplitChars,
+        novelId: novelId,
+      );
+    } catch (_) {
+      built = const [];
+    }
     if (built.isEmpty) {
       status = NovelTtsStatus.error;
       errorMessage = 'empty';
@@ -408,12 +420,17 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
-    final pageClips = await _clipsFromDocuments(
-      [novelTtsDocumentFromText(pageText)],
-      settings.clampedSplitChars,
-      novelId: current.novelId,
-      pageOffset: page,
-    );
+    List<NovelTtsClip> pageClips;
+    try {
+      pageClips = await _clipsFromDocuments(
+        [novelTtsDocumentFromText(pageText)],
+        settings.clampedSplitChars,
+        novelId: current.novelId,
+        pageOffset: page,
+      );
+    } catch (_) {
+      pageClips = const [];
+    }
     if (pageClips.isEmpty) {
       await skip(direction: fromEnd ? 'prev' : 'next');
       return;
@@ -505,6 +522,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _audioReady = false;
     _chapters.clear();
     _loadedSeriesIds.clear();
+    // Held per page for the whole session and only reset by the next `start()`,
+    // so a reader who stops keeps a novel's worth of decisions resident.
+    _pageDecisions.clear();
+    _sessionSnapshot = null;
     await _audio.stop();
     await _nowPlaying.keepAlive(false);
     await _nowPlaying.endBackgroundTask();
@@ -560,6 +581,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
     switch (advance.kind) {
       case NovelTtsAdvanceKind.chunk:
+        // `clamp` throws when the upper bound falls below the lower one, and
+        // the argument is evaluated before `_playFrom` can turn an empty clip
+        // list away. `session.chunks` outliving `clips` is enough to get here.
+        if (clips.isEmpty) {
+          return;
+        }
         await _playFrom(nextIndex.clamp(0, clips.length - 1));
       case NovelTtsAdvanceKind.page:
         onNavigate?.call(
@@ -587,8 +614,22 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _onQueueComplete() async {
     if (status == NovelTtsStatus.idle ||
         status == NovelTtsStatus.paused ||
-        _userPaused ||
-        _advanceDepth > 0) {
+        _userPaused) {
+      return;
+    }
+    if (_advanceDepth > 0) {
+      // A clip ran out while an advance was still in flight. Dropping the
+      // event is what parked readers on the opening clip of a chapter: that
+      // clip is usually a short title line, so it ends while `_playFrom` is
+      // still publishing now-playing state, and nothing ever moved on.
+      //
+      // Only a clip that had actually started counts. Before `_audioReady` the
+      // advance in flight has not replaced the player yet, so the event
+      // belongs to the clip being navigated away from and replaying it would
+      // skip the clip we are on our way to.
+      if (_audioReady) {
+        _pendingCompletion = _generation;
+      }
       return;
     }
     _advanceDepth++;
@@ -606,6 +647,17 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     } finally {
       _advanceDepth--;
     }
+    await _drainPendingCompletion();
+  }
+
+  /// Replays a clip-finished event that arrived while an advance was running.
+  Future<void> _drainPendingCompletion() async {
+    final pending = _pendingCompletion;
+    _pendingCompletion = null;
+    if (pending == null || pending != _generation || _advanceDepth > 0) {
+      return;
+    }
+    await _onQueueComplete();
   }
 
   void _onQueuedClip(int queueIndex) {
@@ -643,10 +695,14 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _advanceDepth++;
     final generation = ++_generation;
     _queuedClips.clear();
+    // The player still holds the clip we are leaving. Until `playFiles` lands,
+    // a clip-finished event belongs to that clip, not to this one.
+    _audioReady = false;
     _applyClip(index.clamp(0, clips.length - 1));
     status = NovelTtsStatus.synthesizing;
     errorMessage = null;
     notifyListeners();
+    var playing = false;
     try {
       final first = await _fileForClip(clipIndex);
       if (generation != _generation) {
@@ -668,7 +724,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       }
       await _publishNowPlaying();
       notifyListeners();
-      await _fillQueue();
+      playing = true;
     } catch (error) {
       if (generation != _generation) {
         return;
@@ -679,6 +735,18 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     } finally {
       _advanceDepth--;
     }
+    // Filling the queue is one network round trip per clip ahead. Holding the
+    // advance guard across it makes `_onQueueComplete` a no-op for that whole
+    // window, and the clip that opens a chapter is usually a title line short
+    // enough to run out inside it -- the reader then sits on clip one forever.
+    if (!playing) {
+      return;
+    }
+    await _drainPendingCompletion();
+    if (generation != _generation) {
+      return;
+    }
+    await _fillQueue();
   }
 
   Future<void> _fillQueue() async {
@@ -704,6 +772,11 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (clips.isEmpty || !isActive) {
       return;
     }
+    // The fill now runs alongside a possible advance, so every clip it lines up
+    // belongs to the playlist that was current when it started. Appending them
+    // to a playlist a newer `_playFrom` has since installed would read the
+    // wrong part of the chapter.
+    final generation = _generation;
     final ahead = settings.prefetchCount.clamp(3, 12);
     final needed = <int>[];
     for (var i = 1; i <= ahead; i++) {
@@ -723,7 +796,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     ]);
     for (var i = 0; i < needed.length; i++) {
       final file = files[i];
-      if (file == null || !isActive) {
+      if (file == null || !isActive || generation != _generation) {
         return;
       }
       if (_queuedClips.contains(needed[i])) {
@@ -1073,20 +1146,51 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<File> _fileForClip(int index) async {
     final spoken = clips[index].spokenText;
+    final cached = await _cachedFile(spoken);
+    if (cached != null) {
+      return cached;
+    }
     final bytes = await _audioBytes(spoken);
     return _writeCache(spoken, bytes);
   }
 
+  /// The clip already on disk, from this session or an earlier one.
+  Future<File?> _cachedFile(String text) async {
+    try {
+      final file = await _cacheFile(text);
+      if (await file.exists() && await file.length() > 0) {
+        return file;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Clips whose bytes are still held in memory. Only non-zero while a
+  /// synthesis request is actually outstanding.
+  int get inflightAudioCount => _inflight.length;
+
   Future<Uint8List> _audioBytes(String text) {
     final key = _cacheKey(text);
-    return _inflight.putIfAbsent(key, () async {
-      await _nowPlaying.beginBackgroundTask();
-      try {
-        return await _synthesizer.synthesize(settings, text);
-      } finally {
-        await _nowPlaying.endBackgroundTask();
-      }
-    });
+    final pending = _inflight[key];
+    if (pending != null) {
+      return pending;
+    }
+    final started = _synthesize(text);
+    _inflight[key] = started;
+    // The map only exists to collapse concurrent requests for one clip. Keeping
+    // the entry after it settles pins that clip's bytes for the whole session,
+    // and a long novel then walks the process into an out-of-memory kill.
+    started.whenComplete(() => _inflight.remove(key)).ignore();
+    return started;
+  }
+
+  Future<Uint8List> _synthesize(String text) async {
+    await _nowPlaying.beginBackgroundTask();
+    try {
+      return await _synthesizer.synthesize(settings, text);
+    } finally {
+      await _nowPlaying.endBackgroundTask();
+    }
   }
 
   String _cacheKey(String text) {
@@ -1097,14 +1201,41 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     return sha1.convert(utf8.encode(material)).toString();
   }
 
-  Future<File> _writeCache(String text, Uint8List bytes) async {
+  Future<File> _cacheFile(String text) async {
     final dir = await (_cacheDir?.call() ?? getTemporaryDirectory());
     final ttsDir = Directory(p.join(dir.path, 'novel_tts'));
     if (!ttsDir.existsSync()) {
       ttsDir.createSync(recursive: true);
     }
-    final file = File(p.join(ttsDir.path, '${_cacheKey(text)}.mp3'));
-    await file.writeAsBytes(bytes, flush: true);
+    return File(p.join(ttsDir.path, '${_cacheKey(text)}.mp3'));
+  }
+
+  Future<File> _writeCache(String text, Uint8List bytes) async {
+    final file = await _cacheFile(text);
+    // Written aside and renamed so a kill mid-write cannot leave a truncated
+    // clip that _cachedFile would later hand to the player as a hit.
+    //
+    // The temp name carries a counter because the player and the prefetcher
+    // ask for the same clip at the same time whenever playback catches up with
+    // the queue -- which is exactly what happens on the first clip of a
+    // chapter. On a shared temp name the slower one renames a file the faster
+    // one has already moved away, and that failure surfaced as a dead reader.
+    final temp = File('${file.path}.${_cacheWrite++}.part');
+    try {
+      await temp.writeAsBytes(bytes, flush: true);
+      await temp.rename(file.path);
+    } catch (_) {
+      try {
+        if (temp.existsSync()) {
+          temp.deleteSync();
+        }
+      } catch (_) {}
+      final landed = await _cachedFile(text);
+      if (landed != null) {
+        return landed;
+      }
+      rethrow;
+    }
     return file;
   }
 
@@ -1153,7 +1284,19 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   @override
+  void notifyListeners() {
+    // Playback outlives dispose by whatever async step it was in, and
+    // ChangeNotifier throws when notified after disposal. That throw lands in
+    // the middle of `_playFrom`, not at a call site anyone can guard.
+    if (_disposed) {
+      return;
+    }
+    super.notifyListeners();
+  }
+
+  @override
   void dispose() {
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _completionSub?.cancel();
     _clipSub?.cancel();

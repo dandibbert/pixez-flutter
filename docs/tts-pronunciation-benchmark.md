@@ -1,46 +1,80 @@
 # Novel TTS pronunciation analyzer benchmark
 
-Date: 2026-08-30  
 Host: Cursor Cloud Agent VM, Linux x86_64  
-Dart/Flutter: repository SDK constraint `>=3.11.5`
+Flutter 3.47.1 / Dart 3.13.1
 
 ## Decision
 
-**Production analyzer: `BoundaryOnlyJapaneseAnalyzer` (boundary-only).**  
-`kuromoji 1.0.5` is not wired into the controller.
+**Production analyzer: `LexiconJapaneseAnalyzer` (capability `lexicon-pos`).**
 
-## Phase 0 measurements
+It is backed by `japanese_lexicon_data.dart`, generated from mecab-ipadic
+2.7.0-20070801 by `tool/generate_japanese_lexicon.dart`. `kuromoji` is not a
+dependency; `BoundaryOnlyJapaneseAnalyzer` stays in the tree only as the
+degraded path the worker falls back to when the analyzer throws.
+
+## Why not kuromoji (Phase 0, 2026-08-30)
 
 | Gate | Threshold | kuromoji 1.0.5 result |
 |---|---:|---|
 | Package on disk | (informational) | **23 MB** under `~/.pub-cache/hosted/pub.dev/kuromoji-1.0.5`, mostly base64 `*.dat.dart` dictionaries (`tid_pos.dat.dart` 7.9 MB, `base.dat.dart` 5.3 MB, …) |
-| Android release increment | ≤ 30 MB | Not measured as an APK. Embedding 23 MB of dictionary source already risks the gate after AOT; skipped. |
-| iOS release increment | ≤ 30 MB | Not measured (no iOS toolchain on this VM). |
-| Cold init on mid-range mobile | ≤ 1.2 s, off UI isolate | Linux `dart run` of `TokenizerBuilder().build()` **did not finish in 658 s** and was killed. Fails the gate by two orders of magnitude. |
-| Warm 500-character p95 | ≤ 20 ms | Not reached; tokenizer never became ready. |
-| Extra RSS | ≤ 80 MB | Not reached. |
-| Android / iOS / macOS / Windows build | all pass | Not attempted; dependency is not in `pubspec.yaml`. |
-| Offset trust | must map to UTF-16 | Source splits on `[、。]` then reports `word_position` as last-token position plus in-sentence `startPos`. Offsets reset across sentences and are not source UTF-16 ranges. |
+| Cold init | ≤ 1.2 s, off UI isolate | `TokenizerBuilder().build()` **did not finish in 658 s** and was killed. Fails by two orders of magnitude. |
+| Warm 500-character p95 | ≤ 20 ms | Not reached; the tokenizer never became ready. |
+| Offset trust | must map to UTF-16 | Splits on `[、。]` and reports `word_position` as the last-token position plus an in-sentence `startPos`. Offsets reset across sentences and are not source UTF-16 ranges. |
 
-## Why boundary-only
+The plan forbids shipping kuromoji until every hard gate passes, and forbids
+Sudachi/MeCab/Rust bridges as a fallback. What it does allow is a lexicon
+derived from IPADIC, which is what ships.
 
-The plan forbids shipping kuromoji until every hard gate passes, and forbids Sudachi/MeCab/Rust bridges as a fallback. Boundary-only keeps:
+## Lexicon analyzer measurements
 
-- `exactPhrase` / `force` replacements
-- conservative `nameAlias` only on token boundaries, honorifics, quotes, or work/series particles
-- fail-closed aliases when a verb/adjective inflection suffix follows
+Reproduce with `flutter test test/novel_tts_pronunciation_test.dart` for
+behaviour; the numbers below come from an in-process harness on this VM
+(1000 timed iterations after 200 warm-up iterations).
 
-## Boundary-only microbench (this VM)
+| Gate | Threshold | `LexiconJapaneseAnalyzer` result |
+|---|---:|---|
+| Cold init | ≤ 1.2 s | **21 ms** to build the trie (9830 stems, 1283 fixed words) |
+| `warmUp()` once built | — | 92 µs |
+| Warm 500-character p95 | ≤ 20 ms | **0.072 ms** (p50 0.052 ms, p99 0.085 ms) |
+| Extra RSS | ≤ 80 MB | **+6 MiB** for the built trie |
+| Generated source | (informational) | **115.3 KiB** of Dart const strings, no asset and no runtime download |
+| Android arm64 release APK increment | ≤ 30 MB | **64 KiB** (see below) |
+| Offset trust | must map to UTF-16 | Tokens carry source UTF-16 `start`/`end`; `MorphologyOffsetMapper` rejects any token that does not land on a scalar boundary inside the region |
 
-Same machine, in-process `BoundaryOnlyJapaneseAnalyzer`:
+The trie is built lazily behind `JapaneseInflectionLexicon.shared` on the first
+alias candidate, so a reader that never configures a name alias never pays for
+it, and app startup never touches it.
 
-| Case | Result |
-|---|---|
-| Cold `warmUp()` | < 1 ms |
-| `悟は笑った。` + `真相を悟った。` | < 1 ms each |
-| 500-character Japanese page | < 2 ms |
-| Extra RSS | not measurable above Dart VM noise |
+### Android release size
 
-## Capability string
+Two `flutter build apk --release --target-platform android-arm64` runs on this
+VM, one at `HEAD` and one with `japaneseInflectionClasses` and
+`japaneseFixedWords` emptied:
 
-`boundary-only` — the settings UI must not claim full POS morphology.
+| Build | `app-release.apk` |
+|---:|---:|
+| With the lexicon | 40 944 336 B |
+| Empty lexicon | 40 878 800 B |
+| Increment | **65 536 B (64 KiB)** |
+
+The const strings deduplicate and compress in the AOT snapshot, so 115 KiB of
+generated Dart source costs 64 KiB shipped — three orders of magnitude under
+the gate, against kuromoji's 23 MB of dictionary source.
+
+## Accuracy
+
+`test/novel_tts_pronunciation_test.dart` holds the behavioural matrix: the
+`悟` set from the plan, plus a homograph regression suite over 恵 愛 光 望 歩
+司 静 実 優 薫 誠 翼 楼 葵, and the degraded-path cases.
+
+On an eight-line novel excerpt with four single-kanji aliases (悟 恵 傑 棘),
+23 candidates resolve to 17 applied and 6 kept, and all 6 kept spans are real
+non-name uses: 悟った, 悟り, 恵まれた, 知恵, 悟らない, 悟れば.
+
+## Capability strings
+
+- `lexicon-pos` — IPADIC-derived part of speech, dictionary form, conjugation
+  type. What the settings UI reports.
+- `boundary-only` — script runs only, no part of speech.
+- `unavailable` — the analyzer threw or timed out. Aliases fall back to the
+  honorific, quote, and okurigana lists and skip anything they cannot justify.
