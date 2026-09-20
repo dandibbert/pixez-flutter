@@ -44,14 +44,20 @@ jobs:
         env:
           FORMAT_BASE: ${{ github.event.pull_request.base.sha || 'origin/master' }}
         run: |
-          git diff --name-only --diff-filter=ACM -z "$FORMAT_BASE" HEAD -- \
+          # Do not reformat entire upstream files just because a sync merge
+          # included them. Check Dart files edited by commits on this branch.
+          git log --first-parent --no-merges --format= --name-only "$FORMAT_BASE..HEAD" -- \
             '*.dart' ':!plugins/**' ':!**/*.g.dart' ':!**/*.freezed.dart' \
-            | xargs -0 -r dart format
+            | sort -u | sed '/^$/d' | while IFS= read -r file; do
+                if [ -f "$file" ]; then dart format "$file"; fi
+              done
           git diff -- '*.dart' > "$RUNNER_TEMP/dart-format.patch"
           test ! -s "$RUNNER_TEMP/dart-format.patch"
       - name: Analyze
         if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings lib
+          flutter analyze --no-fatal-infos --no-fatal-warnings test
       - name: Test
         if: ${{ !cancelled() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure') }}
         run: flutter test --reporter expanded

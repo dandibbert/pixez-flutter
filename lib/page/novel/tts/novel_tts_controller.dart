@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:crypto/crypto.dart';
@@ -170,12 +169,19 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       unawaited(_onQueueComplete());
     });
     _clipSub = _audio.onClipIndex.listen(_onQueuedClip);
+    final events = _audio;
+    if (events is NovelTtsAudioEvents) {
+      _playingSub = events.onPlaying.listen(_onPlatformPlaying);
+      _errorSub = events.onError.listen(_onAudioError);
+    }
     _nowPlaying.onRemote = _onRemote;
     _nowPlaying.bind();
     WidgetsBinding.instance.addObserver(this);
   }
 
   static NovelTtsController? _instance;
+
+  static NovelTtsController? get maybeInstance => _instance;
 
   static NovelTtsController get instance {
     return _instance ??= NovelTtsController();
@@ -200,12 +206,20 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   StreamSubscription<void>? _completionSub;
   StreamSubscription<int>? _clipSub;
-  final Map<String, Future<Uint8List>> _inflight = {};
+  StreamSubscription<bool>? _playingSub;
+  StreamSubscription<Object>? _errorSub;
+  final Map<String, Future<File>> _inflight = {};
+  final Set<String> _protectedCachePaths = {};
+  NovelTtsSettings? _playbackSettings;
+  int _sessionGeneration = 0;
   final Map<int, NovelTtsChapter> _chapters = {};
+  final Map<int, List<NovelTtsTextDocument>> _chapterDocuments = {};
+  String? _seriesId;
   final Set<int> _queuedClips = {};
   final Set<int> _loadedSeriesIds = {};
   int _generation = 0;
   int _queueStartClip = 0;
+  int _clipBase = 0;
   int? _prefetchingSeriesId;
   var _fillingQueue = false;
   var _fillAgain = false;
@@ -216,7 +230,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   var _cacheWrite = 0;
   var _disposed = false;
   int? _pendingCompletion;
-  Timer? _nowPlayingTimer;
+  Future<void> _nowPlayingWrite = Future<void>.value();
+  var _backgroundWork = 0;
+  Future<void>? _cacheCleanup;
 
   NovelTtsStatus status = NovelTtsStatus.idle;
   String? errorMessage;
@@ -257,9 +273,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   bool get isActive =>
-      status == NovelTtsStatus.playing ||
+      !_disposed && (status == NovelTtsStatus.playing ||
       status == NovelTtsStatus.paused ||
-      status == NovelTtsStatus.synthesizing;
+      status == NovelTtsStatus.synthesizing);
 
   String get subtitle {
     if (clips.isEmpty) {
@@ -269,6 +285,73 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   NovelTtsSettings get settings => _settingsLoader();
+
+  bool _isSession(int generation) =>
+      !_disposed && generation == _sessionGeneration;
+
+  bool _isPlayback(int generation) =>
+      !_disposed && generation == _generation;
+
+  void _cancelSynthesis() {
+    final synth = _synthesizer;
+    if (synth is NovelTtsCancellableSynthesizer) synth.cancelPending();
+    _inflight.clear();
+  }
+
+  void _invalidateSession() {
+    _sessionGeneration++;
+    _generation++;
+    _pronunciationPipeline.worker.sessionGeneration = _sessionGeneration;
+    _pendingCompletion = null;
+    _backgroundWork = 0;
+    _cancelSynthesis();
+  }
+
+  /// Apply a saved voice/endpoint without leaving old audio in the queue.
+  Future<void> applySettings() async {
+    if (!isActive || clips.isEmpty) return;
+    final loaded = settings;
+    if (!loaded.isConfigured) {
+      await stop();
+      if (_disposed) return;
+      status = NovelTtsStatus.error;
+      errorMessage = 'not_configured';
+      notifyListeners();
+      return;
+    }
+    final paused = status == NovelTtsStatus.paused;
+    final previous = _playbackSettings;
+    final current = currentClip;
+    final chapter = current == null ? null : _chapters[current.novelId];
+    if (previous != null && current != null && chapter != null &&
+        (previous.splitChars != loaded.splitChars ||
+         jsonEncode(previous.readings.map((item) => item.toJson()).toList()) !=
+             jsonEncode(loaded.readings.map((item) => item.toJson()).toList()))) {
+      final restarting = start(
+        novelId: chapter.novelId,
+        title: chapter.title,
+        author: chapter.author,
+        page: current.page,
+        totalPages: chapter.pageTexts.length,
+        pageText: chapter.pageTexts[current.page - 1],
+        pageTexts: chapter.pageTexts,
+        pageDocuments: _chapterDocuments[chapter.novelId],
+        coverUrl: chapter.coverUrl,
+        prevSeriesId: chapter.prevSeriesId,
+        nextSeriesId: chapter.nextSeriesId,
+        seriesId: _seriesId,
+        startOffset: current.sourceStart,
+      );
+      if (paused) await pause();
+      await restarting;
+      return;
+    }
+    _playbackSettings = loaded;
+    _cancelSynthesis();
+    _userPaused = paused;
+    _holdAfterReady = paused;
+    await _playFrom(clipIndex);
+  }
 
   Future<void> start({
     required int novelId,
@@ -287,7 +370,36 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     String? startNeedle,
     int? startOffset,
   }) async {
+    if (_disposed) return;
     final loaded = settings;
+    _rememberBookmark();
+    _invalidateSession();
+    final generation = _sessionGeneration;
+    _playbackSettings = loaded;
+    _seriesId = seriesId;
+    _pageDecisions.clear();
+    _sessionSnapshot = null;
+    _chapters.clear();
+    _chapterDocuments.clear();
+    _loadedSeriesIds.clear();
+    _queuedClips.clear();
+    _protectedCachePaths.clear();
+    _prefetchingSeriesId = null;
+    _audioReady = false;
+    _holdAfterReady = false;
+    _userPaused = false;
+    session = null;
+    clips = const [];
+    _clipBase = 0;
+    status = NovelTtsStatus.synthesizing;
+    errorMessage = null;
+    notifyListeners();
+    await _audio.stop();
+    if (!_isSession(generation)) return;
+    await _nowPlaying.keepAlive(false);
+    if (!_isSession(generation)) return;
+    await _nowPlaying.stop();
+    if (!_isSession(generation)) return;
     if (!loaded.isConfigured) {
       status = NovelTtsStatus.error;
       errorMessage = 'not_configured';
@@ -300,20 +412,15 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     final documents = pageDocuments == null || pageDocuments.isEmpty
         ? [for (final text in texts) novelTtsDocumentFromText(text)]
         : pageDocuments;
-    _generation++;
-    _pageDecisions.clear();
-    _pronunciationPipeline.worker.sessionGeneration = _generation;
-    _sessionSnapshot = await _pronunciationRepository.snapshotFor(
-      workId: '$novelId',
-      seriesId: seriesId,
-      settingsReadings: loaded.readings,
-    );
-    // Pronunciation resolution and budget splitting run over the whole novel
-    // here. A throw from either used to escape `start()` unhandled, and an
-    // unhandled error out of a button handler is a force-close; a chapter that
-    // refuses to read is the far better failure.
     List<NovelTtsClip> built;
     try {
+      final snapshot = await _pronunciationRepository.snapshotFor(
+        workId: '$novelId',
+        seriesId: seriesId,
+        settingsReadings: loaded.readings,
+      );
+      if (!_isSession(generation)) return;
+      _sessionSnapshot = snapshot;
       built = await _clipsFromDocuments(
         documents,
         loaded.clampedSplitChars,
@@ -322,6 +429,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     } catch (_) {
       built = const [];
     }
+    if (!_isSession(generation)) return;
     if (built.isEmpty) {
       status = NovelTtsStatus.error;
       errorMessage = 'empty';
@@ -344,6 +452,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       ..clear()
       ..add(novelId);
     _prefetchingSeriesId = null;
+    _chapterDocuments[novelId] = documents;
     clips = built;
     status = NovelTtsStatus.synthesizing;
     errorMessage = null;
@@ -376,12 +485,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       ],
     );
     errorMessage = null;
-    _holdAfterReady = false;
-    _userPaused = false;
     _audioReady = false;
-    await _audio.stop();
     await _ensureAudioSession();
-    await _nowPlaying.keepAlive(true);
+    if (!_isSession(generation)) return;
     await _playFrom(clipIndex);
   }
 
@@ -393,17 +499,14 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
-      unawaited(_ensureAudioSession());
-      unawaited(_nowPlaying.keepAlive(true));
       unawaited(_publishNowPlaying());
-      unawaited(_fillQueue());
     }
   }
 
   Future<void> _ensureAudioSession() async {
     try {
       final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
+      await session.configure(const AudioSessionConfiguration.speech());
       await session.setActive(true);
     } catch (_) {}
   }
@@ -420,6 +523,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
+    final generation = _sessionGeneration;
     List<NovelTtsClip> pageClips;
     try {
       pageClips = await _clipsFromDocuments(
@@ -431,6 +535,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     } catch (_) {
       pageClips = const [];
     }
+    if (!_isSession(generation)) return;
     if (pageClips.isEmpty) {
       await skip(direction: fromEnd ? 'prev' : 'next');
       return;
@@ -442,15 +547,43 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       prevSeriesId: prevSeriesId,
       nextSeriesId: nextSeriesId,
     );
+    final firstCurrent = clips.indexWhere((clip) => clip.novelId == current.novelId);
+    final lastCurrent = clips.lastIndexWhere((clip) => clip.novelId == current.novelId);
+    if (firstCurrent < 0) return;
+    final chapterClips = clips.sublist(firstCurrent, lastCurrent + 1);
     clips = [
-      for (final clip in clips)
+      ...clips.take(firstCurrent),
+      for (final clip in chapterClips)
         if (clip.page < page) clip,
       ...pageClips,
-      for (final clip in clips)
+      for (final clip in chapterClips)
         if (clip.page > page) clip,
+      ...clips.skip(lastCurrent + 1),
     ];
-    if (clips.isEmpty) {
-      clips = pageClips;
+    final chapter = _chapters[current.novelId];
+    if (chapter != null) {
+      final texts = List<String>.generate(
+        totalPages,
+        (index) => index < chapter.pageTexts.length ? chapter.pageTexts[index] : '',
+      );
+      if (page > 0 && page <= texts.length) texts[page - 1] = pageText;
+      _chapters[current.novelId] = NovelTtsChapter(
+        novelId: chapter.novelId,
+        title: chapter.title,
+        author: chapter.author,
+        pageTexts: texts,
+        coverUrl: chapter.coverUrl,
+        prevSeriesId: prevSeriesId ?? chapter.prevSeriesId,
+        nextSeriesId: nextSeriesId ?? chapter.nextSeriesId,
+      );
+      final oldDocuments = _chapterDocuments[current.novelId] ?? const [];
+      _chapterDocuments[current.novelId] = [
+        for (var index = 0; index < texts.length; index++)
+          if (index != page - 1 && index < oldDocuments.length)
+            oldDocuments[index]
+          else
+            novelTtsDocumentFromText(texts[index]),
+      ];
     }
     clipIndex = _indexOf(
       page: page,
@@ -480,64 +613,70 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> pause() async {
     if (status != NovelTtsStatus.playing &&
-        status != NovelTtsStatus.synthesizing) {
-      return;
-    }
+        status != NovelTtsStatus.synthesizing) return;
+    final generation = _generation;
     _userPaused = true;
     _holdAfterReady = true;
     status = NovelTtsStatus.paused;
-    notifyListeners();
-    await _audio.pause();
     _rememberBookmark();
-    await _publishNowPlaying();
     notifyListeners();
+    await _nowPlaying.keepAlive(false);
+    if (!_isPlayback(generation)) return;
+    await _audio.pause();
+    if (!_isPlayback(generation)) return;
+    await _publishNowPlaying();
   }
 
   Future<void> resume() async {
-    if (status != NovelTtsStatus.paused) {
-      return;
-    }
+    if (_disposed || status != NovelTtsStatus.paused) return;
+    final generation = _generation;
     _userPaused = false;
     _holdAfterReady = false;
     if (!_audioReady) {
       status = NovelTtsStatus.synthesizing;
-      await _publishNowPlaying();
-      notifyListeners();
-      return;
+      await _nowPlaying.keepAlive(true);
+    } else {
+      await _audio.resume();
+      if (!_isPlayback(generation)) return;
+      status = NovelTtsStatus.playing;
     }
-    await _audio.resume();
-    status = NovelTtsStatus.playing;
+    if (!_isPlayback(generation)) return;
     await _publishNowPlaying();
     notifyListeners();
   }
 
   Future<void> stop() async {
+    if (_disposed) return;
     _rememberBookmark();
-    _generation++;
-    _pronunciationPipeline.worker.sessionGeneration = _generation;
+    _invalidateSession();
+    final generation = _sessionGeneration;
     pendingResumeNovelId = null;
     _prefetchingSeriesId = null;
     _holdAfterReady = false;
     _userPaused = false;
     _audioReady = false;
     _chapters.clear();
+    _chapterDocuments.clear();
     _loadedSeriesIds.clear();
-    // Held per page for the whole session and only reset by the next `start()`,
-    // so a reader who stops keeps a novel's worth of decisions resident.
     _pageDecisions.clear();
     _sessionSnapshot = null;
-    await _audio.stop();
-    await _nowPlaying.keepAlive(false);
-    await _nowPlaying.endBackgroundTask();
-    await _nowPlaying.stop();
-    _nowPlayingTimer?.cancel();
+    _playbackSettings = null;
     status = NovelTtsStatus.idle;
     errorMessage = null;
     session = null;
     clips = const [];
+    _clipBase = 0;
     clipIndex = 0;
     _queuedClips.clear();
+    _protectedCachePaths.clear();
     notifyListeners();
+    await _audio.stop();
+    if (!_isSession(generation)) return;
+    await _nowPlaying.keepAlive(false);
+    if (!_isSession(generation)) return;
+    await _nowPlaying.endBackgroundTask();
+    if (!_isSession(generation)) return;
+    await _nowPlaying.stop();
   }
 
   Future<void> skip({required String direction}) async {
@@ -545,10 +684,13 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
+    final generation = _generation;
+    final previousIndex = clipIndex + _clipBase;
     _userPaused = false;
     _holdAfterReady = false;
     if (direction == 'next' && await _audio.seekNext()) {
-      final next = clipIndex + 1;
+      if (!_isPlayback(generation)) return;
+      final next = previousIndex + 1 - _clipBase;
       if (next < clips.length && clipIndex < next) {
         _applyClip(next, keepPlaying: true);
         unawaited(_fillQueue());
@@ -556,14 +698,17 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       }
       return;
     }
+    if (!_isPlayback(generation)) return;
     if (direction == 'prev' && await _audio.seekPrevious()) {
-      final previous = clipIndex - 1;
+      if (!_isPlayback(generation)) return;
+      final previous = previousIndex - 1 - _clipBase;
       if (previous >= 0 && clipIndex > previous) {
         _applyClip(previous, keepPlaying: true);
         notifyListeners();
       }
       return;
     }
+    if (!_isPlayback(generation)) return;
     final nextIndex = clipIndex + (direction == 'prev' ? -1 : 1);
     if (nextIndex >= 0 && nextIndex < clips.length) {
       await _playFrom(nextIndex);
@@ -612,9 +757,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _onQueueComplete() async {
-    if (status == NovelTtsStatus.idle ||
-        status == NovelTtsStatus.paused ||
-        _userPaused) {
+    if (!isActive || status == NovelTtsStatus.paused || _userPaused) {
       return;
     }
     if (_advanceDepth > 0) {
@@ -635,15 +778,17 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _advanceDepth++;
     try {
       if (clipIndex + 1 < clips.length) {
-        await _playFrom(clipIndex + 1);
-        return;
+        await _playFrom(clipIndex + 1, reusePrefetch: true);
+      } else {
+        final generation = _sessionGeneration;
+        await _maybePrefetchSeries();
+        if (!_isSession(generation)) return;
+        if (clipIndex + 1 < clips.length) {
+          await _playFrom(clipIndex + 1, reusePrefetch: true);
+        } else {
+          await skip(direction: 'next');
+        }
       }
-      await _maybePrefetchSeries();
-      if (clipIndex + 1 < clips.length) {
-        await _playFrom(clipIndex + 1);
-        return;
-      }
-      await skip(direction: 'next');
     } finally {
       _advanceDepth--;
     }
@@ -652,23 +797,66 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Replays a clip-finished event that arrived while an advance was running.
   Future<void> _drainPendingCompletion() async {
+    if (_advanceDepth > 0) return;
     final pending = _pendingCompletion;
     _pendingCompletion = null;
-    if (pending == null || pending != _generation || _advanceDepth > 0) {
+    if (pending == null || pending != _generation) {
       return;
     }
     await _onQueueComplete();
   }
 
   void _onQueuedClip(int queueIndex) {
-    final next = _queueStartClip + queueIndex;
+    if (!_audioReady || !isActive) return;
+    final next = _queueStartClip + queueIndex - _clipBase;
     if (next < 0 || next >= clips.length) {
       return;
     }
     _applyClip(next, keepPlaying: true);
+    _queuedClips.removeWhere((index) => index < clipIndex - 1);
+    final loaded = _playbackSettings ?? settings;
+    final queuedNames = {
+      for (final index in _queuedClips)
+        '${_cacheKey(clips[index].spokenText, loaded)}.mp3',
+    };
+    _protectedCachePaths.removeWhere((path) => !queuedNames.contains(p.basename(path)));
     unawaited(_fillQueue());
     unawaited(_publishNowPlaying());
     notifyListeners();
+  }
+
+  void _onPlatformPlaying(bool playing) {
+    if (!_audioReady || !isActive) return;
+    if (!playing && status == NovelTtsStatus.playing) {
+      // Do not call pause() here: just_audio preserves whether a phone-call
+      // interruption should resume. A user pause separately sets _userPaused.
+      status = NovelTtsStatus.paused;
+      unawaited(_nowPlaying.keepAlive(false));
+    } else if (playing && status == NovelTtsStatus.paused && !_userPaused) {
+      status = NovelTtsStatus.playing;
+    } else {
+      return;
+    }
+    unawaited(_publishNowPlaying());
+    notifyListeners();
+  }
+
+  void _onAudioError(Object error) {
+    if (_disposed || !isActive) return;
+    final generation = ++_generation;
+    _audioReady = false;
+    _pendingCompletion = null;
+    _cancelSynthesis();
+    status = NovelTtsStatus.error;
+    errorMessage = error.toString();
+    notifyListeners();
+    unawaited(() async {
+      await _audio.stop();
+      if (!_isPlayback(generation)) return;
+      await _nowPlaying.keepAlive(false);
+      if (!_isPlayback(generation)) return;
+      await _nowPlaying.stop();
+    }());
   }
 
   void _onRemote(String action) {
@@ -688,13 +876,15 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _playFrom(int index) async {
-    if (clips.isEmpty) {
+  Future<void> _playFrom(int index, {bool reusePrefetch = false}) async {
+    if (_disposed || clips.isEmpty) {
       return;
     }
     _advanceDepth++;
+    if (!reusePrefetch) _cancelSynthesis();
     final generation = ++_generation;
     _queuedClips.clear();
+    _protectedCachePaths.clear();
     // The player still holds the clip we are leaving. Until `playFiles` lands,
     // a clip-finished event belongs to that clip, not to this one.
     _audioReady = false;
@@ -704,19 +894,30 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     var playing = false;
     try {
+      await _audio.stop();
+      if (!_isPlayback(generation)) return;
+      if (_userPaused) {
+        await _audio.pause();
+      } else {
+        await _nowPlaying.keepAlive(true);
+      }
+      if (!_isPlayback(generation)) return;
       final first = await _fileForClip(clipIndex);
-      if (generation != _generation) {
+      if (!_isPlayback(generation)) {
         return;
       }
-      _queueStartClip = clipIndex;
+      _queueStartClip = clipIndex + _clipBase;
       _queuedClips.add(clipIndex);
       await _audio.playFiles([first.path]);
-      if (generation != _generation) {
+      if (!_isPlayback(generation)) {
         return;
       }
       _audioReady = true;
+      await _nowPlaying.keepAlive(false);
+      if (!_isPlayback(generation)) return;
       if (_userPaused || _holdAfterReady) {
         await _audio.pause();
+        if (!_isPlayback(generation)) return;
         _holdAfterReady = false;
         status = NovelTtsStatus.paused;
       } else {
@@ -726,12 +927,16 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
       playing = true;
     } catch (error) {
-      if (generation != _generation) {
+      if (!_isPlayback(generation)) {
         return;
       }
+      _audioReady = false;
+      await _nowPlaying.keepAlive(false);
+      if (!_isPlayback(generation)) return;
       status = NovelTtsStatus.error;
       errorMessage = error.toString();
       notifyListeners();
+      await _nowPlaying.stop();
     } finally {
       _advanceDepth--;
     }
@@ -743,7 +948,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     await _drainPendingCompletion();
-    if (generation != _generation) {
+    if (!_isPlayback(generation)) {
       return;
     }
     await _fillQueue();
@@ -777,7 +982,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     // to a playlist a newer `_playFrom` has since installed would read the
     // wrong part of the chapter.
     final generation = _generation;
-    final ahead = settings.prefetchCount.clamp(3, 12);
+    final ahead = settings.prefetchCount.clamp(1, 4);
     final needed = <int>[];
     for (var i = 1; i <= ahead; i++) {
       final next = clipIndex + i;
@@ -785,25 +990,27 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         break;
       }
       if (!_queuedClips.contains(next)) {
-        needed.add(next);
+        needed.add(next + _clipBase);
       }
     }
     if (needed.isEmpty) {
       return;
     }
-    final files = await Future.wait([
-      for (final index in needed) _tryFileForClip(index),
-    ]);
-    for (var i = 0; i < needed.length; i++) {
-      final file = files[i];
-      if (file == null || !isActive || generation != _generation) {
+    for (final index in needed) {
+      if (!isActive || !_isPlayback(generation)) return;
+      final localIndex = index - _clipBase;
+      if (localIndex < 0 || localIndex >= clips.length) continue;
+      final file = await _tryFileForClip(localIndex);
+      if (file == null || !isActive || !_isPlayback(generation)) return;
+      if (_queuedClips.contains(index - _clipBase)) continue;
+      try {
+        await _audio.enqueue(file.path);
+      } catch (_) {
+        // Playback can still request this clip if speculative enqueue fails.
         return;
       }
-      if (_queuedClips.contains(needed[i])) {
-        continue;
-      }
-      _queuedClips.add(needed[i]);
-      await _audio.enqueue(file.path);
+      if (!_isPlayback(generation)) return;
+      _queuedClips.add(index - _clipBase);
     }
   }
 
@@ -811,7 +1018,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (!settings.autoContinue || !isActive) {
       return false;
     }
-    final ahead = settings.prefetchCount.clamp(3, 12);
+    final ahead = settings.prefetchCount.clamp(1, 4);
     if (clips.isEmpty || clips.length - clipIndex > ahead) {
       return false;
     }
@@ -827,22 +1034,27 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (loader == null) {
       return false;
     }
+    final generation = _sessionGeneration;
     _prefetchingSeriesId = nextId;
-    await _nowPlaying.beginBackgroundTask();
+    await _beginBackgroundWork(generation);
     try {
       final loaded = await loader(nextId);
-      if (loaded == null || !isActive) {
+      if (loaded == null || !isActive || !_isSession(generation)) {
         return false;
       }
+      final documents = [
+        for (final text in loaded.pageTexts) novelTtsDocumentFromText(text),
+      ];
       final extra = await _clipsFromDocuments(
-        [for (final text in loaded.pageTexts) novelTtsDocumentFromText(text)],
+        documents,
         settings.clampedSplitChars,
         novelId: loaded.novelId,
       );
-      if (extra.isEmpty) {
+      if (extra.isEmpty || !_isSession(generation)) {
         return false;
       }
       _chapters[loaded.novelId] = loaded;
+      _chapterDocuments[loaded.novelId] = documents;
       _loadedSeriesIds.add(loaded.novelId);
       clips = [...clips, ...extra];
       notifyListeners();
@@ -850,10 +1062,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     } catch (_) {
       return false;
     } finally {
-      if (_prefetchingSeriesId == nextId) {
+      if (_isSession(generation) && _prefetchingSeriesId == nextId) {
         _prefetchingSeriesId = null;
       }
-      await _nowPlaying.endBackgroundTask();
+      await _endBackgroundWork(generation);
     }
   }
 
@@ -902,6 +1114,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         prevSeriesId: chapter?.prevSeriesId,
         nextSeriesId: chapter?.nextSeriesId,
       );
+      _trimPastChapters();
       onNavigate?.call(
         NovelTtsNavigate(
           kind: NovelTtsNavigateKind.series,
@@ -931,6 +1144,36 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     );
   }
 
+  void _trimPastChapters() {
+    // Retain the previous chapter for back navigation, the current chapter,
+    // and any prefetched chapter. Absolute queue positions survive the trim.
+    var firstCurrent = clipIndex;
+    final currentId = clips[clipIndex].novelId;
+    while (firstCurrent > 0 && clips[firstCurrent - 1].novelId == currentId) {
+      firstCurrent--;
+    }
+    if (firstCurrent == 0) return;
+    final previousId = clips[firstCurrent - 1].novelId;
+    var remove = firstCurrent - 1;
+    while (remove > 0 && clips[remove - 1].novelId == previousId) {
+      remove--;
+    }
+    if (remove == 0) return;
+    clips = clips.sublist(remove);
+    clipIndex -= remove;
+    _clipBase += remove;
+    final queued = [for (final index in _queuedClips) index - remove];
+    _queuedClips
+      ..clear()
+      ..addAll(queued.where((index) => index >= 0));
+    final retained = {for (final clip in clips) clip.novelId};
+    _chapters.removeWhere((id, _) => !retained.contains(id));
+    _chapterDocuments.removeWhere((id, _) => !retained.contains(id));
+    _pageDecisions.removeWhere(
+      (key, _) => !retained.contains(int.tryParse(key.split(':').first)),
+    );
+  }
+
   Future<List<NovelTtsClip>> _clipsFromDocuments(
     List<NovelTtsTextDocument> pages,
     int splitChars, {
@@ -939,8 +1182,10 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }) async {
     final id = novelId ?? session?.novelId ?? 0;
     final snapshot = _sessionSnapshot;
+    final generation = _sessionGeneration;
     final result = <NovelTtsClip>[];
     for (var page = 0; page < pages.length; page++) {
+      if (!_isSession(generation)) return const [];
       final document = pages[page];
       if (document.displayText.trim().isEmpty) {
         continue;
@@ -951,8 +1196,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
               document: document,
               snapshot: snapshot,
               sessionId: '$id:${page + pageOffset}',
-              generation: _generation,
+              generation: generation,
             );
+      if (!_isSession(generation)) return const [];
       if (snapshot != null &&
           resolved != null &&
           resolved.snapshotFingerprint != snapshot.fingerprint) {
@@ -1122,15 +1368,15 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   int _indexOf({required int page, required int chunkIndex}) {
+    bool matchesPage(NovelTtsClip clip) =>
+        clip.novelId == session?.novelId && clip.page == page;
     final exact = clips.indexWhere(
-      (clip) => clip.page == page && clip.chunkIndex == chunkIndex,
+      (clip) => matchesPage(clip) && clip.chunkIndex == chunkIndex,
     );
-    if (exact >= 0) {
-      return exact;
-    }
-    final firstOnPage = clips.indexWhere((clip) => clip.page == page);
+    if (exact >= 0) return exact;
+    final firstOnPage = clips.indexWhere(matchesPage);
     if (firstOnPage >= 0) {
-      final pageClips = clips.where((clip) => clip.page == page).length;
+      final pageClips = clips.where(matchesPage).length;
       return firstOnPage + chunkIndex.clamp(0, pageClips - 1);
     }
     return 0;
@@ -1144,143 +1390,155 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<File> _fileForClip(int index) async {
-    final spoken = clips[index].spokenText;
-    final cached = await _cachedFile(spoken);
-    if (cached != null) {
-      return cached;
-    }
-    final bytes = await _audioBytes(spoken);
-    return _writeCache(spoken, bytes);
-  }
-
-  /// The clip already on disk, from this session or an earlier one.
-  Future<File?> _cachedFile(String text) async {
-    try {
-      final file = await _cacheFile(text);
-      if (await file.exists() && await file.length() > 0) {
-        return file;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  /// Clips whose bytes are still held in memory. Only non-zero while a
-  /// synthesis request is actually outstanding.
-  int get inflightAudioCount => _inflight.length;
-
-  Future<Uint8List> _audioBytes(String text) {
-    final key = _cacheKey(text);
+  Future<File> _fileForClip(int index) {
+    final clip = clips[index];
+    // Freeze the complete request before any I/O. Settings can change while a
+    // response is in flight; that response must keep its original cache key.
+    final loaded = _playbackSettings ?? settings;
+    final key = _cacheKey(clip.spokenText, loaded);
     final pending = _inflight[key];
-    if (pending != null) {
-      return pending;
-    }
-    final started = _synthesize(text);
+    if (pending != null) return pending;
+    final generation = _sessionGeneration;
+    final started = _loadClipFile(clip.spokenText, loaded, key, generation);
     _inflight[key] = started;
-    // The map only exists to collapse concurrent requests for one clip. Keeping
-    // the entry after it settles pins that clip's bytes for the whole session,
-    // and a long novel then walks the process into an out-of-memory kill.
-    started.whenComplete(() => _inflight.remove(key)).ignore();
+    started.whenComplete(() {
+      if (identical(_inflight[key], started)) _inflight.remove(key);
+    }).ignore();
     return started;
   }
 
-  Future<Uint8List> _synthesize(String text) async {
-    await _nowPlaying.beginBackgroundTask();
+  Future<File> _loadClipFile(
+    String text,
+    NovelTtsSettings loaded,
+    String key,
+    int generation,
+  ) async {
+    final file = await _cacheFile(key);
+    if (!_isSession(generation)) {
+      throw const NovelTtsSynthException('TTS request cancelled');
+    }
+    _protectedCachePaths.add(file.path);
+    if (await file.exists() && await file.length() > 0) return file;
+    await _beginBackgroundWork(generation);
     try {
-      return await _synthesizer.synthesize(settings, text);
+      if (!_isSession(generation)) {
+        throw const NovelTtsSynthException('TTS request cancelled');
+      }
+      final bytes = await _synthesizer.synthesize(loaded, text);
+      if (!_isSession(generation)) {
+        throw const NovelTtsSynthException('TTS request cancelled');
+      }
+      final temp = File('${file.path}.${_cacheWrite++}.part');
+      try {
+        await temp.writeAsBytes(bytes);
+        await temp.rename(file.path);
+      } finally {
+        if (await temp.exists()) await temp.delete();
+      }
+      if (_cacheWrite == 1 || _cacheWrite % 32 == 0) {
+        _scheduleCacheCleanup(file.parent);
+      }
+      return file;
     } finally {
+      await _endBackgroundWork(generation);
+    }
+  }
+
+  /// Only outstanding file loads are retained, never completed audio bytes.
+  int get inflightAudioCount => _inflight.length;
+
+  Future<void> _beginBackgroundWork(int generation) async {
+    if (!_isSession(generation)) return;
+    if (_backgroundWork++ == 0) await _nowPlaying.beginBackgroundTask();
+  }
+
+  Future<void> _endBackgroundWork(int generation) async {
+    if (!_isSession(generation)) return;
+    if (_backgroundWork > 0 && --_backgroundWork == 0) {
       await _nowPlaying.endBackgroundTask();
     }
   }
 
-  String _cacheKey(String text) {
-    final loaded = settings;
-    final spokenHash = sha1.convert(utf8.encode(text)).toString();
-    final material =
-        '${loaded.provider.name}|${loaded.activeVoice}|${loaded.openaiModel}|${loaded.openaiSpeed}|$spokenHash';
-    return sha1.convert(utf8.encode(material)).toString();
+  String _cacheKey(String text, NovelTtsSettings loaded) {
+    final request = buildNovelTtsRequest(loaded, text);
+    final headers = request.headers.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return sha256.convert(utf8.encode(jsonEncode([
+      request.method,
+      request.uri.toString(),
+      [for (final header in headers) [header.key, header.value]],
+      request.body == null ? null : base64Encode(request.body!),
+    ]))).toString();
   }
 
-  Future<File> _cacheFile(String text) async {
+  Future<File> _cacheFile(String key) async {
     final dir = await (_cacheDir?.call() ?? getTemporaryDirectory());
     final ttsDir = Directory(p.join(dir.path, 'novel_tts'));
-    if (!ttsDir.existsSync()) {
-      ttsDir.createSync(recursive: true);
-    }
-    return File(p.join(ttsDir.path, '${_cacheKey(text)}.mp3'));
+    await ttsDir.create(recursive: true);
+    return File(p.join(ttsDir.path, '$key.mp3'));
   }
 
-  Future<File> _writeCache(String text, Uint8List bytes) async {
-    final file = await _cacheFile(text);
-    // Written aside and renamed so a kill mid-write cannot leave a truncated
-    // clip that _cachedFile would later hand to the player as a hit.
-    //
-    // The temp name carries a counter because the player and the prefetcher
-    // ask for the same clip at the same time whenever playback catches up with
-    // the queue -- which is exactly what happens on the first clip of a
-    // chapter. On a shared temp name the slower one renames a file the faster
-    // one has already moved away, and that failure surfaced as a dead reader.
-    final temp = File('${file.path}.${_cacheWrite++}.part');
+  void _scheduleCacheCleanup(Directory directory) {
+    if (_cacheCleanup != null) return;
+    final cleanup = _trimCache(directory);
+    _cacheCleanup = cleanup;
+    cleanup.whenComplete(() => _cacheCleanup = null).ignore();
+  }
+
+  Future<void> _trimCache(Directory directory) async {
     try {
-      await temp.writeAsBytes(bytes, flush: true);
-      await temp.rename(file.path);
-    } catch (_) {
-      try {
-        if (temp.existsSync()) {
-          temp.deleteSync();
-        }
-      } catch (_) {}
-      final landed = await _cachedFile(text);
-      if (landed != null) {
-        return landed;
+      final entries = <({File file, FileStat stat})>[];
+      await for (final entity in directory.list()) {
+        if (entity is! File || !entity.path.endsWith('.mp3')) continue;
+        entries.add((file: entity, stat: await entity.stat()));
       }
-      rethrow;
+      entries.sort((a, b) => a.stat.modified.compareTo(b.stat.modified));
+      var bytes = entries.fold<int>(0, (sum, entry) => sum + entry.stat.size);
+      var count = entries.length;
+      for (final entry in entries) {
+        if (bytes <= 128 * 1024 * 1024 && count <= 256) break;
+        if (_protectedCachePaths.contains(entry.file.path)) continue;
+        await entry.file.delete();
+        bytes -= entry.stat.size;
+        count--;
+      }
+    } catch (_) {
+      // Cache eviction must not interrupt playback (the OS can evict too).
     }
-    return file;
   }
 
-  Future<void> _publishNowPlaying() async {
+  Future<void> _publishNowPlaying() {
+    final generation = _generation;
     final current = session;
-    if (current == null) {
-      return;
-    }
-    final info = NovelTtsNowPlayingInfo(
-      title: current.title,
-      artist: current.author,
-      subtitle: subtitle,
-      isPlaying: status == NovelTtsStatus.playing,
-      durationMs: (await _audio.duration)?.inMilliseconds ?? 0,
-      positionMs: (await _audio.position)?.inMilliseconds ?? 0,
+    final spoken = subtitle;
+    final playing = status == NovelTtsStatus.playing;
+    final active = playing || status == NovelTtsStatus.paused;
+    final result = _nowPlayingWrite.then((_) async {
+      if (current == null || !_isPlayback(generation)) return;
+      final duration = await _audio.duration;
+      final position = await _audio.position;
+      if (!_isPlayback(generation) || !identical(current, session)) return;
+      final info = NovelTtsNowPlayingInfo(
+        title: current.title,
+        artist: current.author,
+        subtitle: spoken,
+        isPlaying: playing,
+        durationMs: duration?.inMilliseconds ?? 0,
+        positionMs: position?.inMilliseconds ?? 0,
+      );
+      if (active) {
+        await _nowPlaying.start(info);
+      } else {
+        await _nowPlaying.update(info);
+      }
+    });
+    _nowPlayingWrite = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
     );
-    if (status == NovelTtsStatus.playing || status == NovelTtsStatus.paused) {
-      await _nowPlaying.start(info);
-    } else {
-      await _nowPlaying.update(info);
-    }
-    if (status == NovelTtsStatus.playing) {
-      _nowPlayingTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
-        unawaited(_tickNowPlaying());
-      });
-    } else {
-      _nowPlayingTimer?.cancel();
-      _nowPlayingTimer = null;
-    }
-  }
-
-  Future<void> _tickNowPlaying() async {
-    if (status != NovelTtsStatus.playing || session == null) {
-      return;
-    }
-    await _nowPlaying.update(
-      NovelTtsNowPlayingInfo(
-        title: session!.title,
-        artist: session!.author,
-        subtitle: subtitle,
-        isPlaying: true,
-        durationMs: (await _audio.duration)?.inMilliseconds ?? 0,
-        positionMs: (await _audio.position)?.inMilliseconds ?? 0,
-      ),
-    );
+    // Native now-playing extrapolates elapsed time from playbackRate. Sending
+    // the same metadata every second causes unnecessary platform/UI work.
+    return _nowPlayingWrite;
   }
 
   @override
@@ -1296,12 +1554,31 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (_disposed) return;
+    _invalidateSession();
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _completionSub?.cancel();
     _clipSub?.cancel();
-    _nowPlayingTimer?.cancel();
+    _playingSub?.cancel();
+    _errorSub?.cancel();
+    _nowPlaying.onRemote = null;
+    _pageDecisions.clear();
+    _chapters.clear();
+    _chapterDocuments.clear();
+    _loadedSeriesIds.clear();
+    _queuedClips.clear();
+    _protectedCachePaths.clear();
+    _sessionSnapshot = null;
+    clips = const [];
+    session = null;
+    final synth = _synthesizer;
+    if (synth is NovelTtsCancellableSynthesizer) synth.dispose();
+    unawaited(_nowPlaying.keepAlive(false));
+    unawaited(_nowPlaying.endBackgroundTask());
+    unawaited(_nowPlaying.stop());
     unawaited(_audio.dispose());
+    unawaited(_pronunciationPipeline.worker.dispose().catchError((Object _) {}));
     super.dispose();
   }
 }

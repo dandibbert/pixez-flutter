@@ -282,9 +282,11 @@ void main() {
     };
     addTearDown(() => AppThreadStats.debugSampler = null);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pumpWidget(const MaterialApp(
-      home: PerfProbe(window: Duration(seconds: 1), child: Text('reader')),
-    ));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: PerfProbe(window: Duration(seconds: 1), child: Text('reader')),
+      ),
+    );
     await tester.pump(const Duration(seconds: 1));
     expect(samples, 1);
 

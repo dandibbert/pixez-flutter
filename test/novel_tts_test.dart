@@ -659,6 +659,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('API base URL'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(novelTtsSplitCharsFieldKey));
     await tester.enterText(find.byKey(novelTtsSplitCharsFieldKey), '160');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
@@ -683,6 +684,7 @@ void main() {
     );
 
     expect(find.byType(ExpansionTile), findsNothing);
+    await tester.ensureVisible(find.byKey(novelTtsInsertTextChipKey));
     await tester.tap(find.byKey(novelTtsInsertTextChipKey));
     await tester.pumpAndSettle();
     expect(
@@ -690,10 +692,10 @@ void main() {
       contains('{text}'),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -400));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAdvancedToggleKey));
     await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddHeaderKey));
     await tester.tap(find.byKey(novelTtsAddHeaderKey));
     await tester.pumpAndSettle();
 
@@ -702,7 +704,7 @@ void main() {
     await tester.enterText(find.byKey(novelTtsHeaderNameFieldKey), 'Authorization');
     await tester.enterText(find.byKey(novelTtsHeaderValueFieldKey), 'Bearer tok');
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(NovelTtsSettings.load().customHeaders, 'Authorization: Bearer tok');
   });
 
@@ -1294,8 +1296,7 @@ void main() {
       ),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '今日');
@@ -1321,8 +1322,7 @@ void main() {
       ),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
@@ -1384,8 +1384,7 @@ void main() {
         ),
       ),
     );
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
@@ -1424,8 +1423,7 @@ void main() {
       ),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:pixez/component/perf_probe.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
+import 'package:pixez/page/novel/tts/novel_tts_endpoint.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
 
 class NovelTtsRequest {
@@ -40,6 +42,13 @@ abstract class NovelTtsSynthesizer {
   Future<Uint8List> synthesize(NovelTtsSettings settings, String text);
 }
 
+/// Optional lifecycle support for transports with outstanding network work.
+abstract interface class NovelTtsCancellableSynthesizer {
+  void cancelPending();
+
+  void dispose();
+}
+
 NovelTtsTemplateVars novelTtsVarsFor(NovelTtsSettings settings, String text) {
   return NovelTtsTemplateVars(
     text: text,
@@ -47,27 +56,21 @@ NovelTtsTemplateVars novelTtsVarsFor(NovelTtsSettings settings, String text) {
     lang: settings.activeLanguage,
     speed: settings.provider == NovelTtsProvider.openai
         ? settings.openaiSpeed.toString()
+        : settings.provider == NovelTtsProvider.custom
+        ? settings.customSpeed
         : settings.microsoftRate,
-    model: settings.openaiModel,
+    model: settings.provider == NovelTtsProvider.custom
+        ? settings.customModel
+        : settings.openaiModel,
     region: settings.microsoftRegion,
   );
 }
 
 String resolveOpenAiSpeechUrl(String baseUrl) {
-  var base = baseUrl.trim();
-  if (base.isEmpty) {
+  if (baseUrl.trim().isEmpty) {
     throw const NovelTtsConfigException('OpenAI base URL is empty');
   }
-  while (base.endsWith('/')) {
-    base = base.substring(0, base.length - 1);
-  }
-  if (base.endsWith('/audio/speech')) {
-    return base;
-  }
-  if (base.endsWith('/v1')) {
-    return '$base/audio/speech';
-  }
-  return '$base/v1/audio/speech';
+  return resolveNovelTtsOpenaiEndpoint(baseUrl);
 }
 
 String escapeNovelTtsSsml(String text) {
@@ -107,12 +110,21 @@ NovelTtsRequest buildNovelTtsRequest(NovelTtsSettings settings, String text) {
   }
 }
 
+Uri _ttsUri(String value) {
+  final uri = Uri.tryParse(value);
+  if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') ||
+      uri.host.isEmpty) {
+    throw const NovelTtsConfigException('TTS URL must be an HTTP or HTTPS URL');
+  }
+  return uri;
+}
+
 NovelTtsRequest _microsoftRequest(NovelTtsSettings settings, String text) {
   if (!settings.isConfigured) {
     throw const NovelTtsConfigException('Microsoft TTS is not configured');
   }
   final region = settings.microsoftRegion.trim();
-  final uri = Uri.parse(
+  final uri = _ttsUri(
     'https://$region.tts.speech.microsoft.com/cognitiveservices/v1',
   );
   return NovelTtsRequest(
@@ -142,7 +154,7 @@ NovelTtsRequest _openaiRequest(NovelTtsSettings settings, String text) {
     payload['speed'] = settings.openaiSpeed;
   }
   return NovelTtsRequest(
-    uri: Uri.parse(resolveOpenAiSpeechUrl(settings.openaiBaseUrl)),
+    uri: _ttsUri(resolveOpenAiSpeechUrl(settings.openaiBaseUrl)),
     method: 'POST',
     headers: {
       'Authorization': 'Bearer ${settings.openaiApiKey.trim()}',
@@ -157,28 +169,35 @@ NovelTtsRequest _customRequest(NovelTtsSettings settings, String text) {
   if (template.isEmpty) {
     throw const NovelTtsConfigException('Custom TTS URL is empty');
   }
+  final method = settings.customMethod.trim().isEmpty
+      ? 'GET'
+      : settings.customMethod.trim().toUpperCase();
   if (!novelTtsTemplateHasTextPlaceholder(template) &&
-      !novelTtsTemplateHasTextPlaceholder(settings.customBody)) {
+      (method == 'GET' ||
+          !novelTtsTemplateHasTextPlaceholder(settings.customBody))) {
     throw const NovelTtsConfigException(
-      'Custom TTS URL or body must include {text} or %@',
+      'Custom TTS URL or POST body must include {text} or %@',
     );
   }
   final vars = novelTtsVarsFor(settings, text);
   final url = applyNovelTtsTemplate(template, vars, encodeValues: true);
-  final uri = Uri.parse(url);
-  final method = settings.customMethod.trim().isEmpty
-      ? 'GET'
-      : settings.customMethod.trim().toUpperCase();
+  final uri = _ttsUri(url);
   final headers = parseNovelTtsHeaderLines(
     applyNovelTtsTemplate(settings.customHeaders, vars, encodeValues: false),
   );
   List<int>? body;
   if (method != 'GET' && settings.customBody.trim().isNotEmpty) {
-    final rendered = applyNovelTtsTemplate(
-      settings.customBody,
-      vars,
-      encodeValues: false,
-    );
+    var contentType = settings.customContentType;
+    for (final header in headers.entries) {
+      if (header.key.toLowerCase() == 'content-type') contentType = header.value;
+    }
+    final rendered = contentType.toLowerCase().contains('json')
+        ? applyNovelTtsJsonTemplate(settings.customBody, vars)
+        : applyNovelTtsTemplate(
+            settings.customBody,
+            vars,
+            encodeValues: false,
+          );
     body = utf8.encode(rendered);
     headers.putIfAbsent(
       'Content-Type',
@@ -197,39 +216,95 @@ NovelTtsRequest _customRequest(NovelTtsSettings settings, String text) {
   );
 }
 
-class NovelTtsHttpSynthesizer implements NovelTtsSynthesizer {
-  NovelTtsHttpSynthesizer({HttpClient? client}) : _client = client;
+class NovelTtsHttpSynthesizer
+    implements NovelTtsSynthesizer, NovelTtsCancellableSynthesizer {
+  NovelTtsHttpSynthesizer({
+    HttpClient? client,
+    this.requestTimeout = const Duration(seconds: 45),
+    this.idleTimeout = const Duration(seconds: 15),
+  }) : _client = client;
 
   final HttpClient? _client;
+  final Duration requestTimeout;
+  final Duration idleTimeout;
+  final Set<HttpClientRequest> _requests = {};
+  final Set<HttpClient> _ownedClients = {};
+  var _generation = 0;
+  var _disposed = false;
+
+  @override
+  void cancelPending() {
+    _generation++;
+    for (final request in _requests.toList()) {
+      request.abort(const NovelTtsSynthException('TTS request cancelled'));
+    }
+    for (final client in _ownedClients.toList()) {
+      client.close(force: true);
+    }
+    _requests.clear();
+    _ownedClients.clear();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    cancelPending();
+  }
 
   @override
   Future<Uint8List> synthesize(NovelTtsSettings settings, String text) async {
+    if (_disposed) {
+      throw const NovelTtsSynthException('TTS synthesizer is disposed');
+    }
     final request = buildNovelTtsRequest(settings, text);
+    final generation = _generation;
     PerfCounters.ttsRequests++;
-    final client = _client ?? HttpClient();
+    final client = _client ?? (HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10));
     final owned = _client == null;
+    if (owned) _ownedClients.add(client);
+    HttpClientRequest? activeRequest;
+    var expired = false;
     try {
-      final httpRequest = await client.openUrl(request.method, request.uri);
-      request.headers.forEach(httpRequest.headers.set);
-      if (request.body != null) {
-        httpRequest.add(request.body!);
-      }
-      final response = await httpRequest.close();
-      final bytes = await consolidateHttpClientResponseBytes(response);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw NovelTtsSynthException(
-          'TTS HTTP ${response.statusCode}: ${_briefError(bytes)}',
+      return await (() async {
+        final httpRequest = await client.openUrl(request.method, request.uri);
+        activeRequest = httpRequest;
+        if (_disposed || expired || generation != _generation) {
+          httpRequest.abort();
+          throw const NovelTtsSynthException('TTS request cancelled');
+        }
+        _requests.add(httpRequest);
+        request.headers.forEach(httpRequest.headers.set);
+        if (request.body != null) httpRequest.add(request.body!);
+        final response = await httpRequest.close();
+        final bytes = await consolidateHttpClientResponseBytes(
+          response,
+          idleTimeout: idleTimeout,
         );
-      }
-      if (bytes.isEmpty) {
-        throw const NovelTtsSynthException('TTS returned empty audio');
-      }
-      if (_looksLikeJsonError(bytes)) {
-        throw NovelTtsSynthException('TTS error: ${_briefError(bytes)}');
-      }
-      return Uint8List.fromList(bytes);
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw NovelTtsSynthException(
+            'TTS HTTP ${response.statusCode}: ${_briefError(bytes)}',
+          );
+        }
+        if (bytes.isEmpty) {
+          throw const NovelTtsSynthException('TTS returned empty audio');
+        }
+        if (_looksLikeJsonError(bytes)) {
+          throw NovelTtsSynthException('TTS error: ${_briefError(bytes)}');
+        }
+        return bytes;
+      })().timeout(requestTimeout, onTimeout: () {
+        expired = true;
+        activeRequest?.abort();
+        throw const NovelTtsSynthException('TTS request timed out');
+      });
+    } catch (_) {
+      activeRequest?.abort();
+      rethrow;
     } finally {
+      _requests.remove(activeRequest);
       if (owned) {
+        _ownedClients.remove(client);
         client.close(force: true);
       }
     }
@@ -242,19 +317,22 @@ class NovelTtsHttpSynthesizer implements NovelTtsSynthesizer {
 /// how a custom URL gets the process killed for memory.
 const novelTtsMaxResponseBytes = 16 * 1024 * 1024;
 
-Future<List<int>> consolidateHttpClientResponseBytes(
-  HttpClientResponse response,
-) async {
-  final chunks = <int>[];
-  await for (final element in response) {
-    chunks.addAll(element);
-    if (chunks.length > novelTtsMaxResponseBytes) {
+Future<Uint8List> consolidateHttpClientResponseBytes(
+  HttpClientResponse response, {
+  Duration idleTimeout = const Duration(seconds: 15),
+}) async {
+  final chunks = BytesBuilder(copy: false);
+  await for (final element in response.timeout(idleTimeout)) {
+    // Check before retaining a chunk. A List<int> stores machine words on the
+    // VM and can use many times the memory of the compressed audio itself.
+    if (chunks.length + element.length > novelTtsMaxResponseBytes) {
       throw NovelTtsSynthException(
         'TTS response exceeds ${novelTtsMaxResponseBytes ~/ (1024 * 1024)} MB',
       );
     }
+    chunks.add(element);
   }
-  return chunks;
+  return chunks.takeBytes();
 }
 
 bool _looksLikeJsonError(List<int> bytes) {
@@ -276,7 +354,10 @@ bool _looksLikeJsonError(List<int> bytes) {
 }
 
 String _briefError(List<int> bytes) {
-  final text = utf8.decode(bytes, allowMalformed: true).trim();
+  final text = utf8.decode(
+    bytes.take(960).toList(),
+    allowMalformed: true,
+  ).trim();
   if (text.length <= 240) {
     return text;
   }

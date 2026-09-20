@@ -44,10 +44,12 @@ void main() {
   ) async {
     await tester.tap(find.byType(PopupMenuButton<SearchDatePreset>));
     await tester.pumpAndSettle();
-    await tester.tap(find.byWidgetPredicate(
-      (widget) =>
-          widget is PopupMenuItem<SearchDatePreset> && widget.value == preset,
-    ));
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is PopupMenuItem<SearchDatePreset> && widget.value == preset,
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -58,7 +60,9 @@ void main() {
     expect(changes, [null]);
   });
 
-  testWidgets('cancelling the custom picker preserves the query', (tester) async {
+  testWidgets('cancelling the custom picker preserves the query', (
+    tester,
+  ) async {
     final changes = <DateTimeRange?>[];
     await tester.pumpWidget(buildButton(changes.add));
     await selectPreset(tester, SearchDatePreset.custom);

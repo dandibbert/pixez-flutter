@@ -347,8 +347,11 @@ class _PerfProbeState extends State<PerfProbe> with WidgetsBindingObserver {
     final generation = _samplingGeneration;
     try {
       final sample = await AppThreadStats.sample();
-      if (sample == null || !mounted || !_active ||
-          generation != _samplingGeneration) return;
+      if (sample == null ||
+          !mounted ||
+          !_active ||
+          generation != _samplingGeneration)
+        return;
       final now = DateTime.now();
       final previous = _lastCpuSeconds;
       if (previous != null) {

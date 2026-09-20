@@ -21,7 +21,10 @@ enum SearchDatePreset {
     };
     return days == null
         ? null
-        : DateTimeRange(start: now.subtract(Duration(days: days)), end: now);
+        : DateTimeRange(
+            start: now.subtract(Duration(days: days)),
+            end: now,
+          );
   }
 
   String label(BuildContext context) {
