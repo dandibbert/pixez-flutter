@@ -27,38 +27,36 @@ void main() {
     expect(saved.voicePresets, isEmpty);
   });
 
-  test(
-    'voices share the endpoint and credentials across a JSON round trip',
-    () {
-      var settings = const NovelTtsSettings(
-        customUrl: 'https://speech.example/tts?text={text}&voice={voice}&speed={speed}',
-        customHeaders: 'Authorization: secret',
-        customVoice: 'voice-a',
-        customLanguage: 'ja-JP',
-        customSpeed: '1.0',
-      ).saveVoicePreset('Narrator');
-      settings = settings
-          .copyWith(customVoice: 'voice-b', customSpeed: '0.8')
-          .saveVoicePreset('Calm');
-      settings = NovelTtsSettings.fromJson(settings.toJson());
-      expect(settings.activeVoicePresets, hasLength(2));
-      final selected = settings.selectVoicePreset(
-        settings.activeVoicePresets.first,
-      );
-      expect(selected.customTemplateVariables['voice'], 'voice-a');
-      expect(selected.customTemplateVariables['speed'], '1.0');
-      expect(selected.customHeaders, 'Authorization: secret');
-      expect(selected.customUrl, settings.customUrl);
-      expect(
-        selected.isVoicePresetSelected(settings.activeVoicePresets.first),
-        isTrue,
-      );
-      expect(
-        jsonEncode(settings.voicePresets.map((p) => p.toJson()).toList()),
-        isNot(contains('secret')),
-      );
-    },
-  );
+  test('voices share the endpoint and credentials across a JSON round trip', () {
+    var settings = const NovelTtsSettings(
+      customUrl:
+          'https://speech.example/tts?text={text}&voice={voice}&speed={speed}',
+      customHeaders: 'Authorization: secret',
+      customVoice: 'voice-a',
+      customLanguage: 'ja-JP',
+      customSpeed: '1.0',
+    ).saveVoicePreset('Narrator');
+    settings = settings
+        .copyWith(customVoice: 'voice-b', customSpeed: '0.8')
+        .saveVoicePreset('Calm');
+    settings = NovelTtsSettings.fromJson(settings.toJson());
+    expect(settings.activeVoicePresets, hasLength(2));
+    final selected = settings.selectVoicePreset(
+      settings.activeVoicePresets.first,
+    );
+    expect(selected.customTemplateVariables['voice'], 'voice-a');
+    expect(selected.customTemplateVariables['speed'], '1.0');
+    expect(selected.customHeaders, 'Authorization: secret');
+    expect(selected.customUrl, settings.customUrl);
+    expect(
+      selected.isVoicePresetSelected(settings.activeVoicePresets.first),
+      isTrue,
+    );
+    expect(
+      jsonEncode(settings.voicePresets.map((p) => p.toJson()).toList()),
+      isNot(contains('secret')),
+    );
+  });
 
   test(
     'presets are isolated by endpoint and provider, but survive switching',
@@ -236,51 +234,95 @@ void main() {
       });
     },
   );
-  test('custom variables are arbitrary, optional, and preserved in presets', () {
-    var settings = const NovelTtsSettings(
-      customVariables: {'speaker_id': 'Alice', 'style': 'Calm', 'pitch_2': '0.4'},
-    ).saveVoicePreset('Alice');
-    settings = settings.copyWith(customVariables: {'speaker_id': 'Bob'})
-        .saveVoicePreset('Bob');
-    settings = NovelTtsSettings.fromJson(settings.toJson());
-    final selected = settings.selectVoicePreset(settings.activeVoicePresets.first);
-    expect(selected.customTemplateVariables,
-        {'speaker_id': 'Alice', 'style': 'Calm', 'pitch_2': '0.4'});
-    expect(selected.activeVoice, isEmpty);
-    expect(selected.isVoicePresetSelected(settings.activeVoicePresets.first), isTrue);
-    final deleted = selected.copyWith(customVariables: {});
-    expect(NovelTtsSettings.fromJson(deleted.toJson()).customTemplateVariables, isEmpty);
-    expect(deleted.voicePreset('Empty').variables, isEmpty);
-  });
+  test(
+    'custom variables are arbitrary, optional, and preserved in presets',
+    () {
+      var settings = const NovelTtsSettings(
+        customVariables: {
+          'speaker_id': 'Alice',
+          'style': 'Calm',
+          'pitch_2': '0.4',
+        },
+      ).saveVoicePreset('Alice');
+      settings = settings
+          .copyWith(customVariables: {'speaker_id': 'Bob'})
+          .saveVoicePreset('Bob');
+      settings = NovelTtsSettings.fromJson(settings.toJson());
+      final selected = settings.selectVoicePreset(
+        settings.activeVoicePresets.first,
+      );
+      expect(selected.customTemplateVariables, {
+        'speaker_id': 'Alice',
+        'style': 'Calm',
+        'pitch_2': '0.4',
+      });
+      expect(selected.activeVoice, isEmpty);
+      expect(
+        selected.isVoicePresetSelected(settings.activeVoicePresets.first),
+        isTrue,
+      );
+      final deleted = selected.copyWith(customVariables: {});
+      expect(
+        NovelTtsSettings.fromJson(deleted.toJson()).customTemplateVariables,
+        isEmpty,
+      );
+      expect(deleted.voicePreset('Empty').variables, isEmpty);
+    },
+  );
 
-  test('legacy variable values and presets migrate without losing hidden values', () {
-    const legacy = NovelTtsSettings(
-        customUrl: 'https://speech.example/tts?t={text}&v={voice}&alias={voicename}&l={lang}&language={language}&s={speed}&m={model}&r={region}',
-        customVoice: 'Old', customLanguage: 'ja-JP',
-        customSpeed: '1.1', customModel: 'remote-model', microsoftRegion: 'westus');
-    final raw = legacy.toJson()..remove('customVariables');
-    raw['voicePresets'] = [{
-      'name': 'Old preset', 'endpointKey': legacy.voiceEndpointKey,
-      'voice': 'Saved', 'language': 'en-US', 'speed': '0.7', 'model': 'saved-model',
-    }];
-    final migrated = NovelTtsSettings.fromJson(raw);
-    expect(migrated.customTemplateVariables, {
-      'voice': 'Old', 'voicename': 'Old', 'lang': 'ja-JP', 'language': 'ja-JP',
-      'speed': '1.1', 'model': 'remote-model', 'region': 'westus',
-    });
-    final selected = migrated.selectVoicePreset(migrated.voicePresets.single);
-    expect(selected.customTemplateVariables, {
-      'voice': 'Saved', 'voicename': 'Saved', 'lang': 'en-US', 'language': 'en-US',
-      'speed': '0.7', 'model': 'saved-model', 'region': 'westus',
-    });
-  });
-
+  test(
+    'legacy variable values and presets migrate without losing hidden values',
+    () {
+      const legacy = NovelTtsSettings(
+        customUrl:
+            'https://speech.example/tts?t={text}&v={voice}&alias={voicename}&l={lang}&language={language}&s={speed}&m={model}&r={region}',
+        customVoice: 'Old',
+        customLanguage: 'ja-JP',
+        customSpeed: '1.1',
+        customModel: 'remote-model',
+        microsoftRegion: 'westus',
+      );
+      final raw = legacy.toJson()..remove('customVariables');
+      raw['voicePresets'] = [
+        {
+          'name': 'Old preset',
+          'endpointKey': legacy.voiceEndpointKey,
+          'voice': 'Saved',
+          'language': 'en-US',
+          'speed': '0.7',
+          'model': 'saved-model',
+        },
+      ];
+      final migrated = NovelTtsSettings.fromJson(raw);
+      expect(migrated.customTemplateVariables, {
+        'voice': 'Old',
+        'voicename': 'Old',
+        'lang': 'ja-JP',
+        'language': 'ja-JP',
+        'speed': '1.1',
+        'model': 'remote-model',
+        'region': 'westus',
+      });
+      final selected = migrated.selectVoicePreset(migrated.voicePresets.single);
+      expect(selected.customTemplateVariables, {
+        'voice': 'Saved',
+        'voicename': 'Saved',
+        'lang': 'en-US',
+        'language': 'en-US',
+        'speed': '0.7',
+        'model': 'saved-model',
+        'region': 'westus',
+      });
+    },
+  );
 
   test('legacy text and voice config does not invent unused variable rows', () {
     final migrated = NovelTtsSettings.fromJson({
       'customUrl': 'https://speech.example/tts?t={text}&v={voice}',
       'customVoice': 'Alice',
-      'customLanguage': 'ja-JP', 'customSpeed': '+20%', 'customModel': 'unused-model',
+      'customLanguage': 'ja-JP',
+      'customSpeed': '+20%',
+      'customModel': 'unused-model',
       // GET never sends this body, so these references are not active variables.
       'customMethod': 'GET', 'customBody': '{model} {lang} {speed}',
     });
@@ -291,55 +333,115 @@ void main() {
     expect(migrated.voicePreset('Simple').variables, {'voice': 'Alice'});
   });
 
-  test('legacy headers and POST body retain referenced values and sequential voice', () {
-    final migrated = NovelTtsSettings.fromJson({
-      'customUrl': 'https://speech.example/tts?t=%@&v=%@',
-      'customVoice': 'Alice', 'customLanguage': 'ja-JP',
-      'customSpeed': '+20%', 'customModel': 'used-model', 'microsoftRegion': 'westus',
-      'customMethod': 'POST', 'customBody': '{"model":"{model}","lang":"{lang}"}',
-      'customHeaders': 'X-Speed: {speed}\nX-Region: {region}',
-    });
-    expect(migrated.customVariables, {
-      'voice': 'Alice', 'lang': 'ja-JP', 'speed': '+20%',
-      'model': 'used-model', 'region': 'westus',
-    });
-    final userAdded = migrated.copyWith(customVariables: {...migrated.customVariables, 'unused_style': 'KeepMe'});
-    expect(NovelTtsSettings.fromJson(userAdded.toJson()).customVariables['unused_style'], 'KeepMe');
-  });
+  test(
+    'legacy headers and POST body retain referenced values and sequential voice',
+    () {
+      final migrated = NovelTtsSettings.fromJson({
+        'customUrl': 'https://speech.example/tts?t=%@&v=%@',
+        'customVoice': 'Alice',
+        'customLanguage': 'ja-JP',
+        'customSpeed': '+20%',
+        'customModel': 'used-model',
+        'microsoftRegion': 'westus',
+        'customMethod': 'POST',
+        'customBody': '{"model":"{model}","lang":"{lang}"}',
+        'customHeaders': 'X-Speed: {speed}\nX-Region: {region}',
+      });
+      expect(migrated.customVariables, {
+        'voice': 'Alice',
+        'lang': 'ja-JP',
+        'speed': '+20%',
+        'model': 'used-model',
+        'region': 'westus',
+      });
+      final userAdded = migrated.copyWith(
+        customVariables: {
+          ...migrated.customVariables,
+          'unused_style': 'KeepMe',
+        },
+      );
+      expect(
+        NovelTtsSettings.fromJson(
+          userAdded.toJson(),
+        ).customVariables['unused_style'],
+        'KeepMe',
+      );
+    },
+  );
 
+  test(
+    'legacy presets for another endpoint keep values until that endpoint is selected',
+    () {
+      const endpointB = NovelTtsSettings(
+        customUrl:
+            'https://b.example/tts?t={text}&v={voice}&l={lang}&m={model}',
+      );
+      final endpointA = NovelTtsSettings.fromJson({
+        'customUrl': 'https://a.example/tts?t={text}&v={voice}',
+        'customVoice': 'A',
+        'voicePresets': [
+          {
+            'name': 'B',
+            'endpointKey': endpointB.voiceEndpointKey,
+            'voice': 'B voice',
+            'language': 'ja-JP',
+            'model': 'B model',
+          },
+        ],
+      });
+      final reloaded = NovelTtsSettings.fromJson(endpointA.toJson());
+      final switched = reloaded.copyWith(customUrl: endpointB.customUrl);
+      final selected = switched.selectVoicePreset(
+        switched.activeVoicePresets.single,
+      );
+      expect(selected.customTemplateVariables, {
+        'voice': 'B voice',
+        'lang': 'ja-JP',
+        'model': 'B model',
+      });
+      expect(reloaded.voicePresets.single.variables, isNull);
+    },
+  );
 
-  test('legacy presets for another endpoint keep values until that endpoint is selected', () {
-    const endpointB = NovelTtsSettings(
-      customUrl: 'https://b.example/tts?t={text}&v={voice}&l={lang}&m={model}',
-    );
-    final endpointA = NovelTtsSettings.fromJson({
-      'customUrl': 'https://a.example/tts?t={text}&v={voice}',
-      'customVoice': 'A',
-      'voicePresets': [{
-        'name': 'B', 'endpointKey': endpointB.voiceEndpointKey,
-        'voice': 'B voice', 'language': 'ja-JP', 'model': 'B model',
-      }],
-    });
-    final reloaded = NovelTtsSettings.fromJson(endpointA.toJson());
-    final switched = reloaded.copyWith(customUrl: endpointB.customUrl);
-    final selected = switched.selectVoicePreset(switched.activeVoicePresets.single);
-    expect(selected.customTemplateVariables,
-        {'voice': 'B voice', 'lang': 'ja-JP', 'model': 'B model'});
-    expect(reloaded.voicePresets.single.variables, isNull);
-  });
-
-  test('custom tokens accept underscores and digits, preserve values, and reserve text', () {
-    const vars = NovelTtsTemplateVars(text: 'Actual source', variables: {
-      'speaker_id': 'AliceABC', 'pitch_2': '0.75', 'text': 'malicious replacement',
-    });
-    expect(applyNovelTtsTemplate('{speaker_id}/%@pitch_2/{TEXT}', vars,
-        encodeValues: false), 'AliceABC/0.75/Actual source');
-    expect(applyNovelTtsTemplate('{voice}', vars, encodeValues: false), '{voice}');
-    expect(novelTtsTemplateVariableNames('{speaker_id}/%@pitch_2/{TEXT}'),
-        {'speaker_id', 'pitch_2', 'text'});
-    final body = jsonDecode(applyNovelTtsJsonTemplate(
-        '{"speaker":"{speaker_id}","pitch":{pitch_2},"input":"{text}"}', vars));
-    expect(body, {'speaker': 'AliceABC', 'pitch': 0.75, 'input': 'Actual source'});
-  });
-
+  test(
+    'custom tokens accept underscores and digits, preserve values, and reserve text',
+    () {
+      const vars = NovelTtsTemplateVars(
+        text: 'Actual source',
+        variables: {
+          'speaker_id': 'AliceABC',
+          'pitch_2': '0.75',
+          'text': 'malicious replacement',
+        },
+      );
+      expect(
+        applyNovelTtsTemplate(
+          '{speaker_id}/%@pitch_2/{TEXT}',
+          vars,
+          encodeValues: false,
+        ),
+        'AliceABC/0.75/Actual source',
+      );
+      expect(
+        applyNovelTtsTemplate('{voice}', vars, encodeValues: false),
+        '{voice}',
+      );
+      expect(novelTtsTemplateVariableNames('{speaker_id}/%@pitch_2/{TEXT}'), {
+        'speaker_id',
+        'pitch_2',
+        'text',
+      });
+      final body = jsonDecode(
+        applyNovelTtsJsonTemplate(
+          '{"speaker":"{speaker_id}","pitch":{pitch_2},"input":"{text}"}',
+          vars,
+        ),
+      );
+      expect(body, {
+        'speaker': 'AliceABC',
+        'pitch': 0.75,
+        'input': 'Actual source',
+      });
+    },
+  );
 }

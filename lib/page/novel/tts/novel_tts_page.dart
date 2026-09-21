@@ -351,7 +351,11 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                                   },
                                   onTap: () {
                                     _variablesValid = true;
-                                    unawaited(_persist(_draft().copyWith(provider: provider)));
+                                    unawaited(
+                                      _persist(
+                                        _draft().copyWith(provider: provider),
+                                      ),
+                                    );
                                   },
                                 ),
                             ],
@@ -363,7 +367,8 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                     ),
                     _Section(
                       title: _settings.provider == NovelTtsProvider.custom
-                          ? i18n.novel_tts_variables : i18n.novel_tts_section_voice,
+                          ? i18n.novel_tts_variables
+                          : i18n.novel_tts_section_voice,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -440,7 +445,9 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                             alignment: Alignment.centerLeft,
                             child: FilledButton.tonalIcon(
                               key: novelTtsPreviewVoiceKey,
-                              onPressed: _previewRunning || _variablesValid ? _previewVoice : null,
+                              onPressed: _previewRunning || _variablesValid
+                                  ? _previewVoice
+                                  : null,
                               icon: Icon(
                                 _previewRunning
                                     ? Icons.stop
@@ -635,7 +642,8 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
             key: ValueKey(_variablesRevision),
             initial: _customVariables,
             legacyVoiceFieldKey: novelTtsCustomVoiceKey,
-            onValidityChanged: (valid) => setState(() => _variablesValid = valid),
+            onValidityChanged: (valid) =>
+                setState(() => _variablesValid = valid),
             onChanged: (variables) {
               _customVariables = variables;
               _schedulePersist();
@@ -716,7 +724,12 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(i18n.novel_tts_get_body_ignored),
             ),
-          _box('customBody', i18n.novel_tts_custom_body, minLines: 3, fieldKey: novelTtsCustomBodyFieldKey),
+          _box(
+            'customBody',
+            i18n.novel_tts_custom_body,
+            minLines: 3,
+            fieldKey: novelTtsCustomBodyFieldKey,
+          ),
           NovelTtsPlaceholderChips(
             key: novelTtsBodyPlaceholdersKey,
             caption: i18n.novel_tts_insert_placeholder,
@@ -757,7 +770,8 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       final request = buildNovelTtsRequest(settings, text);
       details = describeNovelTtsRequest(request, revealSecrets: _revealSecrets);
     } catch (error) {
-      details = '${i18n.novel_tts_stage_request}\n'
+      details =
+          '${i18n.novel_tts_stage_request}\n'
           '${describeNovelTtsError(error, settings, revealSecrets: _revealSecrets)}';
     }
     return NovelTtsAdvancedPanel(
@@ -776,26 +790,33 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     );
   }
 
-  Widget _diagnosticText(String details, {required Key textKey, bool error = false}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SelectableText(details, key: textKey, style: TextStyle(
-              color: error ? Theme.of(context).colorScheme.error : null,
-            )),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                icon: const Icon(Icons.copy_outlined),
-                label: Text(I18n.of(context).novel_tts_copy_details),
-                onPressed: () => Clipboard.setData(ClipboardData(text: details)),
-              ),
-            ),
-          ],
+  Widget _diagnosticText(
+    String details, {
+    required Key textKey,
+    bool error = false,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SelectableText(
+          details,
+          key: textKey,
+          style: TextStyle(
+            color: error ? Theme.of(context).colorScheme.error : null,
+          ),
         ),
-      );
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            icon: const Icon(Icons.copy_outlined),
+            label: Text(I18n.of(context).novel_tts_copy_details),
+            onPressed: () => Clipboard.setData(ClipboardData(text: details)),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _choice(String name, String label, List<NovelTtsChoice> choices) =>
       NovelTtsChoiceField(

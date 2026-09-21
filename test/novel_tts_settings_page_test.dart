@@ -49,7 +49,8 @@ void main() {
     'saved voices switch parameters without changing the connection',
     (tester) async {
       var settings = const NovelTtsSettings(
-        customUrl: 'https://speech.example/tts?t={text}&v={voice}&speed={speed}',
+        customUrl:
+            'https://speech.example/tts?t={text}&v={voice}&speed={speed}',
         customHeaders: 'Authorization: retained',
         customVoice: 'voice-a',
         customSpeed: '1',
@@ -61,7 +62,10 @@ void main() {
       await tester.ensureVisible(find.widgetWithText(InputChip, 'Narrator'));
       await tester.tap(find.widgetWithText(InputChip, 'Narrator'));
       await tester.pumpAndSettle();
-      expect(NovelTtsSettings.load().customTemplateVariables['voice'], 'voice-a');
+      expect(
+        NovelTtsSettings.load().customTemplateVariables['voice'],
+        'voice-a',
+      );
       expect(NovelTtsSettings.load().customTemplateVariables['speed'], '1');
       expect(NovelTtsSettings.load().customHeaders, 'Authorization: retained');
       expect(NovelTtsSettings.load().customUrl, settings.customUrl);
@@ -87,7 +91,10 @@ void main() {
       // Dispose before the 350 ms debounce to exercise the final flush.
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
-      expect(NovelTtsSettings.load().customTemplateVariables['voice'], 'changed');
+      expect(
+        NovelTtsSettings.load().customTemplateVariables['voice'],
+        'changed',
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -159,24 +166,35 @@ void main() {
     );
   });
 
-  testWidgets('preview reports invalid configuration without starting playback', (
+  testWidgets(
+    'preview reports invalid configuration without starting playback',
+    (tester) async {
+      await tester.pumpWidget(
+        app(const NovelTtsSettings(customUrl: 'invalid')),
+      );
+      await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
+      await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
+      await tester.pumpAndSettle();
+      final error = tester
+          .widget<SelectableText>(find.byKey(novelTtsPreviewErrorKey))
+          .data!;
+      expect(error, contains('Building request'));
+      expect(error, contains('Custom TTS'));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('custom variables can be added, renamed, deleted and inserted', (
     tester,
   ) async {
-    await tester.pumpWidget(app(const NovelTtsSettings(customUrl: 'invalid')));
-    await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
-    await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
-    await tester.pumpAndSettle();
-    final error = tester.widget<SelectableText>(find.byKey(novelTtsPreviewErrorKey)).data!;
-    expect(error, contains('Building request'));
-    expect(error, contains('Custom TTS'));
-    expect(tester.takeException(), isNull);
-  });
-
-
-  testWidgets('custom variables can be added, renamed, deleted and inserted', (tester) async {
-    await tester.pumpWidget(app(const NovelTtsSettings(
-      customUrl: 'https://speech.example/tts?t={text}', customVariables: {},
-    )));
+    await tester.pumpWidget(
+      app(
+        const NovelTtsSettings(
+          customUrl: 'https://speech.example/tts?t={text}',
+          customVariables: {},
+        ),
+      ),
+    );
     await tester.ensureVisible(find.byKey(novelTtsAddVariableKey));
     await tester.tap(find.byKey(novelTtsAddVariableKey));
     await tester.pump();
@@ -186,34 +204,58 @@ void main() {
     final value = find.byKey(const ValueKey('novelTtsVariableValue_0'));
     await tester.enterText(value, 'AliceABC');
     await tester.pump(const Duration(milliseconds: 400));
-    expect(NovelTtsSettings.load().customTemplateVariables, {'speaker_id': 'AliceABC'});
+    expect(NovelTtsSettings.load().customTemplateVariables, {
+      'speaker_id': 'AliceABC',
+    });
     final chip = find.widgetWithText(ActionChip, '{speaker_id}');
     await tester.ensureVisible(chip);
     await tester.tap(chip);
     await tester.pump();
-    expect(tester.widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey)).controller!.text,
-        contains('{speaker_id}'));
+    expect(
+      tester
+          .widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey))
+          .controller!
+          .text,
+      contains('{speaker_id}'),
+    );
     await tester.ensureVisible(name);
     await tester.enterText(name, 'style');
     await tester.pump(const Duration(milliseconds: 400));
-    expect(NovelTtsSettings.load().customTemplateVariables, {'style': 'AliceABC'});
-    await tester.tap(find.byKey(const ValueKey('novelTtsRemoveVariable_0')));
+    expect(NovelTtsSettings.load().customTemplateVariables, {
+      'style': 'AliceABC',
+    });
+    final remove = find.byKey(const ValueKey('novelTtsRemoveVariable_0'));
+    await Scrollable.ensureVisible(tester.element(remove), alignment: 0.5);
+    await tester.pumpAndSettle();
+    expect(remove.hitTestable(), findsOneWidget);
+    await tester.tap(remove);
     await tester.pump(const Duration(milliseconds: 400));
     expect(NovelTtsSettings.load().customTemplateVariables, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('request details use custom variables and the actual sample', (tester) async {
-    await tester.pumpWidget(app(const NovelTtsSettings(
-      customUrl: 'https://speech.example/tts?t={text}&speaker={speaker_id}',
-      customVariables: {'speaker_id': 'AliceABC'},
-    )));
+  testWidgets('request details use custom variables and the actual sample', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        const NovelTtsSettings(
+          customUrl: 'https://speech.example/tts?t={text}&speaker={speaker_id}',
+          customVariables: {'speaker_id': 'AliceABC'},
+        ),
+      ),
+    );
     await tester.ensureVisible(find.byKey(novelTtsPreviewTextFieldKey));
-    await tester.enterText(find.byKey(novelTtsPreviewTextFieldKey), 'Actual sample');
+    await tester.enterText(
+      find.byKey(novelTtsPreviewTextFieldKey),
+      'Actual sample',
+    );
     await tester.ensureVisible(find.byKey(novelTtsRequestDetailsKey));
     await tester.tap(find.byKey(novelTtsRequestDetailsKey));
     await tester.pumpAndSettle();
-    final details = tester.widget<SelectableText>(find.byKey(novelTtsRequestTextKey)).data!;
+    final details = tester
+        .widget<SelectableText>(find.byKey(novelTtsRequestTextKey))
+        .data!;
     expect(details, contains('GET'));
     expect(details, contains('speaker=AliceABC'));
     expect(details, contains('Actual%20sample'));
@@ -223,42 +265,66 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'custom body keeps click-to-insert configured and referenced variables',
+    (tester) async {
+      await tester.pumpWidget(
+        app(
+          const NovelTtsSettings(
+            customUrl: 'https://speech.example/tts',
+            customMethod: 'POST',
+            customBody: '{text}',
+            customVariables: {'speaker_id': 'Alice'},
+          ),
+        ),
+      );
+      await tester.ensureVisible(find.byKey(novelTtsAdvancedToggleKey));
+      await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
+      await tester.pumpAndSettle();
+      final chip = find.descendant(
+        of: find.byKey(novelTtsBodyPlaceholdersKey),
+        matching: find.widgetWithText(ActionChip, '{speaker_id}'),
+      );
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pump();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(novelTtsCustomBodyFieldKey))
+            .controller!
+            .text,
+        contains('{speaker_id}'),
+      );
+    },
+  );
 
-  testWidgets('custom body keeps click-to-insert configured and referenced variables', (tester) async {
-    await tester.pumpWidget(app(const NovelTtsSettings(
-      customUrl: 'https://speech.example/tts', customMethod: 'POST',
-      customBody: '{text}', customVariables: {'speaker_id': 'Alice'},
-    )));
-    await tester.ensureVisible(find.byKey(novelTtsAdvancedToggleKey));
-    await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
-    await tester.pumpAndSettle();
-    final chip = find.descendant(of: find.byKey(novelTtsBodyPlaceholdersKey),
-        matching: find.widgetWithText(ActionChip, '{speaker_id}'));
-    await tester.ensureVisible(chip);
-    await tester.tap(chip);
-    await tester.pump();
-    expect(tester.widget<TextField>(find.byKey(novelTtsCustomBodyFieldKey)).controller!.text,
-        contains('{speaker_id}'));
-  });
-
-  testWidgets('a running preview can still be stopped while a variable name is invalid', (tester) async {
-    final preview = _PendingPreview();
-    await tester.pumpWidget(app(const NovelTtsSettings(
-      customUrl: 'https://speech.example/tts?t={text}', customVariables: {},
-    ), previewFactory: () => preview));
-    await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
-    await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
-    await tester.pump();
-    expect(preview.started, isTrue);
-    await tester.ensureVisible(find.byKey(novelTtsAddVariableKey));
-    await tester.tap(find.byKey(novelTtsAddVariableKey));
-    await tester.pump();
-    await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
-    await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
-    await tester.pumpAndSettle();
-    expect(preview.stopped, isTrue);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'a running preview can still be stopped while a variable name is invalid',
+    (tester) async {
+      final preview = _PendingPreview();
+      await tester.pumpWidget(
+        app(
+          const NovelTtsSettings(
+            customUrl: 'https://speech.example/tts?t={text}',
+            customVariables: {},
+          ),
+          previewFactory: () => preview,
+        ),
+      );
+      await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
+      await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
+      await tester.pump();
+      expect(preview.started, isTrue);
+      await tester.ensureVisible(find.byKey(novelTtsAddVariableKey));
+      await tester.tap(find.byKey(novelTtsAddVariableKey));
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
+      await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
+      await tester.pumpAndSettle();
+      expect(preview.stopped, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('narrow dark settings support large text without overflow', (
     tester,

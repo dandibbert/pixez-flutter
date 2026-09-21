@@ -41,8 +41,9 @@ class NovelTtsTemplateVars {
 }
 
 final novelTtsVariableNamePattern = RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
-final _placeholderPattern =
-    RegExp(r'\{([A-Za-z_][A-Za-z0-9_]*)\}|%@([A-Za-z_][A-Za-z0-9_]*)?');
+final _placeholderPattern = RegExp(
+  r'\{([A-Za-z_][A-Za-z0-9_]*)\}|%@([A-Za-z_][A-Za-z0-9_]*)?',
+);
 final _jsonTemplatePartPattern = RegExp(
   r'"(?:[^"\\]|\\.)*"|\{([A-Za-z_][A-Za-z0-9_]*)\}|%@([A-Za-z_][A-Za-z0-9_]*)?',
 );

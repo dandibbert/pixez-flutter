@@ -556,7 +556,7 @@
   "novel_tts_settings_apply_hint": "返回阅读时，新设置会应用到当前朗读段落。",
   "novel_tts_delete_voice": "删除预设",
   "novel_tts_variables": "变量与预设",
-  "novel_tts_variables_hint": "仅添加 API 需要的变量，例如 speaker_id、style，可自由改名或删除。内置 text 始终使用朗读或试听文本。",
+  "novel_tts_variables_hint": "按接口需要添加变量；text 自动使用朗读或试听文本。",
   "novel_tts_variable_name": "变量名",
   "novel_tts_variable_value": "变量值",
   "novel_tts_variable_add": "添加变量",

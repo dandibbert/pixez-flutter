@@ -19,27 +19,34 @@ class NovelTtsVariablesEditor extends StatefulWidget {
   final Key? legacyVoiceFieldKey;
 
   @override
-  State<NovelTtsVariablesEditor> createState() => _NovelTtsVariablesEditorState();
+  State<NovelTtsVariablesEditor> createState() =>
+      _NovelTtsVariablesEditorState();
 }
 
 class _VariableRow {
   _VariableRow(String name, String value)
-      : name = TextEditingController(text: name),
-        value = TextEditingController(text: value);
+    : name = TextEditingController(text: name),
+      value = TextEditingController(text: value);
   final TextEditingController name;
   final TextEditingController value;
   final key = UniqueKey();
-  void dispose() { name.dispose(); value.dispose(); }
+  void dispose() {
+    name.dispose();
+    value.dispose();
+  }
 }
 
 class _NovelTtsVariablesEditorState extends State<NovelTtsVariablesEditor> {
   late final List<_VariableRow> _rows = [
-    for (final entry in widget.initial.entries) _VariableRow(entry.key, entry.value),
+    for (final entry in widget.initial.entries)
+      _VariableRow(entry.key, entry.value),
   ];
 
   @override
   void dispose() {
-    for (final row in _rows) { row.dispose(); }
+    for (final row in _rows) {
+      row.dispose();
+    }
     super.dispose();
   }
 
@@ -50,7 +57,10 @@ class _NovelTtsVariablesEditorState extends State<NovelTtsVariablesEditor> {
       return i18n.novel_tts_variable_name_invalid;
     }
     if (name == 'text') return i18n.novel_tts_variable_text_reserved;
-    if (_rows.where((other) => other.name.text.trim().toLowerCase() == name).length > 1) {
+    if (_rows
+            .where((other) => other.name.text.trim().toLowerCase() == name)
+            .length >
+        1) {
       return i18n.novel_tts_variable_name_duplicate;
     }
     return null;
@@ -62,7 +72,8 @@ class _NovelTtsVariablesEditorState extends State<NovelTtsVariablesEditor> {
     widget.onValidityChanged(valid);
     if (!valid) return;
     widget.onChanged({
-      for (final row in _rows) row.name.text.trim().toLowerCase(): row.value.text,
+      for (final row in _rows)
+        row.name.text.trim().toLowerCase(): row.value.text,
     });
   }
 
@@ -81,32 +92,43 @@ class _NovelTtsVariablesEditorState extends State<NovelTtsVariablesEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: TextField(
-                    key: ValueKey('novelTtsVariableName_${_rows.indexOf(row)}'),
-                    controller: row.name,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: i18n.novel_tts_variable_name,
-                      hintText: 'speaker_id',
-                      errorText: _error(context, row),
-                      errorMaxLines: 3,
-                      border: const OutlineInputBorder(),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: ValueKey(
+                          'novelTtsVariableName_${_rows.indexOf(row)}',
+                        ),
+                        controller: row.name,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        decoration: InputDecoration(
+                          labelText: i18n.novel_tts_variable_name,
+                          hintText: 'speaker_id',
+                          errorText: _error(context, row),
+                          errorMaxLines: 3,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => _changed(),
+                      ),
                     ),
-                    onChanged: (_) => _changed(),
-                  )),
-                  IconButton(
-                    key: ValueKey('novelTtsRemoveVariable_${_rows.indexOf(row)}'),
-                    tooltip: i18n.novel_tts_variable_remove,
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () {
-                      setState(() => _rows.remove(row));
-                      WidgetsBinding.instance.addPostFrameCallback((_) => row.dispose());
-                      _changed();
-                    },
-                  ),
-                ]),
+                    IconButton(
+                      key: ValueKey(
+                        'novelTtsRemoveVariable_${_rows.indexOf(row)}',
+                      ),
+                      tooltip: i18n.novel_tts_variable_remove,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () {
+                        setState(() => _rows.remove(row));
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => row.dispose(),
+                        );
+                        _changed();
+                      },
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   key: row.name.text.trim().toLowerCase() == 'voice'

@@ -136,7 +136,10 @@ class NovelTtsSettings {
   /// A missing map is a legacy settings object. An explicitly empty map is
   /// authoritative: deleting all variables must not resurrect legacy fields.
   Set<String> get _legacyVariableNames => _referencedCustomVariables(
-    url: customUrl, method: customMethod, body: customBody, headers: customHeaders,
+    url: customUrl,
+    method: customMethod,
+    body: customBody,
+    headers: customHeaders,
   );
 
   Map<String, String> get customVariables {
@@ -151,13 +154,16 @@ class NovelTtsSettings {
       'region': microsoftRegion,
     };
     final referenced = _legacyVariableNames;
-    return {for (final entry in legacy.entries)
-      if (referenced.contains(entry.key)) entry.key: entry.value};
+    return {
+      for (final entry in legacy.entries)
+        if (referenced.contains(entry.key)) entry.key: entry.value,
+    };
   }
 
   Map<String, String> get customTemplateVariables => {
     for (final entry in customVariables.entries)
-      if (entry.key.toLowerCase() != 'text') entry.key.toLowerCase(): entry.value,
+      if (entry.key.toLowerCase() != 'text')
+        entry.key.toLowerCase(): entry.value,
   };
 
   int get clampedSplitChars =>
@@ -212,7 +218,9 @@ class NovelTtsSettings {
       NovelTtsProvider.custom => '',
     },
     model: provider == NovelTtsProvider.openai ? openaiModel : '',
-    variables: provider == NovelTtsProvider.custom ? customTemplateVariables : null,
+    variables: provider == NovelTtsProvider.custom
+        ? customTemplateVariables
+        : null,
   );
 
   Map<String, String> _presetVariables(NovelTtsVoicePreset preset) {
@@ -227,8 +235,10 @@ class NovelTtsSettings {
       'region': microsoftRegion,
     };
     final referenced = _legacyVariableNames;
-    return {for (final entry in legacy.entries)
-      if (referenced.contains(entry.key)) entry.key: entry.value};
+    return {
+      for (final entry in legacy.entries)
+        if (referenced.contains(entry.key)) entry.key: entry.value,
+    };
   }
 
   bool isVoicePresetSelected(NovelTtsVoicePreset preset) {
@@ -236,9 +246,8 @@ class NovelTtsSettings {
     if (provider == NovelTtsProvider.custom) {
       final variables = customTemplateVariables;
       final saved = _presetVariables(preset);
-      return variables.length == saved.length && variables.entries.every(
-        (entry) => saved[entry.key] == entry.value,
-      );
+      return variables.length == saved.length &&
+          variables.entries.every((entry) => saved[entry.key] == entry.value);
     }
     final current = voicePreset(preset.name);
     return current.voice == preset.voice &&
@@ -383,7 +392,8 @@ class NovelTtsSettings {
           json['openaiModel'] as String? ??
           'tts-1',
       customVariables: json.containsKey('customVariables')
-          ? novelTtsVariablesFromJson(json['customVariables']) : null,
+          ? novelTtsVariablesFromJson(json['customVariables'])
+          : null,
       voicePresets: NovelTtsVoicePreset.listFromJson(json['voicePresets']),
       customHeaders: json['customHeaders'] as String? ?? '',
       customBody: json['customBody'] as String? ?? '',
@@ -489,7 +499,8 @@ class NovelTtsVoicePreset {
           // Preserve their metadata until selected against that endpoint's
           // actual template; filtering here would discard still-needed values.
           variables: item.containsKey('variables')
-              ? novelTtsVariablesFromJson(item['variables']) : null,
+              ? novelTtsVariablesFromJson(item['variables'])
+              : null,
           language: item['language'] is String
               ? item['language'] as String
               : '',
@@ -505,15 +516,20 @@ class NovelTtsVoicePreset {
 Map<String, String> novelTtsVariablesFromJson(dynamic raw) => {
   if (raw is Map)
     for (final entry in raw.entries)
-      if (entry.key is String && entry.value is String &&
+      if (entry.key is String &&
+          entry.value is String &&
           (entry.key as String).toLowerCase() != 'text')
         (entry.key as String).toLowerCase(): entry.value as String,
 };
 
 Set<String> _referencedCustomVariables({
-  required String url, required String method, required String body, required String headers,
+  required String url,
+  required String method,
+  required String body,
+  required String headers,
 }) => {
   ...novelTtsTemplateVariableNames(url),
   ...novelTtsTemplateVariableNames(headers),
-  if (method.trim().toUpperCase() != 'GET') ...novelTtsTemplateVariableNames(body),
+  if (method.trim().toUpperCase() != 'GET')
+    ...novelTtsTemplateVariableNames(body),
 }..remove('text');

@@ -531,7 +531,7 @@
   "novel_tts_settings_apply_hint": "Changes apply to the current passage when you return to reading.",
   "novel_tts_delete_voice": "Delete preset",
   "novel_tts_variables": "Variables and presets",
-  "novel_tts_variables_hint": "Add only the variables your API uses, such as speaker_id or style. Names can be changed or removed. The built-in text variable always contains the reading or preview text.",
+  "novel_tts_variables_hint": "Add the variables your API needs. text is filled from the reading or preview.",
   "novel_tts_variable_name": "Variable name",
   "novel_tts_variable_value": "Value",
   "novel_tts_variable_add": "Add variable",

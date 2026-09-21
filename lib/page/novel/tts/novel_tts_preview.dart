@@ -6,7 +6,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 
-enum NovelTtsPreviewStage { synthesis, savingAudio, loadingAudio, playback, cleanup }
+enum NovelTtsPreviewStage {
+  synthesis,
+  savingAudio,
+  loadingAudio,
+  playback,
+  cleanup,
+}
 
 class NovelTtsPreviewException implements Exception {
   const NovelTtsPreviewException(this.stage, this.cause);
@@ -50,7 +56,8 @@ class NovelTtsPreview {
   }
 
   Future<void> _run(NovelTtsSettings settings, String text) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
     _client = client;
     Directory? directory;
     AudioPlayer? player;
@@ -58,8 +65,9 @@ class NovelTtsPreview {
     NovelTtsPreviewException? failure;
     StackTrace? failureStack;
     try {
-      final bytes = await NovelTtsHttpSynthesizer(client: client)
-          .synthesize(settings, text);
+      final bytes = await NovelTtsHttpSynthesizer(
+        client: client,
+      ).synthesize(settings, text);
       if (_cancelled) return;
       stage = NovelTtsPreviewStage.savingAudio;
       final temporary = await _temporaryDirectory();
@@ -68,12 +76,15 @@ class NovelTtsPreview {
       // obtained by appending a prefix to it. The old parent did not exist.
       directory = await temporary.createTemp('novel_tts_preview_');
       if (_cancelled) return;
-      final file = await File('${directory.path}/preview.mp3').writeAsBytes(bytes);
+      final file = await File(
+        '${directory.path}/preview.mp3',
+      ).writeAsBytes(bytes);
       if (_cancelled) return;
       stage = NovelTtsPreviewStage.loadingAudio;
       player = _audioPlayerFactory();
       _player = player;
-      final duration = await player.setFilePath(file.path)
+      final duration = await player
+          .setFilePath(file.path)
           .timeout(const Duration(seconds: 15));
       if (_cancelled) return;
       stage = NovelTtsPreviewStage.playback;
@@ -94,7 +105,10 @@ class NovelTtsPreview {
         await player?.dispose();
       } catch (error, stack) {
         if (!_cancelled && failure == null) {
-          failure = NovelTtsPreviewException(NovelTtsPreviewStage.cleanup, error);
+          failure = NovelTtsPreviewException(
+            NovelTtsPreviewStage.cleanup,
+            error,
+          );
           failureStack = stack;
         }
       }
@@ -104,7 +118,10 @@ class NovelTtsPreview {
         }
       } catch (error, stack) {
         if (!_cancelled && failure == null) {
-          failure = NovelTtsPreviewException(NovelTtsPreviewStage.cleanup, error);
+          failure = NovelTtsPreviewException(
+            NovelTtsPreviewStage.cleanup,
+            error,
+          );
           failureStack = stack;
         }
       }

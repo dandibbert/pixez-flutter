@@ -172,9 +172,11 @@ class NovelTtsPlaceholderChips extends StatelessWidget {
                   key: name == 'text' && useTextKey
                       ? novelTtsInsertTextChipKey
                       : null,
-                  label: Text(name == 'text'
-                      ? '${I18n.of(context).novel_tts_token_text} {text}'
-                      : '{$name}'),
+                  label: Text(
+                    name == 'text'
+                        ? '${I18n.of(context).novel_tts_token_text} {text}'
+                        : '{$name}',
+                  ),
                   onPressed: () => onInsert('{$name}'),
                 ),
             ],

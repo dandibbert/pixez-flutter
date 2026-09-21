@@ -53,7 +53,9 @@ void _collectJsonSecrets(Object? value, Set<String> secrets) {
       }
     }
   } else if (value is List) {
-    for (final entry in value) { _collectJsonSecrets(entry, secrets); }
+    for (final entry in value) {
+      _collectJsonSecrets(entry, secrets);
+    }
   }
 }
 
@@ -64,9 +66,13 @@ String describeNovelTtsRequest(
   bool revealSecrets = false,
 }) {
   final result = StringBuffer()
-    ..writeln('${request.method} ${revealSecrets ? request.uri : _redactUrl(request.uri.toString())}');
+    ..writeln(
+      '${request.method} ${revealSecrets ? request.uri : _redactUrl(request.uri.toString())}',
+    );
   for (final entry in request.headers.entries) {
-    result.writeln('${entry.key}: ${!revealSecrets && _sensitiveName(entry.key) ? _hidden : entry.value}');
+    result.writeln(
+      '${entry.key}: ${!revealSecrets && _sensitiveName(entry.key) ? _hidden : entry.value}',
+    );
   }
   if (request.body != null) {
     var body = utf8.decode(request.body!, allowMalformed: true);
@@ -82,7 +88,9 @@ String describeNovelTtsRequest(
         body = _redactUrl('?$body').substring(1);
       }
     }
-    result..writeln()..write(body);
+    result
+      ..writeln()
+      ..write(body);
   }
   return result.toString();
 }
@@ -101,11 +109,13 @@ String describeNovelTtsError(
   for (final entry in variables.entries) {
     if (_sensitiveName(entry.key)) secrets.add(entry.value);
   }
-  final headers = parseNovelTtsHeaderLines(applyNovelTtsTemplate(
-    settings.customHeaders,
-    NovelTtsTemplateVars(text: '', variables: variables),
-    encodeValues: false,
-  ));
+  final headers = parseNovelTtsHeaderLines(
+    applyNovelTtsTemplate(
+      settings.customHeaders,
+      NovelTtsTemplateVars(text: '', variables: variables),
+      encodeValues: false,
+    ),
+  );
   for (final header in headers.entries) {
     if (!_sensitiveName(header.key)) continue;
     secrets.add(header.value);
@@ -113,11 +123,13 @@ String describeNovelTtsError(
       secrets.add(header.value.substring(7));
     }
   }
-  final endpoint = Uri.tryParse(applyNovelTtsTemplate(
-    settings.customUrl,
-    NovelTtsTemplateVars(text: '', variables: variables),
-    encodeValues: true,
-  ));
+  final endpoint = Uri.tryParse(
+    applyNovelTtsTemplate(
+      settings.customUrl,
+      NovelTtsTemplateVars(text: '', variables: variables),
+      encodeValues: true,
+    ),
+  );
   if (endpoint != null) {
     if (endpoint.userInfo.isNotEmpty) secrets.add(endpoint.userInfo);
     for (final entry in endpoint.queryParameters.entries) {
@@ -141,13 +153,21 @@ String describeNovelTtsError(
   } catch (_) {
     // An invalid request still needs its original configuration error shown.
   }
-  final ordered = {for (final value in secrets) ...[value, value.trim()]}
-      .where((value) => value.isNotEmpty).toList()
-    ..sort((a, b) => b.length.compareTo(a.length));
+  final ordered =
+      {
+          for (final value in secrets) ...[value, value.trim()],
+        }.where((value) => value.isNotEmpty).toList()
+        ..sort((a, b) => b.length.compareTo(a.length));
   for (final secret in ordered) {
-    for (final value in {secret, Uri.encodeComponent(secret), Uri.encodeQueryComponent(secret)}) {
+    for (final value in {
+      secret,
+      Uri.encodeComponent(secret),
+      Uri.encodeQueryComponent(secret),
+    }) {
       message = message.replaceAll(
-        value.length < 4 ? RegExp('(?<![A-Za-z0-9])${RegExp.escape(value)}(?![A-Za-z0-9])') : value,
+        value.length < 4
+            ? RegExp('(?<![A-Za-z0-9])${RegExp.escape(value)}(?![A-Za-z0-9])')
+            : value,
         _hidden,
       );
     }
