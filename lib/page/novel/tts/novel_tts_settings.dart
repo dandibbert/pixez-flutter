@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/page/novel/tts/novel_tts_endpoint.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/novel_tts_template.dart';
 
 enum NovelTtsProvider { microsoft, openai, custom }
 
@@ -39,12 +40,13 @@ class NovelTtsSettings {
     this.customLanguage = 'zh-CN',
     this.customSpeed = '+0%',
     this.customModel = 'tts-1',
+    Map<String, String>? customVariables,
     this.voicePresets = const [],
     this.customHeaders = '',
     this.customBody = '',
     this.customContentType = '',
     this.readings = const [],
-  });
+  }) : _customVariables = customVariables;
 
   final NovelTtsProvider provider;
   final int splitChars;
@@ -66,6 +68,7 @@ class NovelTtsSettings {
   final String customLanguage;
   final String customSpeed;
   final String customModel;
+  final Map<String, String>? _customVariables;
   final List<NovelTtsVoicePreset> voicePresets;
   final String customHeaders;
   final String customBody;
@@ -93,6 +96,7 @@ class NovelTtsSettings {
     String? customLanguage,
     String? customSpeed,
     String? customModel,
+    Map<String, String>? customVariables,
     List<NovelTtsVoicePreset>? voicePresets,
     String? customHeaders,
     String? customBody,
@@ -120,6 +124,7 @@ class NovelTtsSettings {
       customLanguage: customLanguage ?? this.customLanguage,
       customSpeed: customSpeed ?? this.customSpeed,
       customModel: customModel ?? this.customModel,
+      customVariables: customVariables ?? _customVariables,
       voicePresets: voicePresets ?? this.voicePresets,
       customHeaders: customHeaders ?? this.customHeaders,
       customBody: customBody ?? this.customBody,
@@ -127,6 +132,33 @@ class NovelTtsSettings {
       readings: readings ?? this.readings,
     );
   }
+
+  /// A missing map is a legacy settings object. An explicitly empty map is
+  /// authoritative: deleting all variables must not resurrect legacy fields.
+  Set<String> get _legacyVariableNames => _referencedCustomVariables(
+    url: customUrl, method: customMethod, body: customBody, headers: customHeaders,
+  );
+
+  Map<String, String> get customVariables {
+    if (_customVariables case final variables?) return variables;
+    final legacy = {
+      'voice': customVoice.trim(),
+      'voicename': customVoice.trim(),
+      'lang': customLanguage.trim(),
+      'language': customLanguage.trim(),
+      'speed': customSpeed,
+      'model': customModel,
+      'region': microsoftRegion,
+    };
+    final referenced = _legacyVariableNames;
+    return {for (final entry in legacy.entries)
+      if (referenced.contains(entry.key)) entry.key: entry.value};
+  }
+
+  Map<String, String> get customTemplateVariables => {
+    for (final entry in customVariables.entries)
+      if (entry.key.toLowerCase() != 'text') entry.key.toLowerCase(): entry.value,
+  };
 
   int get clampedSplitChars =>
       splitChars.clamp(minSplitChars, maxSplitChars).toInt();
@@ -138,7 +170,7 @@ class NovelTtsSettings {
       case NovelTtsProvider.openai:
         return openaiVoice.trim();
       case NovelTtsProvider.custom:
-        return customVoice.trim();
+        return customTemplateVariables['voice'] ?? '';
     }
   }
 
@@ -149,7 +181,7 @@ class NovelTtsSettings {
       case NovelTtsProvider.openai:
         return microsoftLanguage.trim();
       case NovelTtsProvider.custom:
-        return customLanguage.trim();
+        return customTemplateVariables['lang'] ?? '';
     }
   }
 
@@ -172,24 +204,44 @@ class NovelTtsSettings {
   NovelTtsVoicePreset voicePreset(String name) => NovelTtsVoicePreset(
     name: name.trim(),
     endpointKey: voiceEndpointKey,
-    voice: activeVoice,
-    language: provider == NovelTtsProvider.openai ? '' : activeLanguage,
+    voice: provider == NovelTtsProvider.custom ? '' : activeVoice,
+    language: provider == NovelTtsProvider.microsoft ? activeLanguage : '',
     speed: switch (provider) {
       NovelTtsProvider.microsoft => microsoftRate,
       NovelTtsProvider.openai => openaiSpeed.toString(),
-      NovelTtsProvider.custom => customSpeed,
+      NovelTtsProvider.custom => '',
     },
-    model: switch (provider) {
-      NovelTtsProvider.microsoft => '',
-      NovelTtsProvider.openai => openaiModel,
-      NovelTtsProvider.custom => customModel,
-    },
+    model: provider == NovelTtsProvider.openai ? openaiModel : '',
+    variables: provider == NovelTtsProvider.custom ? customTemplateVariables : null,
   );
 
+  Map<String, String> _presetVariables(NovelTtsVoicePreset preset) {
+    if (preset.variables case final variables?) return variables;
+    final legacy = {
+      'voice': preset.voice,
+      'voicename': preset.voice,
+      'lang': preset.language,
+      'language': preset.language,
+      'speed': preset.speed,
+      'model': preset.model,
+      'region': microsoftRegion,
+    };
+    final referenced = _legacyVariableNames;
+    return {for (final entry in legacy.entries)
+      if (referenced.contains(entry.key)) entry.key: entry.value};
+  }
+
   bool isVoicePresetSelected(NovelTtsVoicePreset preset) {
+    if (preset.endpointKey != voiceEndpointKey) return false;
+    if (provider == NovelTtsProvider.custom) {
+      final variables = customTemplateVariables;
+      final saved = _presetVariables(preset);
+      return variables.length == saved.length && variables.entries.every(
+        (entry) => saved[entry.key] == entry.value,
+      );
+    }
     final current = voicePreset(preset.name);
-    return current.endpointKey == preset.endpointKey &&
-        current.voice == preset.voice &&
+    return current.voice == preset.voice &&
         current.language == preset.language &&
         current.speed == preset.speed &&
         current.model == preset.model;
@@ -235,10 +287,7 @@ class NovelTtsSettings {
         ).clamp(0.25, 4).toDouble(),
       ),
       NovelTtsProvider.custom => copyWith(
-        customVoice: preset.voice,
-        customLanguage: preset.language,
-        customSpeed: preset.speed,
-        customModel: preset.model,
+        customVariables: _presetVariables(preset),
       ),
     };
   }
@@ -281,6 +330,7 @@ class NovelTtsSettings {
       'customLanguage': customLanguage,
       'customSpeed': customSpeed,
       'customModel': customModel,
+      'customVariables': customTemplateVariables,
       'voicePresets': [for (final preset in voicePresets) preset.toJson()],
       'customHeaders': customHeaders,
       'customBody': customBody,
@@ -332,6 +382,8 @@ class NovelTtsSettings {
           json['customModel'] as String? ??
           json['openaiModel'] as String? ??
           'tts-1',
+      customVariables: json.containsKey('customVariables')
+          ? novelTtsVariablesFromJson(json['customVariables']) : null,
       voicePresets: NovelTtsVoicePreset.listFromJson(json['voicePresets']),
       customHeaders: json['customHeaders'] as String? ?? '',
       customBody: json['customBody'] as String? ?? '',
@@ -344,7 +396,7 @@ class NovelTtsSettings {
     if (_pendingSettings case final pending?) return pending;
     final raw = Prefer.getString(prefKey);
     if (raw == null || raw.isEmpty) {
-      return const NovelTtsSettings();
+      return const NovelTtsSettings(customVariables: {'voice': ''});
     }
     try {
       final decoded = jsonDecode(raw);
@@ -355,7 +407,7 @@ class NovelTtsSettings {
         return NovelTtsSettings.fromJson(Map<String, dynamic>.from(decoded));
       }
     } catch (_) {}
-    return const NovelTtsSettings();
+    return const NovelTtsSettings(customVariables: {'voice': ''});
   }
 
   Future<void> save() {
@@ -391,10 +443,11 @@ class NovelTtsVoicePreset {
   const NovelTtsVoicePreset({
     required this.name,
     required this.endpointKey,
-    required this.voice,
+    this.voice = '',
     this.language = '',
     this.speed = '',
     this.model = '',
+    this.variables,
   });
 
   final String name;
@@ -403,6 +456,7 @@ class NovelTtsVoicePreset {
   final String language;
   final String speed;
   final String model;
+  final Map<String, String>? variables;
 
   Map<String, dynamic> toJson() => {
     'name': name,
@@ -411,6 +465,7 @@ class NovelTtsVoicePreset {
     'language': language,
     'speed': speed,
     'model': model,
+    if (variables != null) 'variables': variables,
   };
 
   static List<NovelTtsVoicePreset> listFromJson(dynamic raw) {
@@ -420,7 +475,7 @@ class NovelTtsVoicePreset {
       if (item is! Map ||
           item['name'] is! String ||
           item['endpointKey'] is! String ||
-          item['voice'] is! String)
+          (item['voice'] is! String && item['variables'] is! Map))
         continue;
       final name = (item['name'] as String).trim();
       final endpointKey = item['endpointKey'] as String;
@@ -429,7 +484,12 @@ class NovelTtsVoicePreset {
         NovelTtsVoicePreset(
           name: name,
           endpointKey: endpointKey,
-          voice: item['voice'] as String,
+          voice: item['voice'] is String ? item['voice'] as String : '',
+          // Old presets may belong to an endpoint other than the active one.
+          // Preserve their metadata until selected against that endpoint's
+          // actual template; filtering here would discard still-needed values.
+          variables: item.containsKey('variables')
+              ? novelTtsVariablesFromJson(item['variables']) : null,
           language: item['language'] is String
               ? item['language'] as String
               : '',
@@ -441,3 +501,19 @@ class NovelTtsVoicePreset {
     return result;
   }
 }
+
+Map<String, String> novelTtsVariablesFromJson(dynamic raw) => {
+  if (raw is Map)
+    for (final entry in raw.entries)
+      if (entry.key is String && entry.value is String &&
+          (entry.key as String).toLowerCase() != 'text')
+        (entry.key as String).toLowerCase(): entry.value as String,
+};
+
+Set<String> _referencedCustomVariables({
+  required String url, required String method, required String body, required String headers,
+}) => {
+  ...novelTtsTemplateVariableNames(url),
+  ...novelTtsTemplateVariableNames(headers),
+  if (method.trim().toUpperCase() != 'GET') ...novelTtsTemplateVariableNames(body),
+}..remove('text');

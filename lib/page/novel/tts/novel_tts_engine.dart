@@ -63,6 +63,9 @@ NovelTtsTemplateVars novelTtsVarsFor(NovelTtsSettings settings, String text) {
         ? settings.customModel
         : settings.openaiModel,
     region: settings.microsoftRegion,
+    variables: settings.provider == NovelTtsProvider.custom
+        ? settings.customTemplateVariables
+        : null,
   );
 }
 
@@ -197,13 +200,13 @@ NovelTtsRequest _customRequest(NovelTtsSettings settings, String text) {
         ? applyNovelTtsJsonTemplate(settings.customBody, vars)
         : applyNovelTtsTemplate(settings.customBody, vars, encodeValues: false);
     body = utf8.encode(rendered);
-    headers.putIfAbsent(
-      'Content-Type',
-      () => settings.customContentType.trim().isEmpty
+    if (!headers.keys.any((name) => name.toLowerCase() == 'content-type')) {
+      headers['Content-Type'] = settings.customContentType.trim().isEmpty
           ? 'text/plain; charset=utf-8'
-          : settings.customContentType.trim(),
-    );
-  } else if (settings.customContentType.trim().isNotEmpty) {
+          : settings.customContentType.trim();
+    }
+  } else if (settings.customContentType.trim().isNotEmpty &&
+      !headers.keys.any((name) => name.toLowerCase() == 'content-type')) {
     headers['Content-Type'] = settings.customContentType.trim();
   }
   return NovelTtsRequest(

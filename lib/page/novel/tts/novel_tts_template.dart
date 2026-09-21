@@ -8,6 +8,7 @@ class NovelTtsTemplateVars {
     this.speed = '',
     this.model = '',
     this.region = '',
+    this.variables,
   });
 
   final String text;
@@ -16,25 +17,51 @@ class NovelTtsTemplateVars {
   final String speed;
   final String model;
   final String region;
+  final Map<String, String>? variables;
 
   Map<String, String> get named {
+    final supplied = variables;
     return {
+      if (supplied == null) ...{
+        'voice': voice,
+        'voicename': voice,
+        'lang': lang,
+        'language': lang,
+        'speed': speed,
+        'model': model,
+        'region': region,
+      } else ...{
+        for (final entry in supplied.entries)
+          entry.key.toLowerCase(): entry.value,
+      },
+      // The source text can never be replaced by a user-supplied variable.
       'text': text,
-      'voice': voice,
-      'voicename': voice,
-      'lang': lang,
-      'language': lang,
-      'speed': speed,
-      'model': model,
-      'region': region,
     };
   }
 }
 
-final _placeholderPattern = RegExp(r'\{([A-Za-z]+)\}|%@([A-Za-z]+)?');
+final novelTtsVariableNamePattern = RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
+final _placeholderPattern =
+    RegExp(r'\{([A-Za-z_][A-Za-z0-9_]*)\}|%@([A-Za-z_][A-Za-z0-9_]*)?');
 final _jsonTemplatePartPattern = RegExp(
-  r'"(?:[^"\\]|\\.)*"|\{([A-Za-z]+)\}|%@([A-Za-z]+)?',
+  r'"(?:[^"\\]|\\.)*"|\{([A-Za-z_][A-Za-z0-9_]*)\}|%@([A-Za-z_][A-Za-z0-9_]*)?',
 );
+
+Set<String> novelTtsTemplateVariableNames(String template) {
+  final names = <String>{};
+  var sequential = 0;
+  for (final match in _placeholderPattern.allMatches(template)) {
+    final name = match.group(1) ?? match.group(2);
+    if (name != null) {
+      names.add(name.toLowerCase());
+    } else if (sequential++ == 0) {
+      names.add('text');
+    } else if (sequential == 2) {
+      names.add('voice');
+    }
+  }
+  return names;
+}
 
 class _NovelTtsTemplateRenderer {
   _NovelTtsTemplateRenderer(this.vars);
@@ -45,7 +72,7 @@ class _NovelTtsTemplateRenderer {
     if (name != null) return vars.named[name.toLowerCase()];
     return switch (_sequentialIndex++) {
       0 => vars.text,
-      1 => vars.voice,
+      1 => vars.named['voice'] ?? '',
       _ => '',
     };
   }

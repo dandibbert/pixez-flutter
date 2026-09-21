@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_engine.dart';
+import 'package:pixez/page/novel/tts/novel_tts_diagnostics.dart';
+import 'package:pixez/page/novel/tts/novel_tts_variables_editor.dart';
 import 'package:pixez/page/novel/tts/novel_tts_preview.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
 import 'package:pixez/i18n.dart';
@@ -19,6 +21,12 @@ import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migrati
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_repository.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 
+const Key novelTtsCustomBodyFieldKey = Key('novelTtsCustomBodyField');
+const Key novelTtsBodyPlaceholdersKey = Key('novelTtsBodyPlaceholders');
+const Key novelTtsPreviewTextFieldKey = Key('novelTtsPreviewTextField');
+const Key novelTtsRequestDetailsKey = Key('novelTtsRequestDetails');
+const Key novelTtsRequestTextKey = Key('novelTtsRequestText');
+const Key novelTtsPreviewErrorKey = Key('novelTtsPreviewError');
 const Key novelTtsSaveVoiceKey = Key('novelTtsSaveVoice');
 const Key novelTtsVoiceNameKey = Key('novelTtsVoiceName');
 const Key novelTtsVoicePresetsKey = Key('novelTtsVoicePresets');
@@ -42,9 +50,10 @@ const Key novelTtsReadingPreviewFieldKey = Key('novelTtsReadingPreview');
 const Key novelTtsReadingPreviewSpokenKey = Key('novelTtsReadingPreviewSpoken');
 
 class NovelTtsPage extends StatefulWidget {
-  const NovelTtsPage({super.key, this.initial});
+  const NovelTtsPage({super.key, this.initial, this.previewFactory});
 
   final NovelTtsSettings? initial;
+  final NovelTtsPreview Function()? previewFactory;
 
   @override
   State<NovelTtsPage> createState() => _NovelTtsPageState();
@@ -61,7 +70,13 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   bool _saving = false;
   bool _saveFailed = false;
   bool _previewRunning = false;
-  String? _previewError;
+  Object? _previewError;
+  String? _previewErrorStage;
+  NovelTtsSettings? _previewErrorSettings;
+  late Map<String, String> _customVariables;
+  int _variablesRevision = 0;
+  bool _variablesValid = true;
+  bool _revealSecrets = false;
   NovelTtsPreview? _preview;
 
   TextEditingController _field(String name) => _fields[name]!;
@@ -70,6 +85,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   void initState() {
     super.initState();
     _settings = widget.initial ?? NovelTtsSettings.load();
+    _customVariables = Map.of(_settings.customTemplateVariables);
     final values = _settings.toJson();
     for (final name in [
       'splitChars',
@@ -84,10 +100,6 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       'openaiVoice',
       'openaiSpeed',
       'customUrl',
-      'customVoice',
-      'customLanguage',
-      'customSpeed',
-      'customModel',
       'customHeaders',
       'customBody',
       'customContentType',
@@ -164,6 +176,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
           entry.key != 'openaiSpeed')
         values[entry.key] = entry.value.text;
     }
+    values['customVariables'] = _customVariables;
     values['splitChars'] =
         int.tryParse(_field('splitChars').text.trim()) ?? _settings.splitChars;
     values['openaiSpeed'] =
@@ -173,6 +186,9 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
   }
 
   void _syncVoiceFields(NovelTtsSettings next) {
+    _customVariables = Map.of(next.customTemplateVariables);
+    _variablesRevision++;
+    _variablesValid = true;
     final values = next.toJson();
     for (final name in [
       'microsoftVoice',
@@ -181,10 +197,6 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       'openaiVoice',
       'openaiModel',
       'openaiSpeed',
-      'customVoice',
-      'customLanguage',
-      'customSpeed',
-      'customModel',
     ]) {
       _field(name).text = '${values[name]}';
     }
@@ -220,8 +232,12 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     try {
       // Validate before pausing current playback or starting a network request.
       buildNovelTtsRequest(settings, text);
-    } catch (_) {
-      setState(() => _previewError = i18n.novel_tts_preview_failed);
+    } catch (error) {
+      setState(() {
+        _previewError = error;
+        _previewErrorStage = i18n.novel_tts_stage_request;
+        _previewErrorSettings = settings;
+      });
       return;
     }
     setState(() {
@@ -231,14 +247,16 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
     try {
       await NovelTtsController.maybeInstance?.pause();
       if (!mounted || generation != _previewGeneration) return;
-      _preview ??= NovelTtsPreview();
+      _preview ??= widget.previewFactory?.call() ?? NovelTtsPreview();
       await _preview!.play(settings, text);
-    } on TimeoutException {
-      if (mounted && generation == _previewGeneration)
-        setState(() => _previewError = i18n.novel_tts_preview_timeout);
-    } catch (_) {
-      if (mounted && generation == _previewGeneration)
-        setState(() => _previewError = i18n.novel_tts_preview_failed);
+    } catch (error) {
+      if (mounted && generation == _previewGeneration) {
+        setState(() {
+          _previewError = error;
+          _previewErrorStage = i18n.novel_tts_stage_preview;
+          _previewErrorSettings = settings;
+        });
+      }
     } finally {
       if (mounted && generation == _previewGeneration) {
         setState(() => _previewRunning = false);
@@ -290,7 +308,9 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                             : Icons.check_circle_outline,
                       ),
                       title: Text(
-                        _saveFailed
+                        !_variablesValid
+                            ? i18n.novel_tts_variables_invalid
+                            : _saveFailed
                             ? i18n.novel_tts_save_failed
                             : _saving
                             ? i18n.novel_tts_saving
@@ -329,9 +349,10 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                                     NovelTtsProvider.custom =>
                                       i18n.novel_tts_provider_custom,
                                   },
-                                  onTap: () => _persist(
-                                    _draft().copyWith(provider: provider),
-                                  ),
+                                  onTap: () {
+                                    _variablesValid = true;
+                                    unawaited(_persist(_draft().copyWith(provider: provider)));
+                                  },
                                 ),
                             ],
                           ),
@@ -341,7 +362,8 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                       ),
                     ),
                     _Section(
-                      title: i18n.novel_tts_section_voice,
+                      title: _settings.provider == NovelTtsProvider.custom
+                          ? i18n.novel_tts_variables : i18n.novel_tts_section_voice,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -385,14 +407,16 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                             alignment: Alignment.centerLeft,
                             child: OutlinedButton.icon(
                               key: novelTtsSaveVoiceKey,
-                              onPressed: _saveVoice,
+                              onPressed: _variablesValid ? _saveVoice : null,
                               icon: const Icon(Icons.add),
                               label: Text(i18n.novel_tts_save_voice),
                             ),
                           ),
                           const Divider(height: 32),
                           TextField(
+                            key: novelTtsPreviewTextFieldKey,
                             controller: _field('preview'),
+                            onChanged: (_) => setState(() {}),
                             minLines: 2,
                             maxLines: 4,
                             maxLength: 160,
@@ -404,21 +428,19 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                               border: const OutlineInputBorder(),
                             ),
                           ),
+                          _requestDetails(i18n),
                           if (_previewError != null)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                _previewError!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
+                            _diagnosticText(
+                              '${_previewErrorStage ?? i18n.novel_tts_stage_preview}\n'
+                              '${describeNovelTtsError(_previewError!, _previewErrorSettings ?? draft, revealSecrets: _revealSecrets)}',
+                              textKey: novelTtsPreviewErrorKey,
+                              error: true,
                             ),
                           Align(
                             alignment: Alignment.centerLeft,
                             child: FilledButton.tonalIcon(
                               key: novelTtsPreviewVoiceKey,
-                              onPressed: _previewVoice,
+                              onPressed: _previewRunning || _variablesValid ? _previewVoice : null,
                               icon: Icon(
                                 _previewRunning
                                     ? Icons.stop
@@ -609,20 +631,16 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
         ];
       case NovelTtsProvider.custom:
         return [
-          _box(
-            'customVoice',
-            i18n.novel_tts_voice_id,
-            fieldKey: novelTtsCustomVoiceKey,
-            helper: i18n.novel_tts_voice_id_hint,
+          NovelTtsVariablesEditor(
+            key: ValueKey(_variablesRevision),
+            initial: _customVariables,
+            legacyVoiceFieldKey: novelTtsCustomVoiceKey,
+            onValidityChanged: (valid) => setState(() => _variablesValid = valid),
+            onChanged: (variables) {
+              _customVariables = variables;
+              _schedulePersist();
+            },
           ),
-          Text(
-            i18n.novel_tts_custom_values_hint,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          _box('customLanguage', i18n.novel_tts_voice_language),
-          _box('customSpeed', i18n.novel_tts_voice_speed),
-          _box('customModel', i18n.novel_tts_voice_model),
         ];
     }
   }
@@ -654,6 +672,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       ),
       NovelTtsPlaceholderChips(
         caption: i18n.novel_tts_insert_placeholder,
+        names: _variableNames,
         onInsert: (token) {
           insertNovelTtsToken(_field('customUrl'), token);
           _schedulePersist();
@@ -697,9 +716,11 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(i18n.novel_tts_get_body_ignored),
             ),
-          _box('customBody', i18n.novel_tts_custom_body, minLines: 3),
+          _box('customBody', i18n.novel_tts_custom_body, minLines: 3, fieldKey: novelTtsCustomBodyFieldKey),
           NovelTtsPlaceholderChips(
+            key: novelTtsBodyPlaceholdersKey,
             caption: i18n.novel_tts_insert_placeholder,
+            names: _variableNames,
             useTextKey: false,
             onInsert: (token) {
               insertNovelTtsToken(_field('customBody'), token);
@@ -715,6 +736,66 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
       ),
     ];
   }
+
+  Set<String> get _variableNames => {
+    'text',
+    ..._customVariables.keys,
+    ...novelTtsTemplateVariableNames(_field('customUrl').text),
+    ...novelTtsTemplateVariableNames(_field('customBody').text),
+    ...novelTtsTemplateVariableNames(_field('customHeaders').text),
+  };
+
+  Widget _requestDetails(AppLocalizations i18n) {
+    final sample = _field('preview').text.trim();
+    final text = sample.isEmpty ? i18n.novel_tts_preview_sample : sample;
+    final settings = _draft();
+    String details;
+    try {
+      if (!_variablesValid) {
+        throw FormatException(i18n.novel_tts_variables_invalid);
+      }
+      final request = buildNovelTtsRequest(settings, text);
+      details = describeNovelTtsRequest(request, revealSecrets: _revealSecrets);
+    } catch (error) {
+      details = '${i18n.novel_tts_stage_request}\n'
+          '${describeNovelTtsError(error, settings, revealSecrets: _revealSecrets)}';
+    }
+    return NovelTtsAdvancedPanel(
+      title: i18n.novel_tts_request_details,
+      toggleKey: novelTtsRequestDetailsKey,
+      children: [
+        Text(i18n.novel_tts_request_hint),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(i18n.novel_tts_reveal_secrets),
+          value: _revealSecrets,
+          onChanged: (value) => setState(() => _revealSecrets = value),
+        ),
+        _diagnosticText(details, textKey: novelTtsRequestTextKey),
+      ],
+    );
+  }
+
+  Widget _diagnosticText(String details, {required Key textKey, bool error = false}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SelectableText(details, key: textKey, style: TextStyle(
+              color: error ? Theme.of(context).colorScheme.error : null,
+            )),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.copy_outlined),
+                label: Text(I18n.of(context).novel_tts_copy_details),
+                onPressed: () => Clipboard.setData(ClipboardData(text: details)),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _choice(String name, String label, List<NovelTtsChoice> choices) =>
       NovelTtsChoiceField(

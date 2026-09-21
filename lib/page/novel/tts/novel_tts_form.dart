@@ -69,14 +69,6 @@ const contentTypeChoices = <NovelTtsChoice>[
   NovelTtsChoice('text/plain', 'text/plain'),
 ];
 
-const novelTtsPlaceholderTokens = <String>[
-  'text',
-  'voice',
-  'lang',
-  'speed',
-  'model',
-];
-
 double parseMicrosoftRatePercent(String raw) {
   final match = RegExp(r'([+-]?\d+)').firstMatch(raw.trim());
   return (double.tryParse(match?.group(1) ?? '0') ?? 0).clamp(-50, 50);
@@ -154,11 +146,13 @@ class NovelTtsPlaceholderChips extends StatelessWidget {
     required this.caption,
     required this.onInsert,
     this.useTextKey = true,
+    this.names = const {'text'},
   });
 
   final String caption;
   final ValueChanged<String> onInsert;
   final bool useTextKey;
+  final Set<String> names;
 
   @override
   Widget build(BuildContext context) {
@@ -173,20 +167,14 @@ class NovelTtsPlaceholderChips extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final name in novelTtsPlaceholderTokens)
+              for (final name in {'text', ...names})
                 ActionChip(
                   key: name == 'text' && useTextKey
                       ? novelTtsInsertTextChipKey
                       : null,
-                  label: Text(
-                    '${switch (name) {
-                      'text' => I18n.of(context).novel_tts_token_text,
-                      'voice' => I18n.of(context).novel_tts_token_voice,
-                      'lang' => I18n.of(context).novel_tts_token_language,
-                      'speed' => I18n.of(context).novel_tts_token_speed,
-                      _ => I18n.of(context).novel_tts_token_model,
-                    }} {$name}',
-                  ),
+                  label: Text(name == 'text'
+                      ? '${I18n.of(context).novel_tts_token_text} {text}'
+                      : '{$name}'),
                   onPressed: () => onInsert('{$name}'),
                 ),
             ],
@@ -202,10 +190,12 @@ class NovelTtsAdvancedPanel extends StatefulWidget {
     super.key,
     required this.title,
     required this.children,
+    this.toggleKey = novelTtsAdvancedToggleKey,
   });
 
   final String title;
   final List<Widget> children;
+  final Key toggleKey;
 
   @override
   State<NovelTtsAdvancedPanel> createState() => _NovelTtsAdvancedPanelState();
@@ -220,7 +210,7 @@ class _NovelTtsAdvancedPanelState extends State<NovelTtsAdvancedPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ListTile(
-          key: novelTtsAdvancedToggleKey,
+          key: widget.toggleKey,
           contentPadding: EdgeInsets.zero,
           title: Text(widget.title),
           trailing: Icon(_open ? Icons.expand_less : Icons.expand_more),

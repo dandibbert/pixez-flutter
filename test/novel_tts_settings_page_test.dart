@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
@@ -7,6 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
+import 'package:pixez/page/novel/tts/novel_tts_preview.dart';
+import 'package:pixez/page/novel/tts/novel_tts_form.dart';
+import 'package:pixez/page/novel/tts/novel_tts_variables_editor.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +26,7 @@ void main() {
     NovelTtsSettings settings, {
     bool dark = false,
     double scale = 1,
+    NovelTtsPreview Function()? previewFactory,
   }) => MaterialApp(
     locale: const Locale('en', 'US'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -37,14 +42,14 @@ void main() {
       ).copyWith(textScaler: TextScaler.linear(scale)),
       child: child!,
     ),
-    home: NovelTtsPage(initial: settings),
+    home: NovelTtsPage(initial: settings, previewFactory: previewFactory),
   );
 
   testWidgets(
     'saved voices switch parameters without changing the connection',
     (tester) async {
       var settings = const NovelTtsSettings(
-        customUrl: 'https://speech.example/tts?t={text}&v={voice}',
+        customUrl: 'https://speech.example/tts?t={text}&v={voice}&speed={speed}',
         customHeaders: 'Authorization: retained',
         customVoice: 'voice-a',
         customSpeed: '1',
@@ -56,8 +61,8 @@ void main() {
       await tester.ensureVisible(find.widgetWithText(InputChip, 'Narrator'));
       await tester.tap(find.widgetWithText(InputChip, 'Narrator'));
       await tester.pumpAndSettle();
-      expect(NovelTtsSettings.load().customVoice, 'voice-a');
-      expect(NovelTtsSettings.load().customSpeed, '1');
+      expect(NovelTtsSettings.load().customTemplateVariables['voice'], 'voice-a');
+      expect(NovelTtsSettings.load().customTemplateVariables['speed'], '1');
       expect(NovelTtsSettings.load().customHeaders, 'Authorization: retained');
       expect(NovelTtsSettings.load().customUrl, settings.customUrl);
       expect(tester.takeException(), isNull);
@@ -82,7 +87,7 @@ void main() {
       // Dispose before the 350 ms debounce to exercise the final flush.
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
-      expect(NovelTtsSettings.load().customVoice, 'changed');
+      expect(NovelTtsSettings.load().customTemplateVariables['voice'], 'changed');
       expect(tester.takeException(), isNull);
     },
   );
@@ -131,7 +136,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(saveError, isNull);
       expect(saved, isTrue, reason: 'The newer settings write must finish');
-      expect(NovelTtsSettings.load().customVoice, 'a');
+      expect(NovelTtsSettings.load().customTemplateVariables['voice'], 'a');
       expect(tester.takeException(), isNull);
     },
   );
@@ -161,12 +166,97 @@ void main() {
     await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
     await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
     await tester.pumpAndSettle();
-    expect(
-      find.text(
-        'Preview failed. Check the service address, credentials and voice settings, then try again.',
-      ),
-      findsOneWidget,
-    );
+    final error = tester.widget<SelectableText>(find.byKey(novelTtsPreviewErrorKey)).data!;
+    expect(error, contains('Building request'));
+    expect(error, contains('Custom TTS'));
+    expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('custom variables can be added, renamed, deleted and inserted', (tester) async {
+    await tester.pumpWidget(app(const NovelTtsSettings(
+      customUrl: 'https://speech.example/tts?t={text}', customVariables: {},
+    )));
+    await tester.ensureVisible(find.byKey(novelTtsAddVariableKey));
+    await tester.tap(find.byKey(novelTtsAddVariableKey));
+    await tester.pump();
+    final name = find.byKey(const ValueKey('novelTtsVariableName_0'));
+    await tester.ensureVisible(name);
+    await tester.enterText(name, 'speaker_id');
+    final value = find.byKey(const ValueKey('novelTtsVariableValue_0'));
+    await tester.enterText(value, 'AliceABC');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(NovelTtsSettings.load().customTemplateVariables, {'speaker_id': 'AliceABC'});
+    final chip = find.widgetWithText(ActionChip, '{speaker_id}');
+    await tester.ensureVisible(chip);
+    await tester.tap(chip);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey)).controller!.text,
+        contains('{speaker_id}'));
+    await tester.ensureVisible(name);
+    await tester.enterText(name, 'style');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(NovelTtsSettings.load().customTemplateVariables, {'style': 'AliceABC'});
+    await tester.tap(find.byKey(const ValueKey('novelTtsRemoveVariable_0')));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(NovelTtsSettings.load().customTemplateVariables, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('request details use custom variables and the actual sample', (tester) async {
+    await tester.pumpWidget(app(const NovelTtsSettings(
+      customUrl: 'https://speech.example/tts?t={text}&speaker={speaker_id}',
+      customVariables: {'speaker_id': 'AliceABC'},
+    )));
+    await tester.ensureVisible(find.byKey(novelTtsPreviewTextFieldKey));
+    await tester.enterText(find.byKey(novelTtsPreviewTextFieldKey), 'Actual sample');
+    await tester.ensureVisible(find.byKey(novelTtsRequestDetailsKey));
+    await tester.tap(find.byKey(novelTtsRequestDetailsKey));
+    await tester.pumpAndSettle();
+    final details = tester.widget<SelectableText>(find.byKey(novelTtsRequestTextKey)).data!;
+    expect(details, contains('GET'));
+    expect(details, contains('speaker=AliceABC'));
+    expect(details, contains('Actual%20sample'));
+    expect(details, contains('speech.example'));
+    expect(find.text('Speaking speed'), findsNothing);
+    expect(find.text('Speech model'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('custom body keeps click-to-insert configured and referenced variables', (tester) async {
+    await tester.pumpWidget(app(const NovelTtsSettings(
+      customUrl: 'https://speech.example/tts', customMethod: 'POST',
+      customBody: '{text}', customVariables: {'speaker_id': 'Alice'},
+    )));
+    await tester.ensureVisible(find.byKey(novelTtsAdvancedToggleKey));
+    await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
+    await tester.pumpAndSettle();
+    final chip = find.descendant(of: find.byKey(novelTtsBodyPlaceholdersKey),
+        matching: find.widgetWithText(ActionChip, '{speaker_id}'));
+    await tester.ensureVisible(chip);
+    await tester.tap(chip);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byKey(novelTtsCustomBodyFieldKey)).controller!.text,
+        contains('{speaker_id}'));
+  });
+
+  testWidgets('a running preview can still be stopped while a variable name is invalid', (tester) async {
+    final preview = _PendingPreview();
+    await tester.pumpWidget(app(const NovelTtsSettings(
+      customUrl: 'https://speech.example/tts?t={text}', customVariables: {},
+    ), previewFactory: () => preview));
+    await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
+    await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
+    await tester.pump();
+    expect(preview.started, isTrue);
+    await tester.ensureVisible(find.byKey(novelTtsAddVariableKey));
+    await tester.tap(find.byKey(novelTtsAddVariableKey));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(novelTtsPreviewVoiceKey));
+    await tester.tap(find.byKey(novelTtsPreviewVoiceKey));
+    await tester.pumpAndSettle();
+    expect(preview.stopped, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -234,4 +324,25 @@ Future<void> _loadScreenshotFonts(WidgetTester tester) async {
     icons.addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
   });
+}
+
+class _PendingPreview extends NovelTtsPreview {
+  final pending = Completer<void>();
+  bool started = false;
+  bool stopped = false;
+
+  @override
+  Future<void> play(NovelTtsSettings settings, String text) {
+    started = true;
+    return pending.future;
+  }
+
+  @override
+  Future<void> stop() async {
+    stopped = true;
+    if (!pending.isCompleted) pending.complete();
+  }
+
+  @override
+  Future<void> dispose() => stop();
 }
