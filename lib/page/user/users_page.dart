@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pixez/component/common_back_area.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/component/null_hero.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/component/pixiv_image.dart';
@@ -664,7 +665,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
       height: 60,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
-        child: SelectionArea(
+        child: ShortcutSelectionArea(
           child: SingleChildScrollView(
             child: Text(
               userStore.userDetail == null

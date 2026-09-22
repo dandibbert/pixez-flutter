@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:pixez/component/selectable_html.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/models/user_detail.dart';
 import 'package:pixez/page/follow/follow_list.dart';
@@ -87,7 +88,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Card(
-              child: SelectionArea(
+              child: ShortcutSelectionArea(
                 child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: widget.userDetail?.user.comment != null &&

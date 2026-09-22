@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/rendering.dart';
@@ -18,10 +19,81 @@ class SelectedTextMemory {
 
   void update(SelectedContent? content) {
     final next = selectedPlainText(content);
+    publishSelectedContent(content);
     if (next.isEmpty) {
       return;
     }
     value = next;
+  }
+}
+
+/// Publishes the live selection to iOS so Shortcuts can read it.
+///
+/// The system action "Get Selected Text" asks the foreground app for the
+/// current [UITextInput] selection. A Flutter [SelectionArea] draws its own
+/// highlight and never installs that selection, so the action comes back empty.
+void publishSelectedContent(SelectedContent? content) {
+  SelectedTextChannel.publish(selectedPlainText(content));
+}
+
+/// Selection area that reports its highlight to the iOS Shortcuts action.
+class ShortcutSelectionArea extends StatelessWidget {
+  const ShortcutSelectionArea({
+    super.key,
+    this.focusNode,
+    this.onSelectionChanged,
+    this.contextMenuBuilder,
+    required this.child,
+  });
+
+  final FocusNode? focusNode;
+  final ValueChanged<SelectedContent?>? onSelectionChanged;
+  final SelectableRegionContextMenuBuilder? contextMenuBuilder;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SelectionArea(
+      focusNode: focusNode,
+      contextMenuBuilder: contextMenuBuilder,
+      onSelectionChanged: (SelectedContent? content) {
+        publishSelectedContent(content);
+        onSelectionChanged?.call(content);
+      },
+      child: child,
+    );
+  }
+}
+
+/// Sends the current plain-text selection to the iOS runner.
+class SelectedTextChannel {
+  static const MethodChannel channel = MethodChannel('pixez/selected_text');
+
+  /// Tests set this so the channel can be observed off iOS.
+  static bool enabled = Platform.isIOS;
+
+  static String? _last;
+
+  static void publish(String text) {
+    if (text == _last) {
+      return;
+    }
+    _last = text;
+    if (!enabled) {
+      return;
+    }
+    unawaited(_send(text));
+  }
+
+  static Future<void> _send(String text) async {
+    try {
+      await channel.invokeMethod<void>('setSelectedText', text);
+    } catch (_) {}
+  }
+
+  @visibleForTesting
+  static void reset() {
+    _last = null;
   }
 }
 

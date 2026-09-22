@@ -109,7 +109,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
           SizedBox(height: 8.0),
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: SelectionArea(
+            child: ShortcutSelectionArea(
               child: Text(
                 data.title,
                 style: Theme.of(
@@ -226,7 +226,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   }
 
   Widget colorText(String text, BuildContext context) {
-    return SelectionArea(
+    return ShortcutSelectionArea(
       child: Text(
         text,
         style: TextStyle(
@@ -322,7 +322,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             child: Container(
               width: double.infinity,
-              child: SelectionArea(
+              child: ShortcutSelectionArea(
                 focusNode: _focusNode,
                 onSelectionChanged: _selection.update,
                 contextMenuBuilder: (context, selectableRegionState) {
@@ -577,7 +577,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                     children: <Widget>[
                       Hero(
                         tag: illust.user.name + this.hashCode.toString(),
-                        child: SelectionArea(
+                        child: ShortcutSelectionArea(
                           child: GestureDetector(
                             onTap: () {
                               _push2UserPage(context, illust);

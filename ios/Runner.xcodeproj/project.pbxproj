@@ -15,6 +15,7 @@
 		A1F0E0022FCE8606004A2614 /* InstalledFontsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F0E0012FCE8606004A2614 /* InstalledFontsPlugin.swift */; };
 		A1F0E0102FCE8606004A2614 /* ThreadStatsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F0E0112FCE8606004A2614 /* ThreadStatsPlugin.swift */; };
 		A2F0E0022FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F0E0012FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift */; };
+		B1F0E0022FCE8606004A2616 /* SelectedTextPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F0E0012FCE8606004A2616 /* SelectedTextPlugin.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -77,6 +78,7 @@
 		A1F0E0012FCE8606004A2614 /* InstalledFontsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledFontsPlugin.swift; sourceTree = "<group>"; };
 		A1F0E0112FCE8606004A2614 /* ThreadStatsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadStatsPlugin.swift; sourceTree = "<group>"; };
 		A2F0E0012FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelTtsNowPlayingPlugin.swift; sourceTree = "<group>"; };
+		B1F0E0012FCE8606004A2616 /* SelectedTextPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedTextPlugin.swift; sourceTree = "<group>"; };
 		7C8B5968260F680500098D5C /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		7C8B596A260F680500098D5C /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		7CC54C3726103351009033DF /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
@@ -232,6 +234,7 @@
 				A1F0E0012FCE8606004A2614 /* InstalledFontsPlugin.swift */,
 				A1F0E0112FCE8606004A2614 /* ThreadStatsPlugin.swift */,
 				A2F0E0012FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift */,
+				B1F0E0012FCE8606004A2616 /* SelectedTextPlugin.swift */,
 				CF725E372ACE7C7600615536 /* DeepLinkPlugin.swift */,
 			);
 			path = Runner;
@@ -451,6 +454,7 @@
 				A1F0E0022FCE8606004A2614 /* InstalledFontsPlugin.swift in Sources */,
 				A1F0E0102FCE8606004A2614 /* ThreadStatsPlugin.swift in Sources */,
 				A2F0E0022FCE8606004A2615 /* NovelTtsNowPlayingPlugin.swift in Sources */,
+				B1F0E0022FCE8606004A2616 /* SelectedTextPlugin.swift in Sources */,
 				A70B475725D4D94200AE0717 /* CodeGen.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);

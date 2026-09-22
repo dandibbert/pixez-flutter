@@ -467,8 +467,8 @@ class _CommentPageState extends State<CommentPage> {
     );
   }
 
-  SelectionArea _buildCommentContent(BuildContext context, Comment comment) {
-    return SelectionArea(
+  Widget _buildCommentContent(BuildContext context, Comment comment) {
+    return ShortcutSelectionArea(
       focusNode: _focusNode,
       contextMenuBuilder: (context, selectableRegionState) {
         return _buildSelectionMenu(

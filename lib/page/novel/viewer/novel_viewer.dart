@@ -729,7 +729,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                   ? () => _openSeriesNovel(navigation!.nextNovel!.id)
                   : null,
             ),
-      article: SelectionArea(
+      article: ShortcutSelectionArea(
         onSelectionChanged: _selection.update,
         contextMenuBuilder: (context, editableTextState) {
           return _buildSelectionMenu(editableTextState, context);
@@ -1047,7 +1047,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: SelectionArea(
+                    child: ShortcutSelectionArea(
                       onSelectionChanged: _selection.update,
                       contextMenuBuilder: (context, editableTextState) {
                         return _buildSelectionMenu(editableTextState, context);

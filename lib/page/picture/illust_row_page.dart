@@ -20,6 +20,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/ban_page.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/component/common_back_area.dart';
 import 'package:pixez/component/null_hero.dart';
 import 'package:pixez/component/painter_avatar.dart';
@@ -279,7 +280,7 @@ class _IllustRowPageState extends State<IllustRowPage>
     );
   }
 
-  Widget colorText(String text, BuildContext context) => SelectionArea(
+  Widget colorText(String text, BuildContext context) => ShortcutSelectionArea(
     child: Text(
       text,
       style: TextStyle(color: Theme.of(context).colorScheme.secondary),
@@ -784,7 +785,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
-                    SelectionArea(
+                    ShortcutSelectionArea(
                       child: Text(
                         illust.title,
                         style: TextStyle(
@@ -795,7 +796,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                     Container(height: 4.0),
                     Hero(
                       tag: illust.user.name + this.hashCode.toString(),
-                      child: SelectionArea(
+                      child: ShortcutSelectionArea(
                         child: Text(
                           illust.user.name,
                           style: Theme.of(context).textTheme.bodyMedium,

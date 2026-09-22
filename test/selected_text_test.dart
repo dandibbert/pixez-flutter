@@ -76,4 +76,87 @@ void main() {
     expect(copied, '彼は走った。');
     expect(buttons.map((item) => item.label), contains('Translate'));
   });
+
+  testWidgets('publishes the live selection for the Shortcuts action', (
+    tester,
+  ) async {
+    SelectedTextChannel.enabled = true;
+    SelectedTextChannel.reset();
+    final published = <String?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SelectedTextChannel.channel,
+      (call) async {
+        expect(call.method, 'setSelectedText');
+        published.add(call.arguments as String?);
+        return null;
+      },
+    );
+    addTearDown(() {
+      SelectedTextChannel.enabled = false;
+      SelectedTextChannel.reset();
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SelectedTextChannel.channel,
+        null,
+      );
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ShortcutSelectionArea(child: Text('彼は走った。')),
+      ),
+    );
+    final region = tester.state<SelectableRegionState>(
+      find.byType(SelectableRegion),
+    );
+    region.selectAll();
+    await tester.pump();
+    region.clearSelection();
+    await tester.pump();
+
+    expect(published, ['彼は走った。', '']);
+  });
+
+  testWidgets(
+    'keeps the menu snapshot after the live selection is cleared',
+    (tester) async {
+      SelectedTextChannel.enabled = true;
+      SelectedTextChannel.reset();
+      final published = <String?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SelectedTextChannel.channel,
+        (call) async {
+          published.add(call.arguments as String?);
+          return null;
+        },
+      );
+      addTearDown(() {
+        SelectedTextChannel.enabled = false;
+        SelectedTextChannel.reset();
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SelectedTextChannel.channel,
+          null,
+        );
+      });
+
+      final memory = SelectedTextMemory();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShortcutSelectionArea(
+            onSelectionChanged: memory.update,
+            child: const Text('彼は走った。'),
+          ),
+        ),
+      );
+      final region = tester.state<SelectableRegionState>(
+        find.byType(SelectableRegion),
+      );
+      region.selectAll();
+      await tester.pump();
+      region.clearSelection();
+      await tester.pump();
+
+      expect(memory.value, '彼は走った。');
+      expect(published, ['彼は走った。', '']);
+    },
+  );
 }

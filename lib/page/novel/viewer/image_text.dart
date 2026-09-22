@@ -21,6 +21,7 @@ import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/hoster.dart';
 import 'package:pixez/component/pixiv_image.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/er/lprinter.dart';
 import 'package:pixez/er/pixiv_image_source.dart';
@@ -363,7 +364,7 @@ class NovelSpansGenerator {
               builder: (context) {
                 return AlertDialog(
                   title: Text("External link"),
-                  content: SelectionArea(child: Text(data.text)),
+                  content: ShortcutSelectionArea(child: Text(data.text)),
                   actions: [
                     TextButton(
                       onPressed: () {

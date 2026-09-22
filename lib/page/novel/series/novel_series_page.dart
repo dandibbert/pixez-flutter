@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pixez/component/painter_avatar.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
@@ -170,7 +171,7 @@ class NovelSeriesPage extends HookConsumerWidget {
                         Container(
                           height: 60,
                         ),
-                        SelectionArea(
+                        ShortcutSelectionArea(
                           child: Container(
                             padding: EdgeInsets.symmetric(horizontal: 16.0),
                             child: Text(
@@ -179,7 +180,7 @@ class NovelSeriesPage extends HookConsumerWidget {
                             ),
                           ),
                         ),
-                        SelectionArea(
+                        ShortcutSelectionArea(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Text(

@@ -31,6 +31,7 @@ import WidgetKit
         InstalledFontsPlugin.bind(engineBridge)
         ThreadStatsPlugin.bind(engineBridge)
         NovelTtsNowPlayingPlugin.bind(engineBridge)
+        SelectedTextPlugin.bind(engineBridge)
         DeepLinkPlugin.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "DeepLinkPlugin")!)
         bindAppWidgetChannel(engineBridge)
     }

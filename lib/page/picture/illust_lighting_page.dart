@@ -23,6 +23,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/ban_page.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/component/common_back_area.dart';
 import 'package:pixez/component/null_hero.dart';
 import 'package:pixez/component/painter_avatar.dart';
@@ -434,7 +435,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
   }
 
   Widget colorText(String text, BuildContext context) {
-    return SelectionArea(
+    return ShortcutSelectionArea(
       child: Text(
         text,
         style: TextStyle(
@@ -956,7 +957,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                     children: <Widget>[
                       Hero(
                         tag: illust.user.name + this.hashCode.toString(),
-                        child: SelectionArea(
+                        child: ShortcutSelectionArea(
                           child: Text(
                             illust.user.name,
                             style: TextStyle(
