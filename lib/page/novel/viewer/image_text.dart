@@ -344,6 +344,8 @@ class NovelSpansGenerator {
         style: highlighted
             ? baseStyle.copyWith(backgroundColor: ttsHighlightColor)
             : baseStyle,
+        textScaler: MediaQuery.textScalerOf(context),
+        textDirection: Directionality.of(context),
       );
     } else if (data.type == NovelSpansType.jumpUri) {
       return TextSpan(

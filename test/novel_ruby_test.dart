@@ -105,15 +105,25 @@ void main() {
     );
 
     expect(find.byType(NovelRubyText), findsOneWidget);
+    final paragraphBox = tester.getRect(find.byType(RichText).first);
+    expect(paragraphBox.height, lessThan(80));
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byType(RichText).first,
+    );
+    final plain = paragraph.text.toPlainText();
+    final baseAt = plain.indexOf('走');
+    expect(baseAt, greaterThan(0));
+    final baseBox = _globalBox(
+      tester,
+      paragraph,
+      TextSelection(baseOffset: baseAt, extentOffset: baseAt + 1),
+    );
+    expect(baseBox.width, lessThan(80));
+    expect(baseBox.width, greaterThan(8));
+    expect(baseBox.left, greaterThan(paragraphBox.left + 10));
+    expect(baseBox.right, lessThan(paragraphBox.right - 10));
     final rubyBox = tester.getRect(find.byType(NovelRubyText));
-    expect(rubyBox.width, lessThan(80));
-    expect(rubyBox.width, greaterThan(8));
-
-    final paragraph = tester.getRect(find.byType(RichText).first);
-    expect(paragraph.height, lessThan(80));
-    expect(rubyBox.left, greaterThan(paragraph.left + 10));
-    expect(rubyBox.right, lessThan(paragraph.right - 10));
-    expect(rubyBox.top, lessThan(paragraph.top + 40));
+    expect(rubyBox.top, lessThan(baseBox.top));
   });
 
   testWidgets('base shares the body TextSpan glyph box, not the 1.8 line box', (
@@ -147,16 +157,25 @@ void main() {
     final paragraph = tester.renderObject<RenderParagraph>(
       find.byType(RichText).first,
     );
-    // 彼は = 0-2, WidgetSpan placeholder = 2-3, った。 = 3-6
+    final plain = paragraph.text.toPlainText();
+    final baseAt = plain.indexOf('走');
+    final suffixAt = plain.indexOf('った。');
+    expect(baseAt, 3);
+    expect(suffixAt, greaterThan(baseAt));
     final prefix = _globalBox(
       tester,
       paragraph,
       const TextSelection(baseOffset: 0, extentOffset: 2),
     );
+    final base = _globalBox(
+      tester,
+      paragraph,
+      TextSelection(baseOffset: baseAt, extentOffset: baseAt + 1),
+    );
     final suffix = _globalBox(
       tester,
       paragraph,
-      const TextSelection(baseOffset: 3, extentOffset: 6),
+      TextSelection(baseOffset: suffixAt, extentOffset: suffixAt + 3),
     );
     final lineBox = _globalBox(
       tester,
@@ -165,10 +184,10 @@ void main() {
       heightStyle: ui.BoxHeightStyle.max,
     );
 
-    expect(rubyBox.bottom, closeTo(prefix.bottom, 2.0));
-    expect(rubyBox.bottom, closeTo(suffix.bottom, 2.0));
+    expect(base.bottom, closeTo(prefix.bottom, 2.0));
+    expect(base.bottom, closeTo(suffix.bottom, 2.0));
     // Old Stack/bottom alignment sat on the line box and dropped the kanji.
-    expect(lineBox.bottom - rubyBox.bottom, greaterThan(4));
+    expect(lineBox.bottom - base.bottom, greaterThan(4));
     expect(rubyBox.top, lessThan(prefix.top - 6));
     expect(rubyRo.alphabeticBaseline, greaterThan(rubyRo.size.height * 0.45));
   });
@@ -234,5 +253,40 @@ void main() {
       file.writeAsBytesSync(bytes!.buffer.asUint8List());
       expect(file.existsSync(), isTrue);
     });
+  });
+
+  testWidgets('selection includes the ruby base instead of skipping it', (
+    tester,
+  ) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SelectionArea(
+          onSelectionChanged: (value) => selected = value?.plainText,
+          child: Text.rich(
+            TextSpan(
+              style: _style,
+              children: [
+                const TextSpan(text: '彼は'),
+                novelRubySpan(base: '走', ruby: 'はし', style: _style),
+                const TextSpan(text: 'った'),
+                novelRubySpan(base: '物語', ruby: 'ものがたり', style: _style),
+                const TextSpan(text: '。'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    tester
+        .state<SelectableRegionState>(find.byType(SelectableRegion))
+        .selectAll();
+    await tester.pump();
+
+    expect(selected, '彼は走った物語。');
+    expect(selected, isNot(contains('\uFFFC')));
+    expect(selected, isNot(contains('はし')));
+    expect(selected, isNot(contains('ものがたり')));
   });
 }
