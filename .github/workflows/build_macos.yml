@@ -7,6 +7,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: macos-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   Build_macOS:
     runs-on: macos-26

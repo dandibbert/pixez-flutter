@@ -41,19 +41,13 @@ void main() {
   });
 
   test('keeps sentence endings when packing to a character budget', () {
-    final chunks = splitNovelTtsText(
-      '第一句。第二句！第三句？第四句。',
-      maxChars: 8,
-    );
+    final chunks = splitNovelTtsText('第一句。第二句！第三句？第四句。', maxChars: 8);
     expect(chunks, ['第一句。第二句！', '第三句？第四句。']);
     expect(chunks.every((chunk) => chunk.contains(RegExp(r'[。！？]'))), isTrue);
   });
 
   test('does not leave a tiny leftover sentence as its own clip', () {
-    final chunks = splitNovelTtsText(
-      '这是一段刚好接近上限的句子。短。',
-      maxChars: 16,
-    );
+    final chunks = splitNovelTtsText('这是一段刚好接近上限的句子。短。', maxChars: 16);
     expect(chunks, hasLength(1));
     expect(chunks.single, contains('短。'));
   });
@@ -101,10 +95,7 @@ void main() {
       '你好<script>',
     );
     expect(microsoft.method, 'POST');
-    expect(
-      microsoft.uri.host,
-      'eastasia.tts.speech.microsoft.com',
-    );
+    expect(microsoft.uri.host, 'eastasia.tts.speech.microsoft.com');
     expect(utf8.decode(microsoft.body!), contains('&lt;script&gt;'));
     expect(utf8.decode(microsoft.body!), isNot(contains('<script>')));
 
@@ -227,8 +218,7 @@ void main() {
       author: 'Author',
       page: 1,
       totalPages: 1,
-      pageText:
-          '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
     );
     await _until(() => audio.playlist.isNotEmpty);
     expect(controller.clips.length, greaterThan(2));
@@ -287,8 +277,7 @@ void main() {
         author: 'Author',
         page: 1,
         totalPages: 1,
-        pageText:
-            '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
+        pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。这是第三句用来测试拆分的。',
       ),
     );
     await _until(() => audio.playlist.isNotEmpty);
@@ -309,38 +298,41 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('a failure while building clips reports an error, not a crash', () async {
-    // Pronunciation resolution and budget splitting run over the whole novel
-    // inside start(). A throw used to escape the play button unhandled.
-    final controller = NovelTtsController(
-      synthesizer: _FakeSynth(),
-      audio: _FakeAudio(),
-      nowPlaying: NovelTtsNowPlaying(),
-      settingsLoader: () => const NovelTtsSettings(
-        provider: NovelTtsProvider.custom,
-        customUrl: 'https://example/tts?t={text}',
-        splitChars: 20,
-        prefetchCount: 1,
-      ),
-      cacheDir: () async => Directory.systemTemp,
-      splitter: const _ThrowingSplitter(),
-    );
+  test(
+    'a failure while building clips reports an error, not a crash',
+    () async {
+      // Pronunciation resolution and budget splitting run over the whole novel
+      // inside start(). A throw used to escape the play button unhandled.
+      final controller = NovelTtsController(
+        synthesizer: _FakeSynth(),
+        audio: _FakeAudio(),
+        nowPlaying: NovelTtsNowPlaying(),
+        settingsLoader: () => const NovelTtsSettings(
+          provider: NovelTtsProvider.custom,
+          customUrl: 'https://example/tts?t={text}',
+          splitChars: 20,
+          prefetchCount: 1,
+        ),
+        cacheDir: () async => Directory.systemTemp,
+        splitter: const _ThrowingSplitter(),
+      );
 
-    await expectLater(
-      controller.start(
-        novelId: 1,
-        title: 'Title',
-        author: 'Author',
-        page: 1,
-        totalPages: 1,
-        pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
-      ),
-      completes,
-    );
-    expect(controller.status, NovelTtsStatus.error);
-    expect(controller.clips, isEmpty);
-    controller.dispose();
-  });
+      await expectLater(
+        controller.start(
+          novelId: 1,
+          title: 'Title',
+          author: 'Author',
+          page: 1,
+          totalPages: 1,
+          pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+        ),
+        completes,
+      );
+      expect(controller.status, NovelTtsStatus.error);
+      expect(controller.clips, isEmpty);
+      controller.dispose();
+    },
+  );
 
   test('a runaway TTS response is refused instead of buffered', () async {
     // A misconfigured custom endpoint can answer a two-sentence clip with a
@@ -359,10 +351,12 @@ void main() {
       const [1, 2],
       const [3, 4],
     ]);
-    expect(
-      await consolidateHttpClientResponseBytes(_FakeResponse(small)),
-      [1, 2, 3, 4],
-    );
+    expect(await consolidateHttpClientResponseBytes(_FakeResponse(small)), [
+      1,
+      2,
+      3,
+      4,
+    ]);
   });
 
   test('skipping with no clips left does not throw', () async {
@@ -495,50 +489,53 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('controller prefetches the next chunk and can skip to a series', () async {
-    final synth = _FakeSynth();
-    final audio = _FakeAudio();
-    final dir = await Directory.systemTemp.createTemp('novel_tts_test');
-    final controller = NovelTtsController(
-      synthesizer: synth,
-      audio: audio,
-      nowPlaying: NovelTtsNowPlaying(),
-      settingsLoader: () => const NovelTtsSettings(
-        provider: NovelTtsProvider.custom,
-        customUrl: 'https://example/tts?t={text}',
-        splitChars: 20,
-        prefetchCount: 1,
-      ),
-      cacheDir: () async => dir,
-    );
-    NovelTtsNavigate? navigate;
-    controller.onNavigate = (value) => navigate = value;
+  test(
+    'controller prefetches the next chunk and can skip to a series',
+    () async {
+      final synth = _FakeSynth();
+      final audio = _FakeAudio();
+      final dir = await Directory.systemTemp.createTemp('novel_tts_test');
+      final controller = NovelTtsController(
+        synthesizer: synth,
+        audio: audio,
+        nowPlaying: NovelTtsNowPlaying(),
+        settingsLoader: () => const NovelTtsSettings(
+          provider: NovelTtsProvider.custom,
+          customUrl: 'https://example/tts?t={text}',
+          splitChars: 20,
+          prefetchCount: 1,
+        ),
+        cacheDir: () async => dir,
+      );
+      NovelTtsNavigate? navigate;
+      controller.onNavigate = (value) => navigate = value;
 
-    await controller.start(
-      novelId: 1,
-      title: 'Title',
-      author: 'Author',
-      page: 1,
-      totalPages: 1,
-      pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
-      nextSeriesId: 22,
-    );
-    expect(controller.status, NovelTtsStatus.playing);
-    expect(controller.subtitle, '这是第一句用来测试拆分的。');
-    expect(synth.texts, contains('这是第一句用来测试拆分的。'));
-    expect(synth.texts, contains('这是第二句用来测试拆分的。'));
+      await controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
+        nextSeriesId: 22,
+      );
+      expect(controller.status, NovelTtsStatus.playing);
+      expect(controller.subtitle, '这是第一句用来测试拆分的。');
+      expect(synth.texts, contains('这是第一句用来测试拆分的。'));
+      expect(synth.texts, contains('这是第二句用来测试拆分的。'));
 
-    await controller.skip(direction: 'next');
-    expect(controller.subtitle, '这是第二句用来测试拆分的。');
+      await controller.skip(direction: 'next');
+      expect(controller.subtitle, '这是第二句用来测试拆分的。');
 
-    await controller.skip(direction: 'next');
-    expect(navigate?.kind, NovelTtsNavigateKind.series);
-    expect(navigate?.seriesNovelId, 22);
-    expect(controller.takePendingResume(22), isTrue);
+      await controller.skip(direction: 'next');
+      expect(navigate?.kind, NovelTtsNavigateKind.series);
+      expect(navigate?.seriesNovelId, 22);
+      expect(controller.takePendingResume(22), isTrue);
 
-    controller.dispose();
-    await dir.delete(recursive: true);
-  });
+      controller.dispose();
+      await dir.delete(recursive: true);
+    },
+  );
 
   test('keeps synthesizing later pages while the current clip plays', () async {
     final synth = _FakeSynth();
@@ -582,62 +579,67 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('prefetches the next series chapter while the current clip plays', () async {
-    final synth = _FakeSynth();
-    final audio = _FakeAudio();
-    final dir = await Directory.systemTemp.createTemp('novel_tts_series');
-    final navigated = <NovelTtsNavigate>[];
-    final controller = NovelTtsController(
-      synthesizer: synth,
-      audio: audio,
-      nowPlaying: NovelTtsNowPlaying(),
-      settingsLoader: () => const NovelTtsSettings(
-        provider: NovelTtsProvider.custom,
-        customUrl: 'https://example/tts?t={text}',
-        splitChars: 20,
-        prefetchCount: 4,
-      ),
-      cacheDir: () async => dir,
-    );
-    controller.onNavigate = navigated.add;
-    controller.onLoadChapter = (id) async {
-      expect(id, 22);
-      return const NovelTtsChapter(
-        novelId: 22,
-        title: 'Next chapter',
-        author: 'Author',
-        pageTexts: ['下一章第一句用来测试拆分的。'],
-        nextSeriesId: 33,
+  test(
+    'prefetches the next series chapter while the current clip plays',
+    () async {
+      final synth = _FakeSynth();
+      final audio = _FakeAudio();
+      final dir = await Directory.systemTemp.createTemp('novel_tts_series');
+      final navigated = <NovelTtsNavigate>[];
+      final controller = NovelTtsController(
+        synthesizer: synth,
+        audio: audio,
+        nowPlaying: NovelTtsNowPlaying(),
+        settingsLoader: () => const NovelTtsSettings(
+          provider: NovelTtsProvider.custom,
+          customUrl: 'https://example/tts?t={text}',
+          splitChars: 20,
+          prefetchCount: 4,
+        ),
+        cacheDir: () async => dir,
       );
-    };
+      controller.onNavigate = navigated.add;
+      controller.onLoadChapter = (id) async {
+        expect(id, 22);
+        return const NovelTtsChapter(
+          novelId: 22,
+          title: 'Next chapter',
+          author: 'Author',
+          pageTexts: ['下一章第一句用来测试拆分的。'],
+          nextSeriesId: 33,
+        );
+      };
 
-    await controller.start(
-      novelId: 1,
-      title: 'Title',
-      author: 'Author',
-      page: 1,
-      totalPages: 1,
-      pageText: '这是第一句用来测试拆分的。',
-      nextSeriesId: 22,
-    );
-    expect(controller.status, NovelTtsStatus.playing);
-    expect(synth.texts, contains('这是第一句用来测试拆分的。'));
-    expect(synth.texts, contains('下一章第一句用来测试拆分的。'));
-    expect(audio.files, hasLength(2));
+      await controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '这是第一句用来测试拆分的。',
+        nextSeriesId: 22,
+      );
+      expect(controller.status, NovelTtsStatus.playing);
+      expect(synth.texts, contains('这是第一句用来测试拆分的。'));
+      expect(synth.texts, contains('下一章第一句用来测试拆分的。'));
+      expect(audio.files, hasLength(2));
 
-    await controller.skip(direction: 'next');
-    expect(controller.session?.novelId, 22);
-    expect(controller.session?.title, 'Next chapter');
-    expect(controller.subtitle, '下一章第一句用来测试拆分的。');
-    expect(navigated.single.kind, NovelTtsNavigateKind.series);
-    expect(navigated.single.seriesNovelId, 22);
-    expect(navigated.single.keepPlaying, isTrue);
+      await controller.skip(direction: 'next');
+      expect(controller.session?.novelId, 22);
+      expect(controller.session?.title, 'Next chapter');
+      expect(controller.subtitle, '下一章第一句用来测试拆分的。');
+      expect(navigated.single.kind, NovelTtsNavigateKind.series);
+      expect(navigated.single.seriesNovelId, 22);
+      expect(navigated.single.keepPlaying, isTrue);
 
-    controller.dispose();
-    await dir.delete(recursive: true);
-  });
+      controller.dispose();
+      await dir.delete(recursive: true);
+    },
+  );
 
-  testWidgets('settings page switches the three voice libraries', (tester) async {
+  testWidgets('settings page switches the three voice libraries', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en', 'US'),
@@ -659,6 +661,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('API base URL'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(novelTtsSplitCharsFieldKey));
     await tester.enterText(find.byKey(novelTtsSplitCharsFieldKey), '160');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
@@ -675,34 +678,42 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: const NovelTtsPage(
-          initial: NovelTtsSettings(
-            customUrl: 'https://host/tts?t=',
-          ),
+          initial: NovelTtsSettings(customUrl: 'https://host/tts?t='),
         ),
       ),
     );
 
     expect(find.byType(ExpansionTile), findsNothing);
+    await tester.ensureVisible(find.byKey(novelTtsInsertTextChipKey));
     await tester.tap(find.byKey(novelTtsInsertTextChipKey));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey)).controller?.text,
+      tester
+          .widget<TextField>(find.byKey(novelTtsCustomUrlFieldKey))
+          .controller
+          ?.text,
       contains('{text}'),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -400));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAdvancedToggleKey));
     await tester.tap(find.byKey(novelTtsAdvancedToggleKey));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddHeaderKey));
     await tester.tap(find.byKey(novelTtsAddHeaderKey));
     await tester.pumpAndSettle();
 
     final headerName = tester.getRect(find.byKey(novelTtsHeaderNameFieldKey));
     expect(headerName.height, greaterThan(48));
-    await tester.enterText(find.byKey(novelTtsHeaderNameFieldKey), 'Authorization');
-    await tester.enterText(find.byKey(novelTtsHeaderValueFieldKey), 'Bearer tok');
+    await tester.enterText(
+      find.byKey(novelTtsHeaderNameFieldKey),
+      'Authorization',
+    );
+    await tester.enterText(
+      find.byKey(novelTtsHeaderValueFieldKey),
+      'Bearer tok',
+    );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(NovelTtsSettings.load().customHeaders, 'Authorization: Bearer tok');
   });
 
@@ -713,34 +724,22 @@ void main() {
       NovelTtsReading(surface: '銀行', reading: 'ぎんこう'),
       NovelTtsReading(surface: '今日', reading: 'きょう'),
     ];
-    expect(
-      applyNovelTtsReadings('今日は銀行に行く。', readings),
-      'きょうはぎんこうにいく。',
-    );
-    expect(
-      parseNovelTtsReadingLines('今日=きょう\n# skip\n行先/ゆきさき'),
-      [
-        const NovelTtsReading(surface: '今日', reading: 'きょう'),
-        const NovelTtsReading(surface: '行先', reading: 'ゆきさき'),
-      ],
-    );
-    expect(
-      parseNovelTtsReadingLines('悟:さとる\nAuthorization=skip'),
-      [
-        const NovelTtsReading(surface: '悟', reading: 'さとる'),
-        const NovelTtsReading(surface: 'Authorization', reading: 'skip'),
-      ],
-    );
+    expect(applyNovelTtsReadings('今日は銀行に行く。', readings), 'きょうはぎんこうにいく。');
+    expect(parseNovelTtsReadingLines('今日=きょう\n# skip\n行先/ゆきさき'), [
+      const NovelTtsReading(surface: '今日', reading: 'きょう'),
+      const NovelTtsReading(surface: '行先', reading: 'ゆきさき'),
+    ]);
+    expect(parseNovelTtsReadingLines('悟:さとる\nAuthorization=skip'), [
+      const NovelTtsReading(surface: '悟', reading: 'さとる'),
+      const NovelTtsReading(surface: 'Authorization', reading: 'skip'),
+    ]);
     expect(parseNovelTtsReadingLine('今日きょう'), isNull);
   });
 
   test('parses request headers with colon or equals', () {
     expect(
       parseNovelTtsHeaderLines('Authorization: Bearer tok\nX-Voice=alloy\n'),
-      {
-        'Authorization': 'Bearer tok',
-        'X-Voice': 'alloy',
-      },
+      {'Authorization': 'Bearer tok', 'X-Voice': 'alloy'},
     );
     expect(
       serializeNovelTtsHeaderLines({'Authorization': 'Bearer tok'}),
@@ -751,68 +750,71 @@ void main() {
     expect(languageFromMicrosoftVoice('ja-JP-NanamiNeural'), 'ja-JP');
   });
 
-  test('controller synthesizes the marked reading, not the written form', () async {
-    final synth = _FakeSynth();
-    final audio = _FakeAudio();
-    final dir = await Directory.systemTemp.createTemp('novel_tts_yomi');
-    final controller = NovelTtsController(
-      synthesizer: synth,
-      audio: audio,
-      nowPlaying: NovelTtsNowPlaying(),
-      settingsLoader: () => const NovelTtsSettings(
-        provider: NovelTtsProvider.custom,
-        customUrl: 'https://example/tts?t={text}',
-        splitChars: 40,
-        readings: [NovelTtsReading(surface: '今日', reading: 'きょう')],
-      ),
-      cacheDir: () async => dir,
-    );
+  test(
+    'controller synthesizes the marked reading, not the written form',
+    () async {
+      final synth = _FakeSynth();
+      final audio = _FakeAudio();
+      final dir = await Directory.systemTemp.createTemp('novel_tts_yomi');
+      final controller = NovelTtsController(
+        synthesizer: synth,
+        audio: audio,
+        nowPlaying: NovelTtsNowPlaying(),
+        settingsLoader: () => const NovelTtsSettings(
+          provider: NovelTtsProvider.custom,
+          customUrl: 'https://example/tts?t={text}',
+          splitChars: 40,
+          readings: [NovelTtsReading(surface: '今日', reading: 'きょう')],
+        ),
+        cacheDir: () async => dir,
+      );
 
-    await controller.start(
-      novelId: 1,
-      title: 'Title',
-      author: 'Author',
-      page: 1,
-      totalPages: 1,
-      pageText: '今日は雨です。',
-    );
-    expect(controller.subtitle, '今日は雨です。');
-    expect(synth.texts, ['きょうは雨です。']);
+      await controller.start(
+        novelId: 1,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '今日は雨です。',
+      );
+      expect(controller.subtitle, '今日は雨です。');
+      expect(synth.texts, ['きょうは雨です。']);
 
-    final yuji = _FakeSynth();
-    final yujiController = NovelTtsController(
-      synthesizer: yuji,
-      audio: _FakeAudio(),
-      nowPlaying: NovelTtsNowPlaying(),
-      settingsLoader: () => const NovelTtsSettings(
-        provider: NovelTtsProvider.custom,
-        customUrl: 'https://example/tts?t={text}',
-        splitChars: 40,
-        readings: [
-          NovelTtsReading(
-            surface: '悠仁',
-            reading: 'ゆうじ',
-            mode: PronunciationMatchMode.exactPhrase,
-          ),
-        ],
-      ),
-      cacheDir: () async => dir,
-    );
-    await yujiController.start(
-      novelId: 2,
-      title: 'Title',
-      author: 'Author',
-      page: 1,
-      totalPages: 1,
-      pageText: 'みんなの悠仁が来た。',
-    );
-    expect(yujiController.subtitle, 'みんなの悠仁が来た。');
-    expect(yuji.texts, ['みんなのゆうじが来た。']);
-    yujiController.dispose();
+      final yuji = _FakeSynth();
+      final yujiController = NovelTtsController(
+        synthesizer: yuji,
+        audio: _FakeAudio(),
+        nowPlaying: NovelTtsNowPlaying(),
+        settingsLoader: () => const NovelTtsSettings(
+          provider: NovelTtsProvider.custom,
+          customUrl: 'https://example/tts?t={text}',
+          splitChars: 40,
+          readings: [
+            NovelTtsReading(
+              surface: '悠仁',
+              reading: 'ゆうじ',
+              mode: PronunciationMatchMode.exactPhrase,
+            ),
+          ],
+        ),
+        cacheDir: () async => dir,
+      );
+      await yujiController.start(
+        novelId: 2,
+        title: 'Title',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: 'みんなの悠仁が来た。',
+      );
+      expect(yujiController.subtitle, 'みんなの悠仁が来た。');
+      expect(yuji.texts, ['みんなのゆうじが来た。']);
+      yujiController.dispose();
 
-    controller.dispose();
-    await dir.delete(recursive: true);
-  });
+      controller.dispose();
+      await dir.delete(recursive: true);
+    },
+  );
 
   test('maps a visible reader line onto the synthesizer offset', () {
     const pageText =
@@ -847,10 +849,7 @@ void main() {
       novelTtsBlockIndexForClip(blocks: blocks, clipText: '第二段才是当前朗读。'),
       1,
     );
-    expect(
-      novelTtsBlockIndexForClip(blocks: blocks, clipText: '第一段先写在这里。'),
-      0,
-    );
+    expect(novelTtsBlockIndexForClip(blocks: blocks, clipText: '第一段先写在这里。'), 0);
     final spoken = [
       NovelReaderBlock.spans([
         NovelSpansData(NovelSpansType.normal, '这是第一句用来测试拆分的。'),
@@ -860,19 +859,11 @@ void main() {
       ]),
     ];
     expect(
-      novelTtsChunkIndexForBlock(
-        blocks: spoken,
-        blockIndex: 1,
-        splitChars: 20,
-      ),
+      novelTtsChunkIndexForBlock(blocks: spoken, blockIndex: 1, splitChars: 20),
       1,
     );
     expect(
-      novelTtsBlockIndexForChunk(
-        blocks: spoken,
-        chunkIndex: 1,
-        splitChars: 20,
-      ),
+      novelTtsBlockIndexForChunk(blocks: spoken, chunkIndex: 1, splitChars: 20),
       1,
     );
   });
@@ -880,10 +871,7 @@ void main() {
   test('highlights the spoken sentence, not the whole paragraph', () {
     final oneBlock = [
       NovelReaderBlock.spans([
-        NovelSpansData(
-          NovelSpansType.normal,
-          '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
-        ),
+        NovelSpansData(NovelSpansType.normal, '这是第一句用来测试拆分的。这是第二句用来测试拆分的。'),
       ]),
     ];
     final first = novelTtsHighlightsForClip(
@@ -914,11 +902,7 @@ void main() {
       ]),
     ];
     expect(
-      novelTtsBlockIndexForChunk(
-        blocks: blocks,
-        chunkIndex: 1,
-        splitChars: 20,
-      ),
+      novelTtsBlockIndexForChunk(blocks: blocks, chunkIndex: 1, splitChars: 20),
       1,
     );
     final highlights = novelTtsHighlightsForClip(
@@ -932,52 +916,57 @@ void main() {
     expect(highlights.single.end, '这是第二句用来测试拆分的。'.length);
   });
 
-  test('spoken clip text keeps subtitle and highlight on the same sentence', () {
-    const source =
-        'とにかく私はこうしてここに住み始めた。\n'
-        '悠仁くんに恋して一か月。\n'
-        '悠仁くんとできれば付き合いたい。\n'
-        '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
-    final blocks = splitNovelReaderBlocks([
-      NovelSpansData(NovelSpansType.normal, source),
-    ]);
-    expect(blocks.map((block) => block.text.trim()), contains('悠仁くんに恋して一か月。'));
+  test(
+    'spoken clip text keeps subtitle and highlight on the same sentence',
+    () {
+      const source =
+          'とにかく私はこうしてここに住み始めた。\n'
+          '悠仁くんに恋して一か月。\n'
+          '悠仁くんとできれば付き合いたい。\n'
+          '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
+      final blocks = splitNovelReaderBlocks([
+        NovelSpansData(NovelSpansType.normal, source),
+      ]);
+      expect(
+        blocks.map((block) => block.text.trim()),
+        contains('悠仁くんに恋して一か月。'),
+      );
 
-    const long =
-        '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
-    const love = '悠仁くんに恋して一か月。';
-    final longHighlights = novelTtsHighlightsForSpokenText(
-      blocks: blocks,
-      clipText: long,
-    );
-    expect(longHighlights, isNotEmpty);
-    expect(
-      longHighlights.every((highlight) {
-        final text = blocks[highlight.blockIndex].text;
-        return text.contains('今まで') && !text.contains('恋して');
-      }),
-      isTrue,
-    );
+      const long = '今まで私の名を呼ばなかったり、警察に事情を話さなかったのは回避するためだったんだろう。';
+      const love = '悠仁くんに恋して一か月。';
+      final longHighlights = novelTtsHighlightsForSpokenText(
+        blocks: blocks,
+        clipText: long,
+      );
+      expect(longHighlights, isNotEmpty);
+      expect(
+        longHighlights.every((highlight) {
+          final text = blocks[highlight.blockIndex].text;
+          return text.contains('今まで') && !text.contains('恋して');
+        }),
+        isTrue,
+      );
 
-    final loveHighlights = novelTtsHighlightsForSpokenText(
-      blocks: blocks,
-      clipText: love,
-    );
-    expect(loveHighlights, isNotEmpty);
-    expect(blocks[loveHighlights.first.blockIndex].text, contains(love));
-    expect(
-      novelTtsBlockIndexForSpokenText(blocks: blocks, clipText: love),
-      loveHighlights.first.blockIndex,
-    );
+      final loveHighlights = novelTtsHighlightsForSpokenText(
+        blocks: blocks,
+        clipText: love,
+      );
+      expect(loveHighlights, isNotEmpty);
+      expect(blocks[loveHighlights.first.blockIndex].text, contains(love));
+      expect(
+        novelTtsBlockIndexForSpokenText(blocks: blocks, clipText: love),
+        loveHighlights.first.blockIndex,
+      );
 
-    final chunks = splitNovelTtsText(source, maxChars: 20);
-    expect(novelTtsIndexOfNeedle(chunks, love), greaterThanOrEqualTo(0));
-    expect(chunks[novelTtsIndexOfNeedle(chunks, love)], contains(love));
-    expect(
-      chunks[novelTtsIndexOfNeedle(chunks, love)].contains('今まで'),
-      isFalse,
-    );
-  });
+      final chunks = splitNovelTtsText(source, maxChars: 20);
+      expect(novelTtsIndexOfNeedle(chunks, love), greaterThanOrEqualTo(0));
+      expect(chunks[novelTtsIndexOfNeedle(chunks, love)], contains(love));
+      expect(
+        chunks[novelTtsIndexOfNeedle(chunks, love)].contains('今まで'),
+        isFalse,
+      );
+    },
+  );
 
   test('can pause while synthesizing and resume afterwards', () async {
     final gate = Completer<void>();
@@ -1132,10 +1121,7 @@ void main() {
       page: 2,
       totalPages: 2,
       pageText: '下一页第一句用来测试拆分的。',
-      pageTexts: [
-        '这是第一句用来测试拆分的。这是第二句用来测试拆分的。',
-        '下一页第一句用来测试拆分的。',
-      ],
+      pageTexts: ['这是第一句用来测试拆分的。这是第二句用来测试拆分的。', '下一页第一句用来测试拆分的。'],
     );
     expect(controller.subtitle, '下一页第一句用来测试拆分的。');
 
@@ -1145,7 +1131,9 @@ void main() {
 
   test('starts at the visible sentence inside a packed clip', () async {
     final synth = _FakeSynth();
-    final dir = await Directory.systemTemp.createTemp('novel_tts_start_visible');
+    final dir = await Directory.systemTemp.createTemp(
+      'novel_tts_start_visible',
+    );
     final controller = NovelTtsController(
       synthesizer: synth,
       audio: _FakeAudio(),
@@ -1245,7 +1233,10 @@ void main() {
     final zh = lookupAppLocalizations(const Locale('zh'));
     expect(zh.novel_tts_settings, '小说朗读');
     expect(zh.novel_tts_section_readings, '读音标记');
-    expect(zh.novel_tts_lock_screen_hint, isNot(contains('Locking the screen')));
+    expect(
+      zh.novel_tts_lock_screen_hint,
+      isNot(contains('Locking the screen')),
+    );
 
     final de = lookupAppLocalizations(const Locale('de'));
     expect(de.novel_tts_settings, 'Roman vorlesen');
@@ -1294,8 +1285,7 @@ void main() {
       ),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '今日');
@@ -1321,8 +1311,7 @@ void main() {
       ),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
@@ -1360,7 +1349,9 @@ void main() {
         return;
       }
       final loader = FontLoader(family)
-        ..addFont(Future<ByteData>.value(ByteData.view(file.readAsBytesSync().buffer)));
+        ..addFont(
+          Future<ByteData>.value(ByteData.view(file.readAsBytesSync().buffer)),
+        );
       await loader.load();
     }
 
@@ -1384,8 +1375,7 @@ void main() {
         ),
       ),
     );
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
@@ -1424,8 +1414,7 @@ void main() {
       ),
     );
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(novelTtsAddReadingKey));
     await tester.tap(find.byKey(novelTtsAddReadingKey));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(novelTtsReadingSurfaceFieldKey), '悟');
@@ -1476,10 +1465,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: NovelTtsBar(
-            controller: controller,
-            onOpenSettings: () {},
-          ),
+          body: NovelTtsBar(controller: controller, onOpenSettings: () {}),
         ),
       ),
     );
@@ -1700,8 +1686,7 @@ class _FakeResponse extends Stream<List<int>> implements HttpClientResponse {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeSynth implements NovelTtsSynthesizer {

@@ -7,12 +7,19 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   Build_IOS:
     runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check native diagnostics resource lifetime
+        run: python3 tool/check_thread_stats.py
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2

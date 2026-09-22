@@ -7,6 +7,9 @@ struct NovelTtsNowPlayingPlugin {
     static let channelName = "com.perol.dev/novel_tts"
     private static var channel: FlutterMethodChannel?
     private static var keepAlivePlayer: AVAudioPlayer?
+    private static var keepAliveTimeout: DispatchWorkItem?
+    private static var interruptionObserver: NSObjectProtocol?
+    private static var remoteCommandsInstalled = false
     private static var backgroundTask = UIBackgroundTaskIdentifier.invalid
     private static var backgroundTaskCount = 0
 
@@ -44,6 +47,17 @@ struct NovelTtsNowPlayingPlugin {
             }
         }
         Self.installRemoteCommands()
+        if interruptionObserver == nil {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification,
+                object: nil,
+                queue: .main
+            ) { notification in
+                guard let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      type == AVAudioSession.InterruptionType.began.rawValue else { return }
+                Self.stopKeepAlive()
+            }
+        }
     }
 
     private static func info(from arguments: Any?) -> [String: Any] {
@@ -51,8 +65,9 @@ struct NovelTtsNowPlayingPlugin {
     }
 
     private static func start(_ info: [String: Any]) {
-        activateSession()
-        startKeepAlive()
+        // The real player owns the audio session. Metadata updates, including
+        // pause, must never reactivate it or start a second looping player.
+        stopKeepAlive()
         UIApplication.shared.beginReceivingRemoteControlEvents()
         update(info)
     }
@@ -83,13 +98,14 @@ struct NovelTtsNowPlayingPlugin {
         stopKeepAlive()
         endBackgroundTask(force: true)
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        UIApplication.shared.endReceivingRemoteControlEvents()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private static func activateSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playback, mode: .default, options: [])
+            try session.setCategory(.playback, mode: .spokenAudio, options: [])
             try session.setActive(true)
         } catch {
             try? session.setCategory(.playback)
@@ -98,6 +114,7 @@ struct NovelTtsNowPlayingPlugin {
     }
 
     private static func startKeepAlive() {
+        guard keepAlivePlayer?.isPlaying != true else { return }
         activateSession()
         if keepAlivePlayer == nil {
             keepAlivePlayer = try? AVAudioPlayer(data: silenceWav())
@@ -106,9 +123,17 @@ struct NovelTtsNowPlayingPlugin {
             keepAlivePlayer?.prepareToPlay()
         }
         keepAlivePlayer?.play()
+        // Bridge only a bounded synthesis gap, never an indefinitely stalled
+        // request. The Dart request timeout is shorter than this backstop.
+        keepAliveTimeout?.cancel()
+        let timeout = DispatchWorkItem { Self.stopKeepAlive() }
+        keepAliveTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60, execute: timeout)
     }
 
     private static func stopKeepAlive() {
+        keepAliveTimeout?.cancel()
+        keepAliveTimeout = nil
         keepAlivePlayer?.stop()
         keepAlivePlayer = nil
     }
@@ -170,6 +195,8 @@ struct NovelTtsNowPlayingPlugin {
     }
 
     private static func installRemoteCommands() {
+        guard !remoteCommandsInstalled else { return }
+        remoteCommandsInstalled = true
         let center = MPRemoteCommandCenter.shared()
         center.playCommand.isEnabled = true
         center.pauseCommand.isEnabled = true

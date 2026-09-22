@@ -81,6 +81,12 @@ struct ThreadStatsPlugin {
             return []
         }
         defer {
+            // task_threads gives the caller a send right for every thread,
+            // separately from the allocated array. Release both, including
+            // threads skipped below, on every diagnostics sample.
+            for index in 0..<Int(count) {
+                mach_port_deallocate(mach_task_self_, threads[index])
+            }
             vm_deallocate(
                 mach_task_self_,
                 vm_address_t(UInt(bitPattern: UnsafeRawPointer(threads))),

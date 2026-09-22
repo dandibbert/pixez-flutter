@@ -2,6 +2,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/component/search_date_filter.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
@@ -47,19 +48,13 @@ class _NovelResultListState extends State<NovelResultList> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            InkWell(
-              onTap: () {},
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 2 / 3,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: Text(
-                      _query.word,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Text(
+                  _query.word,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -67,11 +62,14 @@ class _NovelResultListState extends State<NovelResultList> {
               alignment: Alignment.centerRight,
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.date_range),
-                    onPressed: () {
-                      _buildShowDateRange(context);
-                    },
+                  SearchDateFilterButton(
+                    value: _query.startDate != null && _query.endDate != null
+                        ? DateTimeRange(
+                            start: _query.startDate!,
+                            end: _query.endDate!,
+                          )
+                        : null,
+                    onChanged: _setDateRange,
                   ),
                   _buildBookmarkMenu(),
                   IconButton(
@@ -95,23 +93,13 @@ class _NovelResultListState extends State<NovelResultList> {
     );
   }
 
-  Future<void> _buildShowDateRange(BuildContext context) async {
-    final dateTimeRange = await showDateRangePicker(
-      context: context,
-      initialDateRange: _query.startDate != null && _query.endDate != null
-          ? DateTimeRange(start: _query.startDate!, end: _query.endDate!)
-          : null,
-      firstDate: DateTime(2007, 8),
-      lastDate: DateTime.now(),
-    );
-    if (dateTimeRange == null) {
-      return;
-    }
+  void _setDateRange(DateTimeRange? range) {
     setState(() {
       _applyQuery(
         _query.copyWith(
-          startDate: dateTimeRange.start,
-          endDate: dateTimeRange.end,
+          startDate: range?.start,
+          endDate: range?.end,
+          clearDateRange: range == null,
         ),
       );
     });

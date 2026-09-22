@@ -42,7 +42,7 @@ import 'package:pixez/models/account.dart';
 import 'package:pixez/models/board_info.dart';
 import 'package:pixez/page/novel/history/novel_history_page.dart';
 import 'package:pixez/page/novel/novel_rail.dart';
-import 'package:pixez/page/novel/tts/novel_tts_page.dart';
+import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({Key? key}) : super(key: key);
@@ -152,10 +152,11 @@ class _SettingPageState extends State<SettingPage> {
                     leading: Icon(FluentIcons.account_management),
                     title: Text(I18n.of(context).account_message),
                     onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AccountEditPage(),
-                        useRootNavigator: false,
+                      Leader.push(
+                        context,
+                        AccountEditPage(),
+                        icon: Icon(FluentIcons.account_management),
+                        title: Text(I18n.of(context).account_message),
                       );
                     },
                   ),
@@ -207,10 +208,12 @@ class _SettingPageState extends State<SettingPage> {
             ListTile(
               leading: Icon(FluentIcons.blocked),
               title: Text(I18n.of(context).shielding_settings),
-              onPressed: () => showDialog(
-                context: context,
-                builder: (context) => ShieldPage(),
-                useRootNavigator: false,
+              trailing: Icon(FluentIcons.chevron_right),
+              onPressed: () => Leader.push(
+                context,
+                ShieldPage(),
+                icon: Icon(FluentIcons.blocked),
+                title: Text(I18n.of(context).shielding_settings),
               ),
             ),
             ListTile(
@@ -265,12 +268,7 @@ class _SettingPageState extends State<SettingPage> {
               title: Text(I18n.of(context).novel_tts_settings),
               subtitle: Text(I18n.of(context).novel_tts_settings_subtitle),
               trailing: Icon(FluentIcons.chevron_right),
-              onPressed: () => Leader.push(
-                context,
-                const NovelTtsPage(),
-                title: Text(I18n.of(context).novel_tts_settings),
-                icon: Icon(FluentIcons.play),
-              ),
+              onPressed: () => openNovelTtsSettings(context),
             ),
             ListTile(
               leading: Icon(FluentIcons.message),

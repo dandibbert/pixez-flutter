@@ -21,7 +21,20 @@ class NovelSearchQuery {
     'popular_desc',
   };
   static const Set<String> supportedLangs = {'ja', 'zh-CN'};
-  static const List<int> bookmarkPresets = [0, 100, 500, 1000, 5000, 10000];
+  static const List<int> bookmarkPresets = [
+    0,
+    100,
+    250,
+    500,
+    1000,
+    5000,
+    7500,
+    10000,
+    20000,
+    30000,
+    50000,
+    100000,
+  ];
   static const List<int> datePresetDays = [7, 30, 180, 365];
 
   const NovelSearchQuery({
