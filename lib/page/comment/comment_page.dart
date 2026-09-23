@@ -45,14 +45,14 @@ class CommentPage extends StatefulWidget {
   final String? name;
   final CommentArtWorkType type;
 
-  const CommentPage(
-      {Key? key,
-      required this.id,
-      this.isReplay = false,
-      this.pId,
-      this.name,
-      this.type = CommentArtWorkType.ILLUST})
-      : super(key: key);
+  const CommentPage({
+    Key? key,
+    required this.id,
+    this.isReplay = false,
+    this.pId,
+    this.name,
+    this.type = CommentArtWorkType.ILLUST,
+  }) : super(key: key);
 
   @override
   _CommentPageState createState() => _CommentPageState();
@@ -71,7 +71,7 @@ class _CommentPageState extends State<CommentPage> {
     "77k.live",
     "7mm.live",
     "p26w.com",
-    "33h.live"
+    "33h.live",
   ];
 
   late FocusNode _focusNode;
@@ -84,10 +84,16 @@ class _CommentPageState extends State<CommentPage> {
     parentCommentName = widget.isReplay ? widget.name : null;
     _editController = TextEditingController();
     easyRefreshController = EasyRefreshController(
-        controlFinishLoad: true, controlFinishRefresh: true);
-    _store = CommentStore(easyRefreshController, widget.id, widget.pId,
-        widget.isReplay, widget.type)
-      ..fetch();
+      controlFinishLoad: true,
+      controlFinishRefresh: true,
+    );
+    _store = CommentStore(
+      easyRefreshController,
+      widget.id,
+      widget.pId,
+      widget.isReplay,
+      widget.type,
+    )..fetch();
     super.initState();
     supportTranslateCheck();
   }
@@ -121,7 +127,10 @@ class _CommentPageState extends State<CommentPage> {
                     return;
                   }
                   String newText = text.replaceRange(
-                      textSelection.start, textSelection.end, key);
+                    textSelection.start,
+                    textSelection.end,
+                    key,
+                  );
                   final emojiLength = key.length;
                   _editController.text = newText;
                   _editController.selection = textSelection.copyWith(
@@ -135,7 +144,7 @@ class _CommentPageState extends State<CommentPage> {
                   height: 32,
                 ),
               ),
-            )
+            ),
         ],
       ),
     );
@@ -172,9 +181,7 @@ class _CommentPageState extends State<CommentPage> {
   Container _buildBody(BuildContext context) {
     return Container(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('${I18n.of(context).view_comment}'),
-        ),
+        appBar: AppBar(title: Text('${I18n.of(context).view_comment}')),
         body: SafeArea(
           child: Column(
             children: <Widget>[
@@ -188,9 +195,7 @@ class _CommentPageState extends State<CommentPage> {
                     builder: (context) {
                       if (_store.errorMessage != null) {
                         return Container(
-                          child: Center(
-                            child: Text(_store.errorMessage!),
-                          ),
+                          child: Center(child: Text(_store.errorMessage!)),
                         );
                       }
                       if (_store.isEmpty) {
@@ -198,10 +203,12 @@ class _CommentPageState extends State<CommentPage> {
                           child: Center(
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: Text('[ ]',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium),
+                              child: Text(
+                                '[ ]',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
+                              ),
                             ),
                           ),
                         );
@@ -215,9 +222,10 @@ class _CommentPageState extends State<CommentPage> {
                               padding: EdgeInsets.only(top: 10),
                               itemBuilder: (context, index) {
                                 if (banList
-                                    .where((element) => comments[index]
-                                        .comment!
-                                        .contains(element))
+                                    .where(
+                                      (element) => comments[index].comment!
+                                          .contains(element),
+                                    )
                                     .isNotEmpty)
                                   return Visibility(
                                     visible: false,
@@ -258,32 +266,40 @@ class _CommentPageState extends State<CommentPage> {
                                                   comment.user!.name,
                                                   maxLines: 1,
                                                   style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .secondary,
-                                                      overflow: TextOverflow
-                                                          .ellipsis),
+                                                    fontSize: 12,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.secondary,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
                                                 ),
                                                 _buildTrailingRow(
-                                                    comment, context)
+                                                  comment,
+                                                  context,
+                                                ),
                                               ],
                                             ),
                                             if (comment.parentComment?.user !=
                                                 null)
                                               Text(
-                                                  'To ${comment.parentComment!.user!.name}'),
+                                                'To ${comment.parentComment!.user!.name}',
+                                              ),
                                             if (comment.stamp == null)
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    right: 4.0),
+                                                  right: 4.0,
+                                                ),
                                                 child: _buildCommentContent(
-                                                    context, comment),
+                                                  context,
+                                                  comment,
+                                                ),
                                               ),
                                             if (comment.stamp != null)
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    right: 4.0),
+                                                  right: 4.0,
+                                                ),
                                                 child: PixivImage(
                                                   comment.stamp!.stamp_url!,
                                                   height: 100,
@@ -293,66 +309,80 @@ class _CommentPageState extends State<CommentPage> {
                                             if (comment.hasReplies == true)
                                               Padding(
                                                 padding: const EdgeInsets.only(
-                                                    right: 4.0),
+                                                  right: 4.0,
+                                                ),
                                                 child: ActionChip(
-                                                  label: Text(I18n.of(context)
-                                                      .view_replies),
+                                                  label: Text(
+                                                    I18n.of(
+                                                      context,
+                                                    ).view_replies,
+                                                  ),
                                                   onPressed: () async {
                                                     Leader.push(
-                                                        context,
-                                                        CommentPage(
-                                                          id: widget.id,
-                                                          isReplay: true,
-                                                          pId: comment.id!,
-                                                          type: widget.type,
-                                                          name: comment
-                                                              .user!.name,
-                                                        ));
+                                                      context,
+                                                      CommentPage(
+                                                        id: widget.id,
+                                                        isReplay: true,
+                                                        pId: comment.id!,
+                                                        type: widget.type,
+                                                        name:
+                                                            comment.user!.name,
+                                                      ),
+                                                    );
                                                   },
                                                 ),
                                               ),
                                             Padding(
                                               padding: const EdgeInsets.only(
-                                                  top: 8.0),
+                                                top: 8.0,
+                                              ),
                                               child: Text(
                                                 comment.date
                                                     .toString()
                                                     .toShortTime(),
                                                 style: Theme.of(context)
                                                     .textTheme
-                                                    .bodySmall?.copyWith(color: Theme.of(context).colorScheme.secondary),
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.secondary,
+                                                    ),
                                               ),
-                                            )
+                                            ),
                                           ],
                                         ),
-                                      )
+                                      ),
                                     ],
                                   ),
                                 );
                               },
                               separatorBuilder:
                                   (BuildContext context, int index) {
-                                if (banList
-                                    .where((element) => comments[index]
-                                        .comment!
-                                        .contains(element))
-                                    .isNotEmpty)
-                                  return Visibility(
-                                    visible: false,
-                                    child: Container(),
-                                  );
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0),
-                                  child: Divider(thickness: 0.5),
-                                );
-                              },
+                                    if (banList
+                                        .where(
+                                          (element) => comments[index].comment!
+                                              .contains(element),
+                                        )
+                                        .isNotEmpty)
+                                      return Visibility(
+                                        visible: false,
+                                        child: Container(),
+                                      );
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8.0,
+                                      ),
+                                      child: Divider(thickness: 0.5),
+                                    );
+                                  },
                             )
                           : Container(
                               child: Center(
                                 child: CircularProgressIndicator(
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary,
                                 ),
                               ),
                             );
@@ -365,7 +395,9 @@ class _CommentPageState extends State<CommentPage> {
                 child: Column(
                   children: [
                     Container(
-                      color: Theme.of(context).colorScheme.surfaceContainer, // TODO: edge to edge
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainer, // TODO: edge to edge
                       child: Row(
                         children: <Widget>[
                           IconButton(
@@ -392,15 +424,17 @@ class _CommentPageState extends State<CommentPage> {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(
-                                  bottom: 2.0, right: 8.0),
+                                bottom: 2.0,
+                                right: 8.0,
+                              ),
                               child: Theme(
                                 data: Theme.of(context).copyWith(
-                                  colorScheme: Theme.of(context)
-                                      .colorScheme
+                                  colorScheme: Theme.of(context).colorScheme
                                       .copyWith(
-                                          primary: Theme.of(context)
-                                              .colorScheme
-                                              .secondary),
+                                        primary: Theme.of(
+                                          context,
+                                        ).colorScheme.secondary,
+                                      ),
                                 ),
                                 child: TextField(
                                   controller: _editController,
@@ -411,45 +445,50 @@ class _CommentPageState extends State<CommentPage> {
                                     });
                                   },
                                   decoration: InputDecoration(
-                                      labelText:
-                                          "${I18n.of(context).reply_to} ${parentCommentName == null ? "illust" : parentCommentName}",
-                                      suffixIcon: IconButton(
-                                          icon: Icon(
-                                            Icons.send,
-                                          ),
-                                          onPressed: () async {
-                                            final client = apiClient;
-                                            String txt =
-                                                _editController.text.trim();
-                                            final fun1 = BotToast.showLoading();
-                                            try {
-                                              if (txt.isNotEmpty) {
-                                                if (banList
-                                                    .where((element) =>
-                                                        txt.contains(element))
-                                                    .isEmpty) if (widget
-                                                        .type ==
-                                                    CommentArtWorkType.ILLUST)
-                                                  await client
-                                                      .postIllustComment(
-                                                          widget.id, txt,
-                                                          parent_comment_id:
-                                                              parentCommentId);
-                                                else if (widget.type ==
-                                                    CommentArtWorkType.NOVEL)
-                                                  await client.postNovelComment(
-                                                      widget.id, txt,
-                                                      parent_comment_id:
-                                                          parentCommentId);
-                                              }
-                                              _editController.clear();
-                                              HapticUtil.medium();
-                                              _store.fetch();
-                                            } catch (e) {
-                                              print(e);
-                                            }
-                                            fun1();
-                                          })),
+                                    labelText:
+                                        "${I18n.of(context).reply_to} ${parentCommentName == null ? "illust" : parentCommentName}",
+                                    suffixIcon: IconButton(
+                                      icon: Icon(Icons.send),
+                                      onPressed: () async {
+                                        final client = apiClient;
+                                        String txt = _editController.text
+                                            .trim();
+                                        final fun1 = BotToast.showLoading();
+                                        try {
+                                          if (txt.isNotEmpty) {
+                                            if (banList
+                                                .where(
+                                                  (element) =>
+                                                      txt.contains(element),
+                                                )
+                                                .isEmpty)
+                                              if (widget.type ==
+                                                  CommentArtWorkType.ILLUST)
+                                                await client.postIllustComment(
+                                                  widget.id,
+                                                  txt,
+                                                  parent_comment_id:
+                                                      parentCommentId,
+                                                );
+                                              else if (widget.type ==
+                                                  CommentArtWorkType.NOVEL)
+                                                await client.postNovelComment(
+                                                  widget.id,
+                                                  txt,
+                                                  parent_comment_id:
+                                                      parentCommentId,
+                                                );
+                                          }
+                                          _editController.clear();
+                                          HapticUtil.medium();
+                                          _store.fetch();
+                                        } catch (e) {
+                                          print(e);
+                                        }
+                                        fun1();
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -462,7 +501,7 @@ class _CommentPageState extends State<CommentPage> {
                       _buildEmojiPanel(context),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -475,12 +514,13 @@ class _CommentPageState extends State<CommentPage> {
       focusNode: _focusNode,
       contextMenuBuilder: (context, selectableRegionState) {
         return _buildSelectionMenu(
-            selectableRegionState, context, supportTranslate);
+          selectableRegionState,
+          context,
+          supportTranslate,
+        );
       },
       onSelectionChanged: _selection.update,
-      child: CommentEmojiText(
-        text: comment.comment ?? "",
-      ),
+      child: CommentEmojiText(text: comment.comment ?? ""),
     );
   }
 
@@ -488,59 +528,69 @@ class _CommentPageState extends State<CommentPage> {
     return Row(
       children: [
         InkWell(
-            onTap: () {
-              if (widget.isReplay) return;
-              parentCommentId = comment.id;
-              setState(() {
-                parentCommentName = comment.user!.name;
-              });
-            },
-            child: Text(
-              widget.isReplay ? "" : I18n.of(context).reply,
-              style: TextStyle(color: Theme.of(context).colorScheme.secondary, fontSize: 12),
-            )),
+          onTap: () {
+            if (widget.isReplay) return;
+            parentCommentId = comment.id;
+            setState(() {
+              parentCommentName = comment.user!.name;
+            });
+          },
+          child: Text(
+            widget.isReplay ? "" : I18n.of(context).reply,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.secondary,
+              fontSize: 12,
+            ),
+          ),
+        ),
         if (!widget.isReplay)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: InkWell(
-                onTap: () {
-                  showModalBottomSheet(
-                      context: context,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                  ),
+                  builder: (context) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          title: Text(I18n.of(context).ban),
+                          onTap: () async {
+                            Navigator.of(context).pop();
+                            await muteStore.insertComment(comment);
+                          },
                         ),
-                      ),
-                      builder: (context) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              title: Text(I18n.of(context).ban),
-                              onTap: () async {
-                                Navigator.of(context).pop();
-                                await muteStore.insertComment(comment);
-                              },
-                            ),
-                            ListTile(
-                              title: Text(I18n.of(context).report),
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                Reporter.show(
-                                    context,
-                                    () async =>
-                                        await muteStore.insertComment(comment));
-                              },
-                            ),
-                            Container(
-                              height: MediaQuery.of(context).padding.bottom,
-                            )
-                          ],
-                        );
-                      });
-                },
-                child: Icon(Icons.more_horiz, color: Theme.of(context).colorScheme.secondary)),
-          )
+                        ListTile(
+                          title: Text(I18n.of(context).report),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            Reporter.show(
+                              context,
+                              () async =>
+                                  await muteStore.insertComment(comment),
+                            );
+                          },
+                        ),
+                        Container(
+                          height: MediaQuery.of(context).padding.bottom,
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Icon(
+                Icons.more_horiz,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -549,9 +599,10 @@ class _CommentPageState extends State<CommentPage> {
   final SelectedTextMemory _selection = SelectedTextMemory();
 
   AdaptiveTextSelectionToolbar _buildSelectionMenu(
-      SelectableRegionState editableTextState,
-      BuildContext context,
-      bool supportTranslate) {
+    SelectableRegionState editableTextState,
+    BuildContext context,
+    bool supportTranslate,
+  ) {
     return buildTextSelectionToolbar(
       context: context,
       region: editableTextState,

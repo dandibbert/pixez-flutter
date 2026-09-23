@@ -215,7 +215,9 @@ class _AboutPageState extends State<AboutPage> {
                                   backgroundImage: NetworkImage(data.avatar),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(8.0).copyWith(bottom: 0),
+                                  padding: const EdgeInsets.all(
+                                    8.0,
+                                  ).copyWith(bottom: 0),
                                   child: Text(
                                     data.name,
                                     textAlign: TextAlign.center,

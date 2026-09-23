@@ -1005,8 +1005,10 @@ class _IllustRowPageState extends State<IllustRowPage>
       barrierColor: Colors.black.withValues(alpha: 0.35),
       transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final width =
-            (MediaQuery.sizeOf(dialogContext).width - 24).clamp(0.0, 320.0);
+        final width = (MediaQuery.sizeOf(dialogContext).width - 24).clamp(
+          0.0,
+          320.0,
+        );
         return SafeArea(
           child: Align(
             alignment: Alignment.topRight,
@@ -1032,7 +1034,9 @@ class _IllustRowPageState extends State<IllustRowPage>
                         _buildNameAvatar(dialogContext, illusts),
                         if (illusts.metaPages.isNotEmpty)
                           ListTile(
-                            title: Text(I18n.of(dialogContext).muti_choice_save),
+                            title: Text(
+                              I18n.of(dialogContext).muti_choice_save,
+                            ),
                             leading: Icon(Icons.save),
                             onTap: () async {
                               Navigator.of(dialogContext).pop();
@@ -1043,8 +1047,9 @@ class _IllustRowPageState extends State<IllustRowPage>
                           title: Text(I18n.of(dialogContext).copymessage),
                           leading: Icon(Icons.local_library),
                           onTap: () async {
-                            final str =
-                                userSetting.illustToShareInfoText(illusts);
+                            final str = userSetting.illustToShareInfoText(
+                              illusts,
+                            );
                             await Clipboard.setData(ClipboardData(text: str));
                             BotToast.showText(
                               text: I18n.of(dialogContext).copied_to_clipboard,
@@ -1105,8 +1110,9 @@ class _IllustRowPageState extends State<IllustRowPage>
                               builder: (context) {
                                 return AlertDialog(
                                   title: Text(I18n.of(context).report),
-                                  content:
-                                      Text(I18n.of(context).report_message),
+                                  content: Text(
+                                    I18n.of(context).report_message,
+                                  ),
                                   actions: <Widget>[
                                     TextButton(
                                       child: Text(I18n.of(context).cancel),

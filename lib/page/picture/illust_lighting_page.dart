@@ -1208,8 +1208,10 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       barrierColor: Colors.black.withValues(alpha: 0.35),
       transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final width =
-            (MediaQuery.sizeOf(dialogContext).width - 24).clamp(0.0, 320.0);
+        final width = (MediaQuery.sizeOf(dialogContext).width - 24).clamp(
+          0.0,
+          320.0,
+        );
         return SafeArea(
           child: Align(
             alignment: Alignment.topRight,
@@ -1235,7 +1237,9 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         _buildNameAvatar(dialogContext, illusts),
                         if (illusts.metaPages.isNotEmpty)
                           ListTile(
-                            title: Text(I18n.of(dialogContext).muti_choice_save),
+                            title: Text(
+                              I18n.of(dialogContext).muti_choice_save,
+                            ),
                             leading: Icon(Icons.save),
                             onTap: () async {
                               Navigator.of(dialogContext).pop();
@@ -1246,8 +1250,9 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                           title: Text(I18n.of(dialogContext).copymessage),
                           leading: Icon(Icons.local_library),
                           onTap: () async {
-                            final str =
-                                userSetting.illustToShareInfoText(illusts);
+                            final str = userSetting.illustToShareInfoText(
+                              illusts,
+                            );
                             await Clipboard.setData(ClipboardData(text: str));
                             BotToast.showText(
                               text: I18n.of(dialogContext).copied_to_clipboard,
@@ -1319,8 +1324,9 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                 builder: (context) {
                                   return AlertDialog(
                                     title: Text(I18n.of(context).report),
-                                    content:
-                                        Text(I18n.of(context).report_message),
+                                    content: Text(
+                                      I18n.of(context).report_message,
+                                    ),
                                     actions: <Widget>[
                                       TextButton(
                                         child: Text(I18n.of(context).cancel),
