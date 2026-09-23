@@ -194,6 +194,7 @@ class _AboutPageState extends State<AboutPage> {
                 itemBuilder: (context, index) {
                   final data = contributors[index];
                   return Card(
+                    clipBehavior: .hardEdge,
                     child: InkWell(
                       onTap: () async {
                         try {
@@ -204,6 +205,7 @@ class _AboutPageState extends State<AboutPage> {
                       child: Container(
                         width: 80,
                         child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Column(
@@ -213,7 +215,7 @@ class _AboutPageState extends State<AboutPage> {
                                   backgroundImage: NetworkImage(data.avatar),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(8.0),
+                                  padding: const EdgeInsets.all(8.0).copyWith(bottom: 0),
                                   child: Text(
                                     data.name,
                                     textAlign: TextAlign.center,
@@ -347,7 +349,7 @@ class _AboutPageState extends State<AboutPage> {
             ListTile(
               leading: Icon(Icons.favorite),
               title: Text(I18n.of(context).thanks),
-              subtitle: Text('感谢帮助我测试的弹幕委员会群友们\n感谢pixiv cat站主提供的图床'),
+              subtitle: Text('感谢帮助我测试的弹幕委员会群友们\n感谢 pixiv cat 站主提供的图床'),
               onTap: () {
                 if (Platform.isAndroid)
                   Navigator.of(context).push(
@@ -383,6 +385,7 @@ class _AboutPageState extends State<AboutPage> {
                 subtitle: Text(I18n.of(context).donate_message),
               ),
               Card(
+                clipBehavior: .hardEdge,
                 child: ListTile(
                   title: Text('AliPay'),
                   subtitle: Text('912756674@qq.com'),
@@ -390,6 +393,7 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
               Card(
+                clipBehavior: .hardEdge,
                 child: ListTile(
                   title: Text('Wechat Pay'),
                   subtitle: Text('tap'),

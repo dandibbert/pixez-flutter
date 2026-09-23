@@ -21,6 +21,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/component/search_date_filter.dart';
 import 'package:pixez/lighting/lighting_page.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
@@ -81,6 +82,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
     20000,
     30000,
     50000,
+    100000,
   ];
   List<List<int>> premiumStarNum = [
     [],
@@ -210,13 +212,13 @@ class _ResultIllustListState extends State<ResultIllustList> {
                   ),
                   child: Row(
                     children: [
-                      InkWell(
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(Icons.date_range),
-                          ),
-                          onTap: () {
-                            _buildShowDateRange(context);
+                      SearchDateFilterButton(
+                        value: _dateTimeRange,
+                        onChanged: (range) {
+                          setState(() {
+                            _dateTimeRange = range;
+                            _changeQueryParams();
+                          });
                         },
                       ),
                       if (accountStore.now?.isPremium == 1)
@@ -265,21 +267,6 @@ class _ResultIllustListState extends State<ResultIllustList> {
   }
 
   DateTimeRange? _dateTimeRange;
-
-  Future _buildShowDateRange(BuildContext context) async {
-    DateTimeRange? dateTimeRange = await showDateRangePicker(
-        context: context,
-        initialDateRange: _dateTimeRange,
-        firstDate: DateTime(2007, 8),
-      lastDate: DateTime.now(),
-    );
-    if (dateTimeRange != null) {
-      _dateTimeRange = dateTimeRange;
-      setState(() {
-        _changeQueryParams();
-      });
-    }
-  }
 
   void _changeQueryParams({
     int page = 1,

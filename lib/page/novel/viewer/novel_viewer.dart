@@ -18,7 +18,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bot_toast/bot_toast.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -51,6 +50,7 @@ import 'package:pixez/page/novel/viewer/novel_reader_widgets.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
 import 'package:pixez/page/novel/tts/novel_tts_bar.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
+import 'package:pixez/page/novel/tts/novel_tts_chapter_loader.dart';
 import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
@@ -79,6 +79,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   bool supportTranslate = false;
   bool _ttsResumeChecked = false;
   bool _ttsDrivingPage = false;
+  bool _followTtsNavigation = false;
   int _ttsUiClip = -1;
   NovelTtsStatus? _ttsUiStatus;
   int? _ttsUiPage;
@@ -114,6 +115,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       _restoreBookedPage();
     });
     _tts = NovelTtsController.instance;
+    _followTtsNavigation = _tts.session?.novelId == widget.id;
     _tts.onNavigate = _onTtsNavigate;
     _tts.onLoadChapter = _loadTtsChapter;
     _tts.addListener(_onTtsProgress);
@@ -130,12 +132,13 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     _offsetDisposer?.call();
     _tts.removeListener(_onTtsProgress);
-    if (identical(_tts.onNavigate, _onTtsNavigate)) {
+    if (_tts.onNavigate == _onTtsNavigate) {
       _tts.onNavigate = null;
     }
-    if (identical(_tts.onLoadChapter, _loadTtsChapter)) {
-      _tts.onLoadChapter = null;
+    if (_tts.onLoadChapter == _loadTtsChapter) {
+      _tts.onLoadChapter = loadNovelTtsChapter;
     }
+    _prefetchedTtsStores.clear();
     if (_novelStore.positionBooked) {
       _novelStore.bookPosition(_currentPage.toDouble());
     }
@@ -182,10 +185,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   void _openSeriesNovel(int id, {NovelStore? store}) {
     Navigator.of(context, rootNavigator: true).pushReplacement(
       MaterialPageRoute(
-        builder: (BuildContext context) => NovelViewerPage(
-          id: id,
-          novelStore: store ?? NovelStore(id, null),
-        ),
+        builder: (BuildContext context) =>
+            NovelViewerPage(id: id, novelStore: store ?? NovelStore(id, null)),
       ),
     );
   }
@@ -211,7 +212,11 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   }
 
   void _onTtsNavigate(NovelTtsNavigate navigate) {
-    if (!mounted) {
+    // Background playback must not replace settings or a different novel the
+    // user is browsing. The subtitle remains an explicit way back to playback.
+    if (!mounted ||
+        !_followTtsNavigation ||
+        ModalRoute.of(context)?.isCurrent != true) {
       return;
     }
     if (navigate.kind == NovelTtsNavigateKind.page && navigate.page != null) {
@@ -259,6 +264,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         });
       }
     }
+
     if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
       apply();
     } else {
@@ -268,6 +274,10 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   void _revealTtsClip() {
     if (_tts.session?.novelId != widget.id) {
+      final id = _tts.session?.novelId;
+      if (id != null) {
+        _openSeriesNovel(id, store: _prefetchedTtsStores.remove(id));
+      }
       return;
     }
     final page = _tts.session?.page;
@@ -343,32 +353,22 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   }
 
   Future<NovelTtsChapter?> _loadTtsChapter(int id) async {
+    if (!mounted) return null;
     final store = _prefetchedTtsStores[id] ?? NovelStore(id, null);
     if (store.novel == null || store.spans.isEmpty) {
       await store.fetch();
     }
     final novel = store.novel;
-    if (novel == null || store.spans.isEmpty) {
+    if (!mounted || novel == null || store.spans.isEmpty) {
       return null;
     }
+    _prefetchedTtsStores.remove(id);
     _prefetchedTtsStores[id] = store;
-    final pages = NovelReaderSplitCache().pages(store.spans);
-    final navigation = store.novelTextResponse?.seriesNavigation;
-    return NovelTtsChapter(
-      novelId: id,
-      title: novel.title,
-      author: novel.user.name,
-      pageTexts: [
-        for (var i = 0; i < pages.length; i++) novelTtsTextFromPages(pages, i),
-      ],
-      coverUrl: novel.imageUrls.medium,
-      prevSeriesId: navigation?.prevNovel?.viewable == true
-          ? navigation!.prevNovel!.id
-          : null,
-      nextSeriesId: navigation?.nextNovel?.viewable == true
-          ? navigation!.nextNovel!.id
-          : null,
-    );
+    // Keep only neighboring chapters while the reader is retained by a route.
+    while (_prefetchedTtsStores.length > 2) {
+      _prefetchedTtsStores.remove(_prefetchedTtsStores.keys.first);
+    }
+    return novelTtsChapterFromStore(store);
   }
 
   Future<void> _startTts({bool fromEnd = false}) async {
@@ -376,6 +376,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     if (novel == null) {
       return;
     }
+    _followTtsNavigation = true;
     final pages = _pages;
     final totalPages = pages.isEmpty ? 1 : pages.length;
     final page = clampNovelPage(_currentPage, totalPages);
@@ -648,7 +649,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     final pageIndex = clampNovelPage(_currentPage, totalPages) - 1;
     final pageSpans = pages.isEmpty ? <NovelSpansData>[] : pages[pageIndex];
     final blocks = _splitCache.blocks(pageSpans, pageIndex);
-    final followClip = _tts.isActive &&
+    final followClip =
+        _tts.isActive &&
         _tts.session?.novelId == widget.id &&
         _tts.session?.page == _currentPage;
     final clipHighlights = followClip

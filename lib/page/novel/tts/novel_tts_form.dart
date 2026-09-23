@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
+import 'package:pixez/i18n.dart';
 
 const Key novelTtsAdvancedToggleKey = Key('novelTtsAdvancedToggle');
 const Key novelTtsAddHeaderKey = Key('novelTtsAddHeader');
@@ -68,14 +69,6 @@ const contentTypeChoices = <NovelTtsChoice>[
   NovelTtsChoice('text/plain', 'text/plain'),
 ];
 
-const novelTtsPlaceholderTokens = <String>[
-  'text',
-  'voice',
-  'lang',
-  'speed',
-  'model',
-];
-
 double parseMicrosoftRatePercent(String raw) {
   final match = RegExp(r'([+-]?\d+)').firstMatch(raw.trim());
   return (double.tryParse(match?.group(1) ?? '0') ?? 0).clamp(-50, 50);
@@ -119,37 +112,29 @@ class NovelTtsChoiceField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final current = controller.text.trim();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              labelText: label,
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: onChanged,
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
+      child: TextField(
+        controller: controller,
+        autocorrect: false,
+        enableSuggestions: false,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          suffixIcon: PopupMenuButton<String>(
+            tooltip: label,
+            icon: const Icon(Icons.arrow_drop_down),
+            onSelected: (value) {
+              controller.text = value;
+              onChanged(value);
+            },
+            itemBuilder: (_) => [
               for (final choice in choices)
-                ChoiceChip(
-                  label: Text(choice.label),
-                  selected: current == choice.value,
-                  onSelected: (_) {
-                    controller.text = choice.value;
-                    onChanged(choice.value);
-                  },
-                ),
+                PopupMenuItem(value: choice.value, child: Text(choice.label)),
             ],
           ),
-        ],
+        ),
+        onChanged: onChanged,
       ),
     );
   }
@@ -160,10 +145,14 @@ class NovelTtsPlaceholderChips extends StatelessWidget {
     super.key,
     required this.caption,
     required this.onInsert,
+    this.useTextKey = true,
+    this.names = const {'text'},
   });
 
   final String caption;
   final ValueChanged<String> onInsert;
+  final bool useTextKey;
+  final Set<String> names;
 
   @override
   Widget build(BuildContext context) {
@@ -178,10 +167,16 @@ class NovelTtsPlaceholderChips extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final name in novelTtsPlaceholderTokens)
+              for (final name in {'text', ...names})
                 ActionChip(
-                  key: name == 'text' ? novelTtsInsertTextChipKey : null,
-                  label: Text('{$name}'),
+                  key: name == 'text' && useTextKey
+                      ? novelTtsInsertTextChipKey
+                      : null,
+                  label: Text(
+                    name == 'text'
+                        ? '${I18n.of(context).novel_tts_token_text} {text}'
+                        : '{$name}',
+                  ),
                   onPressed: () => onInsert('{$name}'),
                 ),
             ],
@@ -197,10 +192,12 @@ class NovelTtsAdvancedPanel extends StatefulWidget {
     super.key,
     required this.title,
     required this.children,
+    this.toggleKey = novelTtsAdvancedToggleKey,
   });
 
   final String title;
   final List<Widget> children;
+  final Key toggleKey;
 
   @override
   State<NovelTtsAdvancedPanel> createState() => _NovelTtsAdvancedPanelState();
@@ -215,7 +212,7 @@ class _NovelTtsAdvancedPanelState extends State<NovelTtsAdvancedPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ListTile(
-          key: novelTtsAdvancedToggleKey,
+          key: widget.toggleKey,
           contentPadding: EdgeInsets.zero,
           title: Text(widget.title),
           trailing: Icon(_open ? Icons.expand_less : Icons.expand_more),
@@ -308,9 +305,9 @@ class _NovelTtsHeaderListEditorState extends State<NovelTtsHeaderListEditor> {
   }
 
   void _remove(int index) {
-    setState(() {
-      _rows.removeAt(index).dispose();
-    });
+    final removed = _rows[index];
+    setState(() => _rows.removeAt(index));
+    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
     _emit();
   }
 
@@ -322,37 +319,41 @@ class _NovelTtsHeaderListEditorState extends State<NovelTtsHeaderListEditor> {
         for (var i = 0; i < _rows.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    key: i == 0 ? novelTtsHeaderNameFieldKey : null,
-                    controller: _rows[i].name,
-                    decoration: InputDecoration(
-                      labelText: widget.nameLabel,
-                      border: const OutlineInputBorder(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: i == 0 ? novelTtsHeaderNameFieldKey : null,
+                        controller: _rows[i].name,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          labelText: widget.nameLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => _emit(),
+                      ),
                     ),
-                    onChanged: (_) => _emit(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    key: i == 0 ? novelTtsHeaderValueFieldKey : null,
-                    controller: _rows[i].value,
-                    decoration: InputDecoration(
-                      labelText: widget.valueLabel,
-                      border: const OutlineInputBorder(),
+                    IconButton(
+                      tooltip: I18n.of(context).novel_tts_reading_delete,
+                      onPressed: () => _remove(i),
+                      icon: const Icon(Icons.delete_outline),
                     ),
-                    onChanged: (_) => _emit(),
-                  ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () => _remove(i),
-                  icon: const Icon(Icons.delete_outline),
+                const SizedBox(height: 8),
+                TextField(
+                  key: i == 0 ? novelTtsHeaderValueFieldKey : null,
+                  controller: _rows[i].value,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(
+                    labelText: widget.valueLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => _emit(),
                 ),
               ],
             ),
