@@ -11,6 +11,7 @@ enum SelectedTextPlugin {
     static let channelName = "pixez/selected_text"
 
     static func bind(_ engineBridge: FlutterImplicitEngineBridge) {
+        PixezInstallSelectedTextAccessibility()
         let channel = FlutterMethodChannel(
             name: channelName,
             binaryMessenger: engineBridge.applicationRegistrar.messenger()
@@ -45,15 +46,19 @@ final class SelectedTextProxy {
     func update(_ text: String) {
         current = text
         guard let window = Self.keyWindow() else {
+            textView.remember(text)
             return
         }
+        textView.frame = window.bounds
+        textView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         if textView.superview !== window {
-            textView.frame = ShortcutSelectedTextView.parkedFrame
             window.addSubview(textView)
         }
         // A real editor already reports its own selection. Taking first
         // responder here would hide the keyboard the user is typing on.
+        // The accessibility string is still published so Shortcuts can read it.
         if Self.foreignTextInputIsFirstResponder(in: window) {
+            textView.remember(text)
             return
         }
         textView.show(text)
@@ -90,10 +95,10 @@ final class SelectedTextProxy {
 /// selected, and becomes first responder without editing. A real text field
 /// keeps the responder while the user is typing.
 final class ShortcutSelectedTextView: UITextView {
-    static let parkedFrame = CGRect(x: -8, y: -8, width: 2, height: 2)
+    private var clearItem: DispatchWorkItem?
 
     init() {
-        super.init(frame: Self.parkedFrame, textContainer: nil)
+        super.init(frame: .zero, textContainer: nil)
         isEditable = false
         isSelectable = true
         isScrollEnabled = false
@@ -110,14 +115,50 @@ final class ShortcutSelectedTextView: UITextView {
         smartInsertDeleteType = .no
         inputAssistantItem.leadingBarButtonGroups = []
         inputAssistantItem.trailingBarButtonGroups = []
+        isAccessibilityElement = true
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        nil
     }
 
     required init?(coder: NSCoder) {
         return nil
     }
 
+    /// Publishes text while a real editor keeps first responder.
+    func remember(_ text: String) {
+        clearItem?.cancel()
+        if text.isEmpty {
+            schedule(text)
+            return
+        }
+        PixezSetSelectedText(text)
+        accessibilityValue = text
+        self.text = text
+        selectedRange = NSRange(location: 0, length: (text as NSString).length)
+    }
+
     func show(_ text: String) {
-        frame = Self.parkedFrame
+        schedule(text)
+    }
+
+    private func schedule(_ text: String) {
+        clearItem?.cancel()
+        if text.isEmpty {
+            let work = DispatchWorkItem { [weak self] in
+                self?.apply("")
+            }
+            clearItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)
+            return
+        }
+        apply(text)
+    }
+
+    private func apply(_ text: String) {
+        PixezSetSelectedText(text)
+        accessibilityValue = text.isEmpty ? nil : text
         if text.isEmpty {
             self.text = ""
             selectedRange = NSRange(location: 0, length: 0)
