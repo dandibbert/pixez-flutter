@@ -29,9 +29,8 @@ class SelectedTextMemory {
 
 /// Publishes the live selection to iOS so Shortcuts can read it.
 ///
-/// The system action "Get Selected Text" asks the foreground app for the
-/// current [UITextInput] selection. A Flutter [SelectionArea] draws its own
-/// highlight and never installs that selection, so the action comes back empty.
+/// "Get Selected Text" reads the foreground view's selected text. A Flutter
+/// [SelectionArea] draws its own highlight and never installs that selection.
 void publishSelectedContent(SelectedContent? content) {
   SelectedTextChannel.publish(selectedPlainText(content));
 }
@@ -83,6 +82,9 @@ class SelectedTextChannel {
       return;
     }
     unawaited(_send(text));
+    if (Platform.isIOS) {
+      ShortcutTextInput.mirror(text);
+    }
   }
 
   static Future<void> _send(String text) async {
@@ -95,6 +97,99 @@ class SelectedTextChannel {
   static void reset() {
     _last = null;
   }
+}
+
+/// Mirrors the highlight into the engine text input the system already queries.
+class ShortcutTextInput {
+  static final _ShortcutTextClient _client = _ShortcutTextClient();
+  static TextInputConnection? _connection;
+  static Timer? _clearTimer;
+
+  static void mirror(String text) {
+    if (_realEditorFocused()) {
+      return;
+    }
+    if (text.isEmpty) {
+      _clearTimer?.cancel();
+      _clearTimer = Timer(const Duration(seconds: 8), _closeIfOurs);
+      return;
+    }
+    _clearTimer?.cancel();
+    final TextEditingValue value = TextEditingValue(
+      text: text,
+      selection: TextSelection(baseOffset: 0, extentOffset: text.length),
+    );
+    _client.value = value;
+    final TextInputConnection? current = _connection;
+    if (current == null || !current.attached) {
+      final TextInputConnection next = TextInput.attach(
+        _client,
+        _configuration,
+      );
+      _connection = next;
+      next
+        ..setEditingState(value)
+        ..show();
+      return;
+    }
+    current
+      ..setEditingState(value)
+      ..show();
+  }
+
+  static void _closeIfOurs() {
+    final TextInputConnection? current = _connection;
+    _connection = null;
+    if (current != null && current.attached) {
+      current.close();
+    }
+  }
+
+  static bool _realEditorFocused() {
+    final BuildContext? context = FocusManager.instance.primaryFocus?.context;
+    if (context == null) {
+      return false;
+    }
+    return context.findAncestorStateOfType<EditableTextState>() != null;
+  }
+}
+
+const TextInputConfiguration _configuration = TextInputConfiguration(
+  inputType: TextInputType.none,
+  autocorrect: false,
+  enableSuggestions: false,
+  smartDashesType: SmartDashesType.disabled,
+  smartQuotesType: SmartQuotesType.disabled,
+);
+
+class _ShortcutTextClient with TextInputClient {
+  TextEditingValue? value;
+
+  @override
+  TextEditingValue? get currentTextEditingValue => value;
+
+  @override
+  AutofillScope? get currentAutofillScope => null;
+
+  @override
+  void updateEditingValue(TextEditingValue value) {
+    this.value = value;
+  }
+
+  @override
+  void performAction(TextInputAction action) {}
+
+  @override
+  void performPrivateCommand(String action, Map<String, dynamic> data) {}
+
+  @override
+  void updateFloatingCursor(RawFloatingCursorPoint point) {}
+
+  @override
+  void showAutocorrectionPromptRect(int start, int end) {}
+
+  @override
+  void connectionClosed() {}
 }
 
 String selectedPlainText(SelectedContent? content) {
