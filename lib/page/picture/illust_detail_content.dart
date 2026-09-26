@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/selectable_html.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/exts.dart';
 import 'package:pixez/i18n.dart';
@@ -21,7 +22,6 @@ import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/utils/haptic_util.dart';
-import 'package:share_plus/share_plus.dart';
 
 class IllustDetailContent extends StatefulWidget {
   final Illusts illusts;
@@ -44,7 +44,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   late UserStore? userStore;
   late FocusNode _focusNode;
   late IllustStore? _illustStore;
-  String _selectedText = "";
+  final SelectedTextMemory _selection = SelectedTextMemory();
 
   @override
   void initState() {
@@ -109,7 +109,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
           SizedBox(height: 8.0),
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: SelectionArea(
+            child: ShortcutSelectionArea(
               child: Text(
                 data.title,
                 style: Theme.of(
@@ -226,7 +226,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   }
 
   Widget colorText(String text, BuildContext context) {
-    return SelectionArea(
+    return ShortcutSelectionArea(
       child: Text(
         text,
         style: TextStyle(
@@ -322,11 +322,9 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             child: Container(
               width: double.infinity,
-              child: SelectionArea(
+              child: ShortcutSelectionArea(
                 focusNode: _focusNode,
-                onSelectionChanged: (value) {
-                  _selectedText = value?.plainText ?? "";
-                },
+                onSelectionChanged: _selection.update,
                 contextMenuBuilder: (context, selectableRegionState) {
                   return _buildSelectionMenu(selectableRegionState, context);
                 },
@@ -345,34 +343,12 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
     SelectableRegionState editableTextState,
     BuildContext context,
   ) {
-    final List<ContextMenuButtonItem> buttonItems =
-        editableTextState.contextMenuButtonItems;
-    if (supportTranslate) {
-      buttonItems.insert(
-        buttonItems.length,
-        ContextMenuButtonItem(
-          label: I18n.of(context).translate,
-          onPressed: () async {
-            final selectionText = _selectedText;
-            if (Platform.isIOS) {
-              final box = context.findRenderObject() as RenderBox?;
-              final pos = box != null
-                  ? box.localToGlobal(Offset.zero) & box.size
-                  : null;
-              SharePlus.instance.share(
-                ShareParams(text: selectionText, sharePositionOrigin: pos),
-              );
-              return;
-            }
-            await SupportorPlugin.start(selectionText);
-            ContextMenuController.removeAny();
-          },
-        ),
-      );
-    }
-    return AdaptiveTextSelectionToolbar.buttonItems(
-      anchors: editableTextState.contextMenuAnchors,
-      buttonItems: buttonItems,
+    return buildTextSelectionToolbar(
+      context: context,
+      region: editableTextState,
+      selectedText: _selection.value,
+      offerTextAction: supportTranslate,
+      actionLabel: I18n.of(context).translate,
     );
   }
 
@@ -601,7 +577,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                     children: <Widget>[
                       Hero(
                         tag: illust.user.name + this.hashCode.toString(),
-                        child: SelectionArea(
+                        child: ShortcutSelectionArea(
                           child: GestureDetector(
                             onTap: () {
                               _push2UserPage(context, illust);
@@ -650,6 +626,14 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   }
 
   Future<void> supportTranslateCheck() async {
+    if (Platform.isIOS) {
+      if (mounted) {
+        setState(() {
+          supportTranslate = true;
+        });
+      }
+      return;
+    }
     if (!Platform.isAndroid) return;
     bool results = await SupportorPlugin.processText();
     if (mounted) {

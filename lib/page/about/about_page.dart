@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -110,7 +111,7 @@ class _AboutPageState extends State<AboutPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SelectionArea(
+    return ShortcutSelectionArea(
       child: Scaffold(
         appBar: AppBar(
           title: Text(I18n.of(context).about),
@@ -214,7 +215,9 @@ class _AboutPageState extends State<AboutPage> {
                                   backgroundImage: NetworkImage(data.avatar),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(8.0).copyWith(bottom: 0),
+                                  padding: const EdgeInsets.all(
+                                    8.0,
+                                  ).copyWith(bottom: 0),
                                   child: Text(
                                     data.name,
                                     textAlign: TextAlign.center,

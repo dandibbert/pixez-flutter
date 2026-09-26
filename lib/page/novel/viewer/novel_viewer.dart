@@ -27,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/component/selectable_html.dart';
+import 'package:pixez/component/selected_text.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/er/lprinter.dart';
 import 'package:pixez/exts.dart';
@@ -84,10 +85,20 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   int? _ttsUiPage;
   final Map<int, GlobalKey> _ttsBlockKeys = {};
   final Map<int, NovelStore> _prefetchedTtsStores = {};
-  String _selectedText = "";
+  final SelectedTextMemory _selection = SelectedTextMemory();
   NovelSpansGenerator novelSpansGenerator = NovelSpansGenerator();
 
   Future<void> initMethod() async {
+    // iOS has no PROCESS_TEXT intent. The selection menu shares the captured
+    // text instead, which is what iOS 27's Translate / share sheet reads.
+    if (Platform.isIOS) {
+      if (mounted) {
+        setState(() {
+          supportTranslate = true;
+        });
+      }
+      return;
+    }
     if (!Platform.isAndroid) return;
     bool results = await SupportorPlugin.processText();
     if (mounted) {
@@ -720,10 +731,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                   ? () => _openSeriesNovel(navigation!.nextNovel!.id)
                   : null,
             ),
-      article: SelectionArea(
-        onSelectionChanged: (value) {
-          _selectedText = value?.plainText ?? "";
-        },
+      article: ShortcutSelectionArea(
+        onSelectionChanged: _selection.update,
         contextMenuBuilder: (context, editableTextState) {
           return _buildSelectionMenu(editableTextState, context);
         },
@@ -867,34 +876,12 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     SelectableRegionState editableTextState,
     BuildContext context,
   ) {
-    final List<ContextMenuButtonItem> buttonItems =
-        editableTextState.contextMenuButtonItems;
-    if (supportTranslate) {
-      buttonItems.insert(
-        buttonItems.length,
-        ContextMenuButtonItem(
-          label: I18n.of(context).translate,
-          onPressed: () async {
-            final selectionText = _selectedText;
-            if (Platform.isIOS) {
-              final box = context.findRenderObject() as RenderBox?;
-              final pos = box != null
-                  ? box.localToGlobal(Offset.zero) & box.size
-                  : null;
-              SharePlus.instance.share(
-                ShareParams(text: selectionText, sharePositionOrigin: pos),
-              );
-              return;
-            }
-            await SupportorPlugin.start(selectionText);
-            ContextMenuController.removeAny();
-          },
-        ),
-      );
-    }
-    return AdaptiveTextSelectionToolbar.buttonItems(
-      anchors: editableTextState.contextMenuAnchors,
-      buttonItems: buttonItems,
+    return buildTextSelectionToolbar(
+      context: context,
+      region: editableTextState,
+      selectedText: _selection.value,
+      offerTextAction: supportTranslate,
+      actionLabel: I18n.of(context).translate,
     );
   }
 
@@ -1062,10 +1049,8 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: SelectionArea(
-                      onSelectionChanged: (value) {
-                        _selectedText = value?.plainText ?? "";
-                      },
+                    child: ShortcutSelectionArea(
+                      onSelectionChanged: _selection.update,
                       contextMenuBuilder: (context, editableTextState) {
                         return _buildSelectionMenu(editableTextState, context);
                       },

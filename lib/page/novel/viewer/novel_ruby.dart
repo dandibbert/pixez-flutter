@@ -43,21 +43,75 @@ InlineSpan novelRubySpan({
   required String base,
   required String ruby,
   required TextStyle style,
+  TextScaler textScaler = TextScaler.noScaling,
+  TextDirection textDirection = TextDirection.ltr,
 }) {
+  if (ruby.isEmpty) {
+    return TextSpan(text: base, style: style);
+  }
   final rubyStyle = style.copyWith(
     fontSize: (style.fontSize ?? 16) * 0.55,
     height: 1.0,
   );
-  return WidgetSpan(
-    alignment: PlaceholderAlignment.baseline,
-    baseline: TextBaseline.alphabetic,
-    child: NovelRubyText(
-      base: base,
-      ruby: ruby,
-      baseStyle: style,
-      rubyStyle: rubyStyle,
-    ),
+  // The base has to be a real [TextSpan]. A [WidgetSpan] is one placeholder
+  // code unit, and selectable text skips that unit, so copying a ruby word
+  // used to drop the kanji. Side pads keep a wider reading centered without
+  // inserting extra characters into the selection.
+  final baseWidth = _measureSpanWidth(base, style, textScaler, textDirection);
+  final rubyWidth = _measureSpanWidth(
+    ruby,
+    rubyStyle,
+    textScaler,
+    textDirection,
   );
+  final extra = math.max(0.0, rubyWidth - baseWidth);
+  final leftPad = extra / 2;
+  final rightPad = extra - leftPad;
+  final groupWidth = leftPad + baseWidth + rightPad;
+  return TextSpan(
+    children: [
+      WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: NovelRubyText(
+          base: base,
+          ruby: ruby,
+          baseStyle: style,
+          rubyStyle: rubyStyle,
+          layoutWidth: leftPad,
+          groupWidth: groupWidth,
+          textScaler: textScaler,
+          textDirection: textDirection,
+        ),
+      ),
+      TextSpan(text: base, style: style),
+      if (rightPad >= 0.5)
+        WidgetSpan(
+          alignment: PlaceholderAlignment.bottom,
+          child: SizedBox(width: rightPad, height: 1),
+        ),
+    ],
+  );
+}
+
+double _measureSpanWidth(
+  String text,
+  TextStyle style,
+  TextScaler textScaler,
+  TextDirection textDirection,
+) {
+  if (text.isEmpty) {
+    return 0;
+  }
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: textDirection,
+    textScaler: textScaler,
+    maxLines: 1,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width;
 }
 
 /// HTML `<ruby>` / pixvel / official Pixiv: the base stays on the surrounding
@@ -70,12 +124,26 @@ class NovelRubyText extends LeafRenderObjectWidget {
     required this.ruby,
     required this.baseStyle,
     required this.rubyStyle,
+    this.layoutWidth = 0,
+    this.groupWidth = 0,
+    this.textScaler = TextScaler.noScaling,
+    this.textDirection = TextDirection.ltr,
   });
 
   final String base;
   final String ruby;
   final TextStyle baseStyle;
   final TextStyle rubyStyle;
+
+  /// Inline advance of this placeholder. The base glyphs live in the following
+  /// [TextSpan], so this is only the left padding that centers a wider reading.
+  final double layoutWidth;
+
+  /// Width of the left pad, the base, and the right pad. The reading is
+  /// centered across that group.
+  final double groupWidth;
+  final TextScaler textScaler;
+  final TextDirection textDirection;
 
   @override
   RenderNovelRuby createRenderObject(BuildContext context) {
@@ -84,8 +152,10 @@ class NovelRubyText extends LeafRenderObjectWidget {
       ruby: ruby,
       baseStyle: baseStyle,
       rubyStyle: rubyStyle,
-      textDirection: Directionality.maybeOf(context) ?? TextDirection.ltr,
-      textScaler: MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling,
+      textDirection: textDirection,
+      textScaler: textScaler,
+      layoutWidth: layoutWidth,
+      groupWidth: groupWidth,
     );
   }
 
@@ -96,9 +166,10 @@ class NovelRubyText extends LeafRenderObjectWidget {
       ..ruby = ruby
       ..baseStyle = baseStyle
       ..rubyStyle = rubyStyle
-      ..textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr
-      ..textScaler =
-          MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
+      ..textDirection = textDirection
+      ..textScaler = textScaler
+      ..layoutWidth = layoutWidth
+      ..groupWidth = groupWidth;
   }
 }
 
@@ -110,12 +181,16 @@ class RenderNovelRuby extends RenderBox {
     required TextStyle rubyStyle,
     required TextDirection textDirection,
     required TextScaler textScaler,
+    required double layoutWidth,
+    required double groupWidth,
   }) : _base = base,
        _ruby = ruby,
        _baseStyle = baseStyle,
        _rubyStyle = rubyStyle,
        _textDirection = textDirection,
        _textScaler = textScaler,
+       _layoutWidth = layoutWidth,
+       _groupWidth = groupWidth,
        _basePainter = TextPainter(maxLines: 1, ellipsis: ''),
        _rubyPainter = TextPainter(maxLines: 1, ellipsis: '');
 
@@ -182,6 +257,26 @@ class RenderNovelRuby extends RenderBox {
     markNeedsLayout();
   }
 
+  double _layoutWidth;
+  double get layoutWidth => _layoutWidth;
+  set layoutWidth(double value) {
+    if (_layoutWidth == value) {
+      return;
+    }
+    _layoutWidth = value;
+    markNeedsLayout();
+  }
+
+  double _groupWidth;
+  double get groupWidth => _groupWidth;
+  set groupWidth(double value) {
+    if (_groupWidth == value) {
+      return;
+    }
+    _groupWidth = value;
+    markNeedsPaint();
+  }
+
   /// Tight box like a browser `<ruby>`: reading flush above the base glyphs.
   TextStyle get _packedBaseStyle => _baseStyle.copyWith(height: 1.0);
 
@@ -212,10 +307,7 @@ class RenderNovelRuby extends RenderBox {
 
   Size _intrinsicSize(double maxWidth) {
     _layoutPainters(maxWidth);
-    return Size(
-      math.max(_basePainter.width, _rubyPainter.width),
-      _rubyBoxHeight + _basePainter.height,
-    );
+    return Size(_layoutWidth, _rubyBoxHeight + _basePainter.height);
   }
 
   double get _rubyBoxHeight => _ruby.isEmpty ? 0.0 : _rubyPainter.height;
@@ -277,27 +369,28 @@ class RenderNovelRuby extends RenderBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    final canvas = context.canvas;
-    final width = size.width;
-    if (_ruby.isNotEmpty) {
-      _rubyPainter.paint(
-        canvas,
-        offset + Offset((width - _rubyPainter.width) / 2, 0),
-      );
+    if (_ruby.isEmpty) {
+      return;
     }
-    _basePainter.paint(
+    final canvas = context.canvas;
+    final group = _groupWidth > 0
+        ? _groupWidth
+        : math.max(_basePainter.width, _rubyPainter.width);
+    _rubyPainter.paint(
       canvas,
-      offset + Offset((width - _basePainter.width) / 2, _rubyBoxHeight),
+      offset + Offset((group - _rubyPainter.width) / 2, 0),
     );
   }
 
   @override
   void describeSemanticsConfiguration(SemanticsConfiguration config) {
     super.describeSemanticsConfiguration(config);
+    // The base is already in the following [TextSpan]. Labeling it here would
+    // make VoiceOver speak the kanji twice.
     config
       ..isSemanticBoundary = true
       ..textDirection = _textDirection
-      ..label = _ruby.isEmpty ? _base : '$_base $_ruby';
+      ..label = _ruby;
   }
 
   @override
