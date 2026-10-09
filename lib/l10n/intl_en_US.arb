@@ -507,7 +507,7 @@
   "novel_tts_reading_delete": "Delete",
   "novel_tts_reading_save": "Save",
   "novel_tts_reading_bulk": "Paste a list",
-  "novel_tts_reading_bulk_hint": "One pair per line. 今日=きょう and 今日:きょう both work.",
+  "novel_tts_reading_bulk_hint": "One pair per line, e.g. 今日=きょう. End a line with |alias, |exact or |force to pick the match mode. A written form that already exists gets the new reading.",
   "novel_tts_advanced": "Advanced",
   "novel_tts_value_other": "Other",
   "novel_tts_header_name": "Name",
@@ -577,5 +577,91 @@
   "novel_tts_reveal_secrets": "Show credentials",
   "novel_tts_copy_details": "Copy details",
   "novel_tts_stage_request": "Building request",
-  "novel_tts_stage_preview": "Preview"
+  "novel_tts_stage_preview": "Preview",
+  "novel_tts_reading_scope": "Applies to",
+  "novel_tts_scope_global": "All works",
+  "novel_tts_scope_work": "This work: {title}",
+  "@novel_tts_scope_work": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_scope_series": "This series: {title}",
+  "@novel_tts_scope_series": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_error_empty_surface": "Enter the written form",
+  "novel_tts_reading_error_empty_reading": "Enter the reading",
+  "novel_tts_reading_error_too_long": "Too long, at most {max} characters",
+  "@novel_tts_reading_error_too_long": {
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_error_control": "Contains invisible control characters",
+  "novel_tts_reading_replaces": "Replaces the existing entry {entry}",
+  "@novel_tts_reading_replaces": {
+    "placeholders": {
+      "entry": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_disabled": "Off",
+  "novel_tts_reading_needs_review": "Off: a single kana or symbol would change every word containing it. Turn it on to force it.",
+  "novel_tts_reading_search": "Search written forms or readings",
+  "novel_tts_reading_deleted": "Deleted {entry}",
+  "@novel_tts_reading_deleted": {
+    "placeholders": {
+      "entry": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_undo": "Undo",
+  "novel_tts_reading_export": "Copy all",
+  "novel_tts_reading_exported": "Copied {count} entries",
+  "@novel_tts_reading_exported": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_import_result": "Added {added}, updated {updated}, unchanged {unchanged}, skipped {skipped} lines",
+  "@novel_tts_reading_import_result": {
+    "placeholders": {
+      "added": {
+        "type": "String"
+      },
+      "updated": {
+        "type": "String"
+      },
+      "unchanged": {
+        "type": "String"
+      },
+      "skipped": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_add_selection": "Add reading",
+  "novel_tts_reading_add_current": "Add a reading for this sentence",
+  "novel_tts_reading_saved": "Saved {entry}",
+  "@novel_tts_reading_saved": {
+    "placeholders": {
+      "entry": {
+        "type": "String"
+      }
+    }
+  },
+  "novel_tts_reading_no_match": "No entries match"
 }

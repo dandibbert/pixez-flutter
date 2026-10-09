@@ -1292,11 +1292,15 @@ void main() {
     await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'きょう');
     await tester.tap(find.byKey(novelTtsReadingSaveKey));
     await tester.pumpAndSettle();
-    expect(find.text('今日  →  きょう'), findsOneWidget);
+    expect(find.text('今日 → きょう'), findsOneWidget);
     expect(NovelTtsSettings.load().readings, [
-      const NovelTtsReading(surface: '今日', reading: 'きょう'),
+      const NovelTtsReading(
+        surface: '今日',
+        reading: 'きょう',
+        mode: PronunciationMatchMode.exactPhrase,
+      ),
     ]);
-    expect(find.text('Fixed phrase'), findsOneWidget);
+    expect(find.text('Fixed phrase · All works'), findsOneWidget);
   });
 
   testWidgets('a lone kanji is saved as a name alias, not a fixed phrase', (
@@ -1327,7 +1331,7 @@ void main() {
       NovelTtsSettings.load().readings.single.mode,
       PronunciationMatchMode.nameAlias,
     );
-    expect(find.text('Name alias'), findsOneWidget);
+    expect(find.text('Name alias · All works'), findsOneWidget);
   });
 
   testWidgets('captures the mark editor previewing a name alias', (

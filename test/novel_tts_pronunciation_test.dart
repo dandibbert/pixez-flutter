@@ -156,101 +156,107 @@ void main() {
     expect(tokenFor('実に美しい。', '実に').partOfSpeech, contains('副詞'));
   });
 
-  test('an inflection only counts when the auxiliary that needs it follows', () {
-    final analyzer = LexiconJapaneseAnalyzer();
-    List<String> surfaces(String text) =>
-        [for (final token in analyzer.tokenize(text)) token.surface];
+  test(
+    'an inflection only counts when the auxiliary that needs it follows',
+    () {
+      final analyzer = LexiconJapaneseAnalyzer();
+      List<String> surfaces(String text) => [
+        for (final token in analyzer.tokenize(text)) token.surface,
+      ];
 
-    // 直さ is a real 未然形 of 直す, but only in front of a negative.
-    expect(surfaces('直さない。'), contains('直さ'));
-    expect(surfaces('直そう。'), contains('直そ'));
-    expect(surfaces('直せば'), contains('直せ'));
-    // A verb spelled without okurigana is indistinguishable from a name.
-    expect(surfaces('悟は'), contains('悟'));
-  });
+      // 直さ is a real 未然形 of 直す, but only in front of a negative.
+      expect(surfaces('直さない。'), contains('直さ'));
+      expect(surfaces('直そう。'), contains('直そ'));
+      expect(surfaces('直せば'), contains('直せ'));
+      // A verb spelled without okurigana is indistinguishable from a name.
+      expect(surfaces('悟は'), contains('悟'));
+    },
+  );
 
-  test('homograph aliases apply as names and stay out of other words', () async {
-    Future<String> render(String surface, String reading, String source) async {
-      final snapshot = compiler.compile([
-        phrase(
-          'alias',
-          surface,
-          reading,
-          mode: PronunciationMatchMode.nameAlias,
-          scope: PronunciationScopeType.global,
-          scopeId: null,
-        ),
-      ]);
-      final resolved = await pipeline.resolve(
-        document: NovelTtsTextDocument(displayText: source),
-        snapshot: snapshot,
-      );
-      return renderer.renderAll(
-        source: source,
-        decisions: resolved.appliedDecisions,
-      );
-    }
+  test(
+    'homograph aliases apply as names and stay out of other words',
+    () async {
+      Future<String> render(
+        String surface,
+        String reading,
+        String source,
+      ) async {
+        final snapshot = compiler.compile([
+          phrase(
+            'alias',
+            surface,
+            reading,
+            mode: PronunciationMatchMode.nameAlias,
+            scope: PronunciationScopeType.global,
+            scopeId: null,
+          ),
+        ]);
+        final resolved = await pipeline.resolve(
+          document: NovelTtsTextDocument(displayText: source),
+          snapshot: snapshot,
+        );
+        return renderer.renderAll(
+          source: source,
+          decisions: resolved.appliedDecisions,
+        );
+      }
 
-    expect(await render('恵', 'めぐみ', '恵は笑った。'), 'めぐみは笑った。');
-    expect(await render('恵', 'めぐみ', '恵まれた子だ。'), '恵まれた子だ。');
-    expect(await render('恵', 'めぐみ', '知恵を使う。'), '知恵を使う。');
-    expect(await render('恵', 'めぐみ', '恵みの雨。'), '恵みの雨。');
+      expect(await render('恵', 'めぐみ', '恵は笑った。'), 'めぐみは笑った。');
+      expect(await render('恵', 'めぐみ', '恵まれた子だ。'), '恵まれた子だ。');
+      expect(await render('恵', 'めぐみ', '知恵を使う。'), '知恵を使う。');
+      expect(await render('恵', 'めぐみ', '恵みの雨。'), '恵みの雨。');
 
-    expect(await render('愛', 'まなみ', '愛さんが来た。'), 'まなみさんが来た。');
-    expect(await render('愛', 'まなみ', '彼を愛している。'), '彼を愛している。');
-    expect(await render('愛', 'まなみ', '愛らしい笑顔。'), '愛らしい笑顔。');
-    expect(await render('愛', 'まなみ', '恋愛の話。'), '恋愛の話。');
+      expect(await render('愛', 'まなみ', '愛さんが来た。'), 'まなみさんが来た。');
+      expect(await render('愛', 'まなみ', '彼を愛している。'), '彼を愛している。');
+      expect(await render('愛', 'まなみ', '愛らしい笑顔。'), '愛らしい笑顔。');
+      expect(await render('愛', 'まなみ', '恋愛の話。'), '恋愛の話。');
 
-    expect(await render('光', 'ひかる', '光と話した。'), 'ひかると話した。');
-    expect(await render('光', 'ひかる', '目が光った。'), '目が光った。');
-    expect(await render('光', 'ひかる', '観光に行く。'), '観光に行く。');
+      expect(await render('光', 'ひかる', '光と話した。'), 'ひかると話した。');
+      expect(await render('光', 'ひかる', '目が光った。'), '目が光った。');
+      expect(await render('光', 'ひかる', '観光に行く。'), '観光に行く。');
 
-    expect(await render('望', 'のぞむ', '望は帰った。'), 'のぞむは帰った。');
-    expect(await render('望', 'のぞむ', '平和を望む。'), '平和を望む。');
-    expect(await render('望', 'のぞむ', '望みを託す。'), '望みを託す。');
-    expect(await render('望', 'のぞむ', '希望がある。'), '希望がある。');
+      expect(await render('望', 'のぞむ', '望は帰った。'), 'のぞむは帰った。');
+      expect(await render('望', 'のぞむ', '平和を望む。'), '平和を望む。');
+      expect(await render('望', 'のぞむ', '望みを託す。'), '望みを託す。');
+      expect(await render('望', 'のぞむ', '希望がある。'), '希望がある。');
 
-    expect(await render('歩', 'あゆむ', '歩くん、行こう。'), 'あゆむくん、行こう。');
-    expect(await render('歩', 'あゆむ', '道を歩いた。'), '道を歩いた。');
-    expect(await render('歩', 'あゆむ', '散歩に出る。'), '散歩に出る。');
+      expect(await render('歩', 'あゆむ', '歩くん、行こう。'), 'あゆむくん、行こう。');
+      expect(await render('歩', 'あゆむ', '道を歩いた。'), '道を歩いた。');
+      expect(await render('歩', 'あゆむ', '散歩に出る。'), '散歩に出る。');
 
-    expect(await render('司', 'つかさ', '司の番だ。'), 'つかさの番だ。');
-    expect(await render('司', 'つかさ', '国を司る。'), '国を司る。');
-    expect(await render('司', 'つかさ', '司会を務める。'), '司会を務める。');
+      expect(await render('司', 'つかさ', '司の番だ。'), 'つかさの番だ。');
+      expect(await render('司', 'つかさ', '国を司る。'), '国を司る。');
+      expect(await render('司', 'つかさ', '司会を務める。'), '司会を務める。');
 
-    expect(await render('静', 'しずか', '静も来た。'), 'しずかも来た。');
-    expect(await render('静', 'しずか', '静かな夜。'), '静かな夜。');
-    expect(await render('静', 'しずか', '嵐が静まる。'), '嵐が静まる。');
+      expect(await render('静', 'しずか', '静も来た。'), 'しずかも来た。');
+      expect(await render('静', 'しずか', '静かな夜。'), '静かな夜。');
+      expect(await render('静', 'しずか', '嵐が静まる。'), '嵐が静まる。');
 
-    expect(await render('実', 'みのり', '実さんが来た。'), 'みのりさんが来た。');
-    expect(await render('実', 'みのり', '実に美しい。'), '実に美しい。');
-    expect(await render('実', 'みのり', '実った稲。'), '実った稲。');
-    expect(await render('実', 'みのり', '事実を知る。'), '事実を知る。');
+      expect(await render('実', 'みのり', '実さんが来た。'), 'みのりさんが来た。');
+      expect(await render('実', 'みのり', '実に美しい。'), '実に美しい。');
+      expect(await render('実', 'みのり', '実った稲。'), '実った稲。');
+      expect(await render('実', 'みのり', '事実を知る。'), '事実を知る。');
 
-    expect(await render('優', 'ゆう', '優と会った。'), 'ゆうと会った。');
-    expect(await render('優', 'ゆう', '彼は優しい。'), '彼は優しい。');
-    expect(await render('優', 'ゆう', '優れた才能。'), '優れた才能。');
-    expect(await render('優', 'ゆう', '優勝した。'), '優勝した。');
+      expect(await render('優', 'ゆう', '優と会った。'), 'ゆうと会った。');
+      expect(await render('優', 'ゆう', '彼は優しい。'), '彼は優しい。');
+      expect(await render('優', 'ゆう', '優れた才能。'), '優れた才能。');
+      expect(await render('優', 'ゆう', '優勝した。'), '優勝した。');
 
-    expect(await render('薫', 'かおる', '薫が笑う。'), 'かおるが笑う。');
-    expect(await render('薫', 'かおる', '風が薫る。'), '風が薫る。');
+      expect(await render('薫', 'かおる', '薫が笑う。'), 'かおるが笑う。');
+      expect(await render('薫', 'かおる', '風が薫る。'), '風が薫る。');
 
-    expect(await render('誠', 'まこと', '誠が来た。'), 'まことが来た。');
-    expect(await render('誠', 'まこと', '誠実な人。'), '誠実な人。');
+      expect(await render('誠', 'まこと', '誠が来た。'), 'まことが来た。');
+      expect(await render('誠', 'まこと', '誠実な人。'), '誠実な人。');
 
-    expect(await render('翼', 'つばさ', '翼が呼んだ。'), 'つばさが呼んだ。');
-    expect(await render('楓', 'かえで', '楓と歩く。'), 'かえでと歩く。');
-    expect(await render('葵', 'あおい', '葵は強い。'), 'あおいは強い。');
-  });
+      expect(await render('翼', 'つばさ', '翼が呼んだ。'), 'つばさが呼んだ。');
+      expect(await render('楓', 'かえで', '楓と歩く。'), 'かえでと歩く。');
+      expect(await render('葵', 'あおい', '葵は強い。'), 'あおいは強い。');
+    },
+  );
 
   test('a cast of aliases reads a whole excerpt', () async {
     PronunciationRule alias(String id, String surface, String reading) =>
-        phrase(
-          id,
-          surface,
-          reading,
-          mode: PronunciationMatchMode.nameAlias,
-        );
+        phrase(id, surface, reading, mode: PronunciationMatchMode.nameAlias);
     final snapshot = compiler.compile([
       phrase('full', '五条悟', 'ごじょうさとる'),
       alias('satoru', '悟', 'さとる'),
@@ -274,10 +280,7 @@ void main() {
     );
 
     expect(
-      renderer.renderAll(
-        source: source,
-        decisions: resolved.appliedDecisions,
-      ),
+      renderer.renderAll(source: source, decisions: resolved.appliedDecisions),
       'さとるは教室の窓際に座っていた。めぐみが入ってくると、さとるは顔を上げて笑った。\n'
       '「さとる、また遅刻か」とめぐみが言う。さとるは肩をすくめただけだった。\n'
       'やがて彼は事の重大さを悟った。悟りを開くにはまだ早い。\n'
@@ -334,15 +337,13 @@ void main() {
 
   test('explicit ruby wins over a name alias', () async {
     final snapshot = compiler.compile([
-      phrase(
-        'alias',
-        '五条悟',
-        'ごじょうさとる',
-        mode: PronunciationMatchMode.nameAlias,
-      ),
+      phrase('alias', '五条悟', 'ごじょうさとる', mode: PronunciationMatchMode.nameAlias),
     ], workId: 'work-1');
     final document = novelTtsDocumentFromSpans([
-      NovelSpansData(NovelSpansType.rb, parseNovelRubyMarkup('[[rb:五条悟＞ごじょう]]')!.encoded),
+      NovelSpansData(
+        NovelSpansType.rb,
+        parseNovelRubyMarkup('[[rb:五条悟＞ごじょう]]')!.encoded,
+      ),
       NovelSpansData(NovelSpansType.normal, 'は笑った。'),
     ]);
     expect(document.displayText, '五条悟は笑った。');
@@ -352,7 +353,10 @@ void main() {
       snapshot: snapshot,
     );
     expect(
-      renderer.renderAll(source: document.displayText, decisions: resolved.appliedDecisions),
+      renderer.renderAll(
+        source: document.displayText,
+        decisions: resolved.appliedDecisions,
+      ),
       'ごじょうは笑った。',
     );
     expect(
@@ -363,7 +367,10 @@ void main() {
 
   test('exact and force marks override author ruby', () async {
     final document = novelTtsDocumentFromSpans([
-      NovelSpansData(NovelSpansType.rb, parseNovelRubyMarkup('[[rb:悠仁＞なるひと]]')!.encoded),
+      NovelSpansData(
+        NovelSpansType.rb,
+        parseNovelRubyMarkup('[[rb:悠仁＞なるひと]]')!.encoded,
+      ),
       NovelSpansData(NovelSpansType.normal, 'が来た。'),
     ]);
     final exact = compiler.compile([
@@ -382,12 +389,7 @@ void main() {
     );
 
     final forced = compiler.compile([
-      phrase(
-        'force',
-        '悠仁',
-        'ゆうじ',
-        mode: PronunciationMatchMode.force,
-      ),
+      phrase('force', '悠仁', 'ゆうじ', mode: PronunciationMatchMode.force),
     ], workId: 'work-1');
     final forceResolved = await pipeline.resolve(
       document: document,
@@ -436,22 +438,14 @@ void main() {
         scope: PronunciationScopeType.global,
         scopeId: null,
       ),
-      phrase(
-        'work',
-        '悟',
-        'さとる',
-        mode: PronunciationMatchMode.nameAlias,
-      ),
+      phrase('work', '悟', 'さとる', mode: PronunciationMatchMode.nameAlias),
     ], workId: 'work-1');
     final resolved = await pipeline.resolve(
       document: const NovelTtsTextDocument(displayText: '悟さん'),
       snapshot: snapshot,
     );
     expect(
-      renderer.renderAll(
-        source: '悟さん',
-        decisions: resolved.appliedDecisions,
-      ),
+      renderer.renderAll(source: '悟さん', decisions: resolved.appliedDecisions),
       'さとるさん',
     );
   });
@@ -503,9 +497,7 @@ void main() {
       budget: const RuneTtsTextBudget(16),
     );
     expect(
-      [
-        for (final range in ranges) source.substring(range.start, range.end),
-      ],
+      [for (final range in ranges) source.substring(range.start, range.end)],
       ['あ。', 'BBBBBBBB。', 'CCCCCCCC。'],
     );
   });
@@ -628,44 +620,45 @@ void main() {
     expect(rules[1].enabled, isTrue);
   });
 
-  test('repository migration is idempotent and keeps a v1 backup', () async {
+  test('repository compiles the settings list and honours scopes', () async {
     final repo = PronunciationRepository();
-    final first = await repo.migrateFromSettingsIfNeeded(
-      readings: const [NovelTtsReading(surface: '今日', reading: 'きょう')],
-      nowMs: 10,
-    );
-    final second = await repo.migrateFromSettingsIfNeeded(
-      readings: const [NovelTtsReading(surface: '別', reading: 'べつ')],
-      nowMs: 20,
-    );
-    expect(first.rules, hasLength(1));
-    expect(second.rules.single.surface, '今日');
-    expect(Prefer.getString(PronunciationRepository.v1BackupKey), isNotEmpty);
-
     final live = await repo.snapshotFor(
       workId: '1',
-      seriesId: null,
+      seriesId: 's',
       settingsReadings: const [
         NovelTtsReading(
+          id: 'a',
           surface: '悠仁',
           reading: 'ゆうじ',
           mode: PronunciationMatchMode.exactPhrase,
         ),
+        NovelTtsReading(
+          id: 'b',
+          surface: '悟',
+          reading: 'さとし',
+          scope: PronunciationScope(
+            type: PronunciationScopeType.work,
+            scopeId: '2',
+          ),
+        ),
+        NovelTtsReading(
+          id: 'c',
+          surface: '悟',
+          reading: 'さとる',
+          scope: PronunciationScope(
+            type: PronunciationScopeType.series,
+            scopeId: 's',
+          ),
+        ),
       ],
     );
-    expect(live.activeRules.single.surface, '悠仁');
-    expect(live.activeRules.single.reading, 'ゆうじ');
-    expect(live.activeRules.single.mode, PronunciationMatchMode.exactPhrase);
+    expect(live.activeRules.map((rule) => rule.id), ['c', 'a']);
+    expect(live.activeRules.last.reading, 'ゆうじ');
   });
 
   test('preview explains applied and skipped decisions', () async {
     final snapshot = compiler.compile([
-      phrase(
-        'alias',
-        '悟',
-        'さとる',
-        mode: PronunciationMatchMode.nameAlias,
-      ),
+      phrase('alias', '悟', 'さとる', mode: PronunciationMatchMode.nameAlias),
     ], workId: 'work-1');
     final preview = await PronunciationPreview().preview(
       source: '悟は笑った。彼はすべてを悟った。',
@@ -701,12 +694,7 @@ void main() {
 
   test('same snapshot yields the same decisions', () async {
     final snapshot = compiler.compile([
-      phrase(
-        'alias',
-        '悟',
-        'さとる',
-        mode: PronunciationMatchMode.nameAlias,
-      ),
+      phrase('alias', '悟', 'さとる', mode: PronunciationMatchMode.nameAlias),
     ], workId: 'work-1');
     const source = '悟は笑った。真相を悟った。';
     final first = await pipeline.resolve(
@@ -744,14 +732,64 @@ void main() {
     // control characters: whatever a Pixiv novel throws at the reader, the
     // pipeline has to answer with spans that really index the source.
     const alphabet = [
-      '悟', '恵', '愛', '静', '実', '五', '条', 'は', 'が', 'った', 'り', 'る',
-      'さん', '「', '」', '。', '！', '？', '\n', ' ', '　', 'ア', 'ｱ', 'ー',
-      '𠮷', '👨‍👩‍👧‍👦', '🎉', '\u{1F600}', '\uFE0F', '\u0301', '\u200B',
-      '\t', 'a', '1', '…', '—', '﷽', '\u3005', '々', 'ゔ', 'ヷ',
+      '悟',
+      '恵',
+      '愛',
+      '静',
+      '実',
+      '五',
+      '条',
+      'は',
+      'が',
+      'った',
+      'り',
+      'る',
+      'さん',
+      '「',
+      '」',
+      '。',
+      '！',
+      '？',
+      '\n',
+      ' ',
+      '　',
+      'ア',
+      'ｱ',
+      'ー',
+      '𠮷',
+      '👨‍👩‍👧‍👦',
+      '🎉',
+      '\u{1F600}',
+      '\uFE0F',
+      '\u0301',
+      '\u200B',
+      '\t',
+      'a',
+      '1',
+      '…',
+      '—',
+      '﷽',
+      '\u3005',
+      '々',
+      'ゔ',
+      'ヷ',
     ];
     const surfaces = [
-      '悟', '恵', '愛', '静', '実', '五条悟', '𠮷', '👨‍👩‍👧‍👦', 'ア',
-      '\u{1F600}', '\uFE0F', '々', 'は', '。', 'a',
+      '悟',
+      '恵',
+      '愛',
+      '静',
+      '実',
+      '五条悟',
+      '𠮷',
+      '👨‍👩‍👧‍👦',
+      'ア',
+      '\u{1F600}',
+      '\uFE0F',
+      '々',
+      'は',
+      '。',
+      'a',
     ];
     final random = Random(20260909);
     final modes = PronunciationMatchMode.values;
@@ -782,31 +820,34 @@ void main() {
             updatedAtEpochMs: i,
           ),
       ];
-      final snapshot = compiler.compile(rules, workId: 'work-1', seriesId: 's1');
+      final snapshot = compiler.compile(
+        rules,
+        workId: 'work-1',
+        seriesId: 's1',
+      );
       final source = randomText(random.nextInt(400));
       final resolved = await pipeline.resolve(
         document: NovelTtsTextDocument(displayText: source),
         snapshot: snapshot,
       );
-      renderer.renderAll(
-        source: source,
-        decisions: resolved.appliedDecisions,
-      );
+      renderer.renderAll(source: source, decisions: resolved.appliedDecisions);
       const SourceAwareNovelTtsSplitter().split(
         displayText: source,
         appliedDecisions: resolved.appliedDecisions,
         budget: RuneTtsTextBudget(
           NovelTtsSettings.minSplitChars +
               random.nextInt(
-                NovelTtsSettings.maxSplitChars -
-                    NovelTtsSettings.minSplitChars,
+                NovelTtsSettings.maxSplitChars - NovelTtsSettings.minSplitChars,
               ),
         ),
       );
       for (final decision in resolved.appliedDecisions) {
         expect(decision.start, inInclusiveRange(0, source.length));
         expect(decision.end, inInclusiveRange(decision.start, source.length));
-        expect(source.substring(decision.start, decision.end), decision.surface);
+        expect(
+          source.substring(decision.start, decision.end),
+          decision.surface,
+        );
       }
     }
   });

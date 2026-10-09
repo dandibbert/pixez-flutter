@@ -118,7 +118,8 @@ class PronunciationPipeline {
             ruby.reading.isNotEmpty &&
             ruby.start >= 0 &&
             ruby.end <= document.displayText.length &&
-            document.displayText.substring(ruby.start, ruby.end) == ruby.surface)
+            document.displayText.substring(ruby.start, ruby.end) ==
+                ruby.surface)
           PronunciationDecision(
             start: ruby.start,
             end: ruby.end,
@@ -147,7 +148,8 @@ class PronunciationPipeline {
       if (best == null) {
         continue;
       }
-      if (source.substring(best.start, best.end) != best.rule.surface) {
+      final written = source.substring(best.start, best.end);
+      if (!pronunciationSurfaceMatches(written, best.rule.surface)) {
         decisions.add(
           _skipped(source, best, PronunciationReason.invalidSourceRange),
         );
@@ -157,7 +159,7 @@ class PronunciationPipeline {
         PronunciationDecision(
           start: best.start,
           end: best.end,
-          surface: best.rule.surface,
+          surface: written,
           reading: best.rule.reading,
           ruleId: best.rule.id,
           status: PronunciationDecisionStatus.applied,
@@ -182,7 +184,10 @@ class PronunciationPipeline {
       if (protected.any((span) => span.overlaps(hit.start, hit.end))) {
         continue;
       }
-      if (source.substring(hit.start, hit.end) != hit.rule.surface) {
+      if (!pronunciationSurfaceMatches(
+        source.substring(hit.start, hit.end),
+        hit.rule.surface,
+      )) {
         continue;
       }
       kept.add(hit);
@@ -254,8 +259,12 @@ class PronunciationPipeline {
   }
 
   bool _isSentenceEnd(String char) {
-    return char == '。' || char == '！' || char == '？' || char == '\n' ||
-        char == '!' || char == '?';
+    return char == '。' ||
+        char == '！' ||
+        char == '？' ||
+        char == '\n' ||
+        char == '!' ||
+        char == '?';
   }
 
   PronunciationDecision _skipped(

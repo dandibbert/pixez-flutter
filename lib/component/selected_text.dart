@@ -202,16 +202,20 @@ AdaptiveTextSelectionToolbar buildTextSelectionToolbar({
   required String selectedText,
   required bool offerTextAction,
   required String actionLabel,
+  List<ContextMenuButtonItem> extraButtons = const [],
 }) {
   return AdaptiveTextSelectionToolbar.buttonItems(
     anchors: region.contextMenuAnchors,
-    buttonItems: selectionMenuButtons(
-      context: context,
-      region: region,
-      selectedText: selectedText,
-      offerTextAction: offerTextAction,
-      actionLabel: actionLabel,
-    ),
+    buttonItems: [
+      ...selectionMenuButtons(
+        context: context,
+        region: region,
+        selectedText: selectedText,
+        offerTextAction: offerTextAction,
+        actionLabel: actionLabel,
+      ),
+      ...extraButtons,
+    ],
   );
 }
 

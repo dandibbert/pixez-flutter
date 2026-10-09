@@ -13,6 +13,7 @@ const Key novelTtsStopButtonKey = Key('novelTtsStopButton');
 const Key novelTtsNextButtonKey = Key('novelTtsNextButton');
 const Key novelTtsPrevButtonKey = Key('novelTtsPrevButton');
 const Key novelTtsSubtitleKey = Key('novelTtsSubtitle');
+const Key novelTtsAddReadingFromBarKey = Key('novelTtsAddReadingFromBar');
 
 class NovelTtsBar extends StatelessWidget {
   const NovelTtsBar({
@@ -20,11 +21,15 @@ class NovelTtsBar extends StatelessWidget {
     required this.controller,
     required this.onOpenSettings,
     this.onSubtitleTap,
+    this.onAddReading,
   });
 
   final NovelTtsController controller;
   final VoidCallback onOpenSettings;
   final VoidCallback? onSubtitleTap;
+
+  /// Opens the pronunciation dialog for the sentence being spoken.
+  final VoidCallback? onAddReading;
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +140,13 @@ class NovelTtsBar extends StatelessWidget {
                   onPressed: () => _selectVoice(context),
                   icon: const Icon(Icons.record_voice_over_outlined),
                 ),
+                if (onAddReading != null && controller.currentClip != null)
+                  IconButton(
+                    key: novelTtsAddReadingFromBarKey,
+                    tooltip: i18n.novel_tts_reading_add_current,
+                    onPressed: onAddReading,
+                    icon: const Icon(Icons.spellcheck),
+                  ),
                 IconButton(
                   tooltip: i18n.novel_tts_settings,
                   onPressed: onOpenSettings,

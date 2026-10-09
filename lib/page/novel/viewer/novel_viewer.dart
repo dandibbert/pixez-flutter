@@ -53,6 +53,8 @@ import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_chapter_loader.dart';
 import 'package:pixez/page/novel/tts/novel_tts_follow.dart';
 import 'package:pixez/page/novel/tts/novel_tts_text.dart';
+import 'package:pixez/page/novel/tts/novel_tts_reading_editor.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/saf_plugin.dart';
 import 'package:pixez/supportor_plugin.dart';
@@ -480,6 +482,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       page: page,
       totalPages: totalPages,
       pageText: novelTtsTextFromPages(pages, page - 1),
+      pageDocument: novelTtsDocumentFromPages(pages, page - 1),
       prevSeriesId: navigation?.prevNovel?.viewable == true
           ? navigation!.prevNovel!.id
           : null,
@@ -767,6 +770,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
           return NovelTtsBar(
             controller: _tts,
             onOpenSettings: () => openNovelTtsSettings(context),
+            onAddReading: _addTtsReadingForClip,
             onSubtitleTap: _revealTtsClip,
           );
         },
@@ -876,12 +880,60 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     SelectableRegionState editableTextState,
     BuildContext context,
   ) {
+    final selected = _selection.value.trim();
     return buildTextSelectionToolbar(
       context: context,
       region: editableTextState,
       selectedText: _selection.value,
       offerTextAction: supportTranslate,
       actionLabel: I18n.of(context).translate,
+      extraButtons: [
+        // A written form is a word or a name, never a paragraph.
+        if (selected.isNotEmpty &&
+            !selected.contains('\n') &&
+            selected.runes.length <= PronunciationLimits.maxSurfaceScalars)
+          ContextMenuButtonItem(
+            label: I18n.of(context).novel_tts_reading_add_selection,
+            onPressed: () {
+              ContextMenuController.removeAny();
+              _addTtsReading(surface: selected);
+            },
+          ),
+      ],
+    );
+  }
+
+  NovelTtsReadingContext _ttsReadingContext({int? novelId, String? title}) {
+    final novel = _novelStore.novel;
+    final seriesId = novel?.series.id;
+    return NovelTtsReadingContext(
+      workId: '${novelId ?? widget.id}',
+      workTitle: title ?? novel?.title,
+      seriesId: seriesId?.toString(),
+      seriesTitle: novel?.series.title,
+    );
+  }
+
+  Future<void> _addTtsReading({String? surface}) {
+    return addNovelTtsReadingFromReader(
+      context,
+      surface: surface,
+      readingContext: _ttsReadingContext(),
+    );
+  }
+
+  /// Adds a reading for the sentence being spoken. The chapter may already be
+  /// a later one in the series than the page on screen.
+  Future<void> _addTtsReadingForClip() {
+    final clip = _tts.currentClip;
+    final session = _tts.session;
+    return addNovelTtsReadingFromReader(
+      context,
+      previewText: clip?.text,
+      readingContext: _ttsReadingContext(
+        novelId: clip?.novelId ?? session?.novelId,
+        title: session?.title,
+      ),
     );
   }
 

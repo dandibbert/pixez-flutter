@@ -22,6 +22,10 @@ NovelTtsChapter? novelTtsChapterFromStore(NovelStore store) {
     pageTexts: [
       for (var i = 0; i < pages.length; i++) novelTtsTextFromPages(pages, i),
     ],
+    pageDocuments: [
+      for (var i = 0; i < pages.length; i++)
+        novelTtsDocumentFromPages(pages, i),
+    ],
     coverUrl: novel.imageUrls.medium,
     prevSeriesId: navigation?.prevNovel?.viewable == true
         ? navigation!.prevNovel!.id

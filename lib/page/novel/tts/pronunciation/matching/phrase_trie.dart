@@ -14,13 +14,16 @@ class PhraseTrie {
       }
       var node = _root;
       for (final rune in rule.surface.runes) {
-        node = node.children.putIfAbsent(rune, _TrieNode.new);
+        node = node.children.putIfAbsent(
+          foldPronunciationRune(rune),
+          _TrieNode.new,
+        );
       }
       node.rules.add(rule);
       if (rule.surface.length > maxSurfaceUtf16) {
         maxSurfaceUtf16 = rule.surface.length;
       }
-      _firstRunes.add(rule.surface.runes.first);
+      _firstRunes.add(foldPronunciationRune(rule.surface.runes.first));
     }
   }
 
@@ -41,7 +44,7 @@ class PhraseTrie {
         index++;
         continue;
       }
-      if (!_firstRunes.contains(_runeAt(text, index))) {
+      if (!_firstRunes.contains(foldPronunciationRune(_runeAt(text, index)))) {
         index += _utf16LengthAt(text, index);
         continue;
       }
@@ -51,7 +54,7 @@ class PhraseTrie {
         if (!isUtf16ScalarStart(text, cursor)) {
           break;
         }
-        final rune = _runeAt(text, cursor);
+        final rune = foldPronunciationRune(_runeAt(text, cursor));
         final next = node.children[rune];
         if (next == null) {
           break;
@@ -59,13 +62,39 @@ class PhraseTrie {
         node = next;
         cursor += _utf16LengthAt(text, cursor);
         for (final rule in node.rules) {
-          hits.add(PronunciationCandidate(start: index, end: cursor, rule: rule));
+          hits.add(
+            PronunciationCandidate(start: index, end: cursor, rule: rule),
+          );
         }
       }
       index += _utf16LengthAt(text, index);
     }
     return hits;
   }
+}
+
+/// Folds the differences a reader does not hear: full-width ASCII and letter
+/// case. Every mapping stays inside the BMP and keeps one code unit per code
+/// unit, so offsets found on folded text are offsets in the original.
+int foldPronunciationRune(int rune) {
+  var folded = rune;
+  if (folded >= 0xFF01 && folded <= 0xFF5E) {
+    folded -= 0xFEE0;
+  }
+  if (folded >= 0x41 && folded <= 0x5A) {
+    folded += 0x20;
+  }
+  return folded;
+}
+
+String foldPronunciationText(String text) {
+  return String.fromCharCodes(text.runes.map(foldPronunciationRune));
+}
+
+/// Whether [written] in the text is an occurrence of a rule's [surface].
+bool pronunciationSurfaceMatches(String written, String surface) {
+  return written == surface ||
+      foldPronunciationText(written) == foldPronunciationText(surface);
 }
 
 bool isUtf16ScalarStart(String text, int index) {

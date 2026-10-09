@@ -103,6 +103,12 @@ int _compareRules(PronunciationRule a, PronunciationRule b) {
   if (length != 0) {
     return length;
   }
+  // The most recent edit wins, so a correction is never lost to an older
+  // entry for the same written form.
+  final updated = b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs);
+  if (updated != 0) {
+    return updated;
+  }
   return a.id.compareTo(b.id);
 }
 

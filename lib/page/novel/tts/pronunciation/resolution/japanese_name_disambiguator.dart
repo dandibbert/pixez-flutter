@@ -1,3 +1,4 @@
+import 'package:pixez/page/novel/tts/pronunciation/matching/phrase_trie.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/morphology_token.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
@@ -90,7 +91,7 @@ class JapaneseNameDisambiguator {
     required bool analyzerAvailable,
   }) {
     final surface = source.substring(candidate.start, candidate.end);
-    if (surface != candidate.rule.surface) {
+    if (!pronunciationSurfaceMatches(surface, candidate.rule.surface)) {
       return _skip(candidate, surface, PronunciationReason.invalidSourceRange);
     }
     if (candidate.rule.mode == PronunciationMatchMode.force) {
@@ -119,17 +120,33 @@ class JapaneseNameDisambiguator {
     // An honorific or a quoted call cannot follow a conjugated verb, so this
     // evidence is checked before the verb rejection below.
     if (atTokenStart && _startsWithAny(after, japaneseHonorifics)) {
-      return _apply(candidate, surface, PronunciationReason.morphologyProperName);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
     }
     if (atTokenStart && _isQuotedVocative(source, candidate)) {
-      return _apply(candidate, surface, PronunciationReason.morphologyProperName);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
     }
     if (atTokenStart && _isQuotativeWho(after)) {
-      return _apply(candidate, surface, PronunciationReason.quotativeNameContext);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.quotativeNameContext,
+      );
     }
 
     if (token == null) {
-      return _skip(candidate, surface, PronunciationReason.rejectedLowConfidence);
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedLowConfidence,
+      );
     }
     if (_looksLikeVerbOrAdjective(token)) {
       return _skip(
@@ -159,7 +176,11 @@ class JapaneseNameDisambiguator {
       );
     }
     if (_startsWithAny(after, japaneseNameParticles)) {
-      return _apply(candidate, surface, PronunciationReason.nameParticleContext);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.nameParticleContext,
+      );
     }
     return _apply(candidate, surface, PronunciationReason.aliasWithoutConflict);
   }
@@ -176,17 +197,33 @@ class JapaneseNameDisambiguator {
   }) {
     if (_startsWithAny(after, japaneseHonorifics) ||
         _isQuotedVocative(source, candidate)) {
-      return _apply(candidate, surface, PronunciationReason.morphologyProperName);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
     }
     if (_isKanjiAt(source, candidate.start - 1) ||
         _isKanjiAt(source, candidate.end)) {
-      return _skip(candidate, surface, PronunciationReason.rejectedInsideLargerToken);
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedInsideLargerToken,
+      );
     }
     if (_startsWithAny(after, japaneseInflectionSuffixes)) {
-      return _skip(candidate, surface, PronunciationReason.rejectedInflectionSuffix);
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedInflectionSuffix,
+      );
     }
     if (_startsWithAny(after, japaneseNameParticles)) {
-      return _apply(candidate, surface, PronunciationReason.nameParticleContext);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.nameParticleContext,
+      );
     }
     return _skip(candidate, surface, reason);
   }
@@ -231,7 +268,10 @@ class JapaneseNameDisambiguator {
     if (!after.startsWith('って')) {
       return false;
     }
-    return _startsWithAny(after.substring('って'.length), japanesePersonQuestions);
+    return _startsWithAny(
+      after.substring('って'.length),
+      japanesePersonQuestions,
+    );
   }
 
   bool _isKanjiAt(String source, int index) {
