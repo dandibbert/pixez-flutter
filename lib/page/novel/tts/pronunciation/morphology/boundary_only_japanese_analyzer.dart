@@ -24,6 +24,7 @@ class BoundaryOnlyJapaneseAnalyzer implements JapaneseMorphologyAnalyzer {
   Future<MorphologyResult> analyze(
     String text, {
     required String requestId,
+    Iterable<String> userWords = const [],
   }) async {
     return MorphologyResult(tokens: tokenizeJapaneseBoundaries(text));
   }

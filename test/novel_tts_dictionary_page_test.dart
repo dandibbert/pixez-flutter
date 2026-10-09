@@ -5,6 +5,7 @@ import 'package:pixez/er/prefer.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_reading_editor.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/morphology/ipadic_japanese_analyzer.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.dart';
@@ -29,6 +30,10 @@ Future<void> _pumpPage(WidgetTester tester, List<NovelTtsReading> readings) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  // Widget tests run on a fake clock, where the background isolate that
+  // inflates the dictionary never finishes. Load it once for real up front.
+  setUpAll(() => IpadicJapaneseAnalyzer().warmUp());
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await Prefer.init();

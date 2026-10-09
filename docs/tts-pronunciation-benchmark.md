@@ -5,12 +5,68 @@ Flutter 3.47.1 / Dart 3.13.1
 
 ## Decision
 
-**Production analyzer: `LexiconJapaneseAnalyzer` (capability `lexicon-pos`).**
+**Production analyzer: `IpadicJapaneseAnalyzer` (capability `ipadic-lattice`).**
 
-It is backed by `japanese_lexicon_data.dart`, generated from mecab-ipadic
-2.7.0-20070801 by `tool/generate_japanese_lexicon.dart`. `kuromoji` is not a
-dependency; `BoundaryOnlyJapaneseAnalyzer` stays in the tree only as the
-degraded path the worker falls back to when the analyzer throws.
+It is a pure-Dart reimplementation of MeCab's lattice search (dictionary
+lookup, `char.def` unknown-word generation, Viterbi with the IPADIC connection
+matrix) over the complete mecab-ipadic 2.7.0-20070801, compiled by
+`tool/build_ipadic_dictionary.dart` into `assets/tts/ipadic.bin.gz`. The
+user's name aliases are added to the lattice as `名詞,固有名詞,人名,名` with
+cost 7000, so the analyzer decides whether `悟` in `五条悟` or `悟以外` is the
+name. No native code is involved, so it runs on every platform the app and its
+tests run on.
+
+`LexiconJapaneseAnalyzer` (below) stays as the fallback the worker uses while
+the dictionary is still loading or if the asset cannot be read.
+
+### Why the lexicon analyzer was replaced
+
+The lexicon only knew verbs and adjectives, and grouped every other kanji run
+into one token. A registered given name next to a surname or a following noun
+therefore always looked like part of a longer word, which is the most common
+way names are written:
+
+| Text, alias | Lexicon | IPADIC lattice | MeCab (no alias) |
+|---|---|---|---|
+| `五条悟は`, 悟 | kept (`五条悟` one token) | **さとる** | 五条/悟(人名) |
+| `夏油傑が`, 傑 | kept | **すぐる** | 夏/油/傑(人名) |
+| `伏黒恵は`, 恵 | kept | **めぐみ** | 伏黒/恵(人名) |
+| `狗巻棘は`, 棘 | kept | **とげ** | 狗/巻/棘 |
+| `悟以外`, 悟 | kept | **さとる** | 悟(動詞)/以外 |
+| `悟本人` `悟一人`, 悟 | kept | **さとる** | 悟(人名)/本人 |
+| `悟った` `悟り` `覚悟` `恵まれた` `知恵` `傑作` `一歩` | kept | kept | — |
+
+On a 64-sentence probe of name and non-name uses (single-kanji aliases 悟 傑
+恵 光 歩 翼 凛 楓 蓮 司 棘 静 誠 薫 優 実), the lexicon missed 9 names and the
+lattice misses none. The lattice's six remaining errors are all replacements
+where the text means the common word: `光が差し込んだ`, `翼を広げた`,
+`蓮の花`, `棘がある` (morphologically identical to the name — no analyzer can
+separate them, only a work scope can), `凛として` (genuinely ambiguous), and
+`悟空`, which IPADIC does not contain, so MeCab itself reads `悟/空`; a
+`悟空` fixed phrase covers it.
+
+### Fidelity to MeCab
+
+`tool/compare_ipadic_with_mecab.dart` against `mecab` 0.996 with the same
+IPADIC, over five Aozora Bunko novels (6097 lines, 902 707 UTF-16 units,
+594 577 tokens): **3 lines differ**, each a tie between two paths of identical
+total cost where MeCab's node order picks the other one (`又` 副詞/接続詞,
+`主`, `見えなく`). `test/novel_tts_ipadic_test.dart` pins 48 sentences to
+MeCab's output.
+
+### Cost (Linux x86_64 VM, Dart 3.13.5, AOT `dart compile exe`)
+
+| | |
+|---|---:|
+| Asset | **4.23 MB** gzip (`ipadic.bin.gz`), 11.9 MB inflated |
+| Load (read, inflate, map) | **70 ms**; inflating runs in a background isolate |
+| Analysis | **1.5 µs** per UTF-16 unit, ~1.2 ms for an 800-unit region |
+| Resident | the 11.9 MB dictionary, shared by every analyzer in the process |
+
+The asset is already compressed, so an APK or IPA grows by about its size.
+The first alias candidate in a process waits up to 1.5 s for the load and is
+served by the lexicon analyzer if it takes longer; the load keeps going and
+the next region uses the lattice.
 
 ## Why not kuromoji (Phase 0, 2026-08-30)
 
@@ -21,11 +77,13 @@ degraded path the worker falls back to when the analyzer throws.
 | Warm 500-character p95 | ≤ 20 ms | Not reached; the tokenizer never became ready. |
 | Offset trust | must map to UTF-16 | Splits on `[、。]` and reports `word_position` as the last-token position plus an in-sentence `startPos`. Offsets reset across sentences and are not source UTF-16 ranges. |
 
-The plan forbids shipping kuromoji until every hard gate passes, and forbids
-Sudachi/MeCab/Rust bridges as a fallback. What it does allow is a lexicon
-derived from IPADIC, which is what ships.
+The first plan forbade kuromoji until every hard gate passed, and native
+MeCab or Rust bridges altogether, so a lexicon derived from IPADIC shipped
+instead. The lattice analyzer above keeps that constraint (no native code)
+while using all of IPADIC; its load passes the same 1.2 s gate by a wide
+margin because the dictionary is binary typed data, not Dart source.
 
-## Lexicon analyzer measurements
+## Lexicon analyzer (fallback) measurements
 
 Reproduce with `flutter test test/novel_tts_pronunciation_test.dart` for
 behaviour; the numbers below come from an in-process harness on this VM
@@ -73,8 +131,10 @@ non-name uses: 悟った, 悟り, 恵まれた, 知恵, 悟らない, 悟れば.
 
 ## Capability strings
 
+- `ipadic-lattice` — full IPADIC lattice search with the aliases in the
+  lattice. What the settings UI reports.
 - `lexicon-pos` — IPADIC-derived part of speech, dictionary form, conjugation
-  type. What the settings UI reports.
+  type. Used while the dictionary loads or if it cannot.
 - `boundary-only` — script runs only, no part of speech.
 - `unavailable` — the analyzer threw or timed out. Aliases fall back to the
   honorific, quote, and okurigana lists and skip anything they cannot justify.

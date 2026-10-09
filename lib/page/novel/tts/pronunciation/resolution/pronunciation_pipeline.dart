@@ -60,6 +60,12 @@ class PronunciationPipeline {
         analyzerCapability: _worker.capability,
       );
     }
+    // The aliases themselves go into the lattice, written as they appear in
+    // the text, so the analyzer can choose the name over a dictionary word.
+    final userWords = {
+      for (final candidate in aliases)
+        source.substring(candidate.start, candidate.end),
+    };
     for (final region in _analysisRegions(source, aliases)) {
       final regionText = source.substring(region.start, region.end);
       final morphology = analyzerReady
@@ -67,6 +73,7 @@ class PronunciationPipeline {
               text: regionText,
               requestId: '$sessionId:${region.start}',
               generation: gen,
+              userWords: userWords,
             )
           : null;
       for (final candidate in aliases) {

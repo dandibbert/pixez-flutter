@@ -482,7 +482,7 @@
   "novel_tts_mode_force": "强制替换（高级）",
   "novel_tts_mode_force_warning": "若把「悟」强制换成「さとる」，「悟った」会错读成「さとるった」。",
   "novel_tts_preview_spoken": "朗读",
-  "novel_tts_analyzer_lexicon": "智能人名判定：词典级形态分析。作为动词、形容词或熟语出现时保持原文。",
+  "novel_tts_analyzer_lexicon": "智能人名判定：用完整 IPADIC 词典做形态分析（结果与 MeCab 一致），并把人名别名加入词典参与切分。作为动词、形容词或其他词的一部分出现时保持原文。",
   "novel_tts_preview_source": "预览文本",
   "novel_tts_preview_applied": "已替换",
   "novel_tts_preview_skipped": "保持原文",

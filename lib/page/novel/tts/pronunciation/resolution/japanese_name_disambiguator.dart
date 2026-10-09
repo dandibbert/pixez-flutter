@@ -114,6 +114,15 @@ class JapaneseNameDisambiguator {
       );
     }
 
+    if (morphology.exactBoundaries) {
+      return _decideWithLattice(
+        source: source,
+        candidate: candidate,
+        surface: surface,
+        tokens: morphology.tokens,
+      );
+    }
+
     final token = _coveringToken(morphology.tokens, candidate);
     final atTokenStart = token == null || token.start == candidate.start;
 
@@ -183,6 +192,105 @@ class JapaneseNameDisambiguator {
       );
     }
     return _apply(candidate, surface, PronunciationReason.aliasWithoutConflict);
+  }
+
+  /// A full lattice search decides the word boundaries, so the alias is the
+  /// name exactly when the best path has it as whole words that are not a
+  /// verb or an adjective. Nothing is inferred from the characters around it.
+  PronunciationDecision _decideWithLattice({
+    required String source,
+    required PronunciationCandidate candidate,
+    required String surface,
+    required List<MorphologyToken> tokens,
+  }) {
+    final inside = <MorphologyToken>[];
+    MorphologyToken? straddling;
+    MorphologyToken? next;
+    for (final token in tokens) {
+      if (token.end <= candidate.start) {
+        continue;
+      }
+      if (token.start >= candidate.end) {
+        next ??= token;
+        continue;
+      }
+      if (token.start < candidate.start || token.end > candidate.end) {
+        straddling ??= token;
+      } else {
+        inside.add(token);
+      }
+    }
+    // `悟って誰` parses as the verb `悟る`, but nobody asks who a verb is.
+    if (straddling == null || straddling.start == candidate.start) {
+      if (_isQuotativeWho(source.substring(candidate.end))) {
+        return _apply(
+          candidate,
+          surface,
+          PronunciationReason.quotativeNameContext,
+        );
+      }
+    }
+    if (straddling != null) {
+      return _skip(
+        candidate,
+        surface,
+        _isInflecting(straddling)
+            ? PronunciationReason.rejectedInflectionSuffix
+            : PronunciationReason.rejectedInsideLargerToken,
+      );
+    }
+    if (inside.isEmpty) {
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedLowConfidence,
+      );
+    }
+    if (inside.any(_isInflecting)) {
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedVerbOrAdjective,
+      );
+    }
+    // The dictionary preferred a suffix or prefix reading (`一歩`, `御恵`):
+    // the characters attach to the neighbouring word.
+    if (inside.every((token) => !token.isUserWord) && inside.any(_isAffix)) {
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedInsideLargerToken,
+      );
+    }
+    if (inside.any(
+      (token) => token.isUserWord || token.partOfSpeech.contains('人名'),
+    )) {
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
+    }
+    if (next != null && next.partOfSpeech.firstOrNull == '助詞') {
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.nameParticleContext,
+      );
+    }
+    return _apply(candidate, surface, PronunciationReason.aliasWithoutConflict);
+  }
+
+  bool _isAffix(MorphologyToken token) {
+    final pos = token.partOfSpeech;
+    return pos.firstOrNull == '接頭詞' || (pos.length > 1 && pos[1] == '接尾');
+  }
+
+  /// Verbs, adjectives and auxiliaries: the characters are being conjugated,
+  /// not named.
+  bool _isInflecting(MorphologyToken token) {
+    final pos = token.partOfSpeech.firstOrNull;
+    return pos == '動詞' || pos == '形容詞' || pos == '助動詞';
   }
 
   /// Degraded path: no part of speech, so only boundaries and the honorific and

@@ -3,7 +3,11 @@ import 'package:pixez/page/novel/tts/pronunciation/models/morphology_token.dart'
 class MorphologyOffsetMapper {
   const MorphologyOffsetMapper();
 
-  MorphologyResult mapToRegion(String region, Iterable<MorphologyToken> raw) {
+  MorphologyResult mapToRegion(
+    String region,
+    Iterable<MorphologyToken> raw, {
+    bool exactBoundaries = false,
+  }) {
     final mapped = <MorphologyToken>[];
     var searchFrom = 0;
     for (final token in raw) {
@@ -54,11 +58,12 @@ class MorphologyOffsetMapper {
           partOfSpeech: token.partOfSpeech,
           conjugationType: token.conjugationType,
           conjugationForm: token.conjugationForm,
+          isUserWord: token.isUserWord,
         ),
       );
       searchFrom = end;
     }
-    return MorphologyResult(tokens: mapped);
+    return MorphologyResult(tokens: mapped, exactBoundaries: exactBoundaries);
   }
 
   int? _nextSurface(String region, String surface, int from) {

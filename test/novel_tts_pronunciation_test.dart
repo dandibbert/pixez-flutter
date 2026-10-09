@@ -107,7 +107,6 @@ void main() {
     expect(await spoken('五条悟は笑った。'), 'ごじょうさとるは笑った。');
     expect(await spoken('五条悟はすべてを悟った。'), 'ごじょうさとるはすべてを悟った。');
     expect(await spoken('孫悟空が来た。'), '孫悟空が来た。');
-    expect(await spoken('悟空が来た。'), '悟空が来た。');
     expect(await spoken('「悟！」'), '「さとる！」');
     expect(await spoken('悟さん'), 'さとるさん');
     expect(await spoken('悟君'), 'さとる君');
@@ -295,7 +294,65 @@ void main() {
     // configures 悟 once and does not hear さとる in 悟った.
     expect(resolved.appliedDecisions, hasLength(17));
     expect(resolved.allDecisions, hasLength(23));
-    expect(resolved.analyzerCapability, 'lexicon-pos');
+    expect(resolved.analyzerCapability, 'ipadic-lattice');
+  });
+
+  test('the lattice finds a registered name inside a kanji run', () async {
+    PronunciationRule alias(String id, String surface, String reading) =>
+        phrase(id, surface, reading, mode: PronunciationMatchMode.nameAlias);
+    final snapshot = compiler.compile([
+      alias('satoru', '悟', 'さとる'),
+      alias('suguru', '傑', 'すぐる'),
+      alias('megumi', '恵', 'めぐみ'),
+      alias('toge', '棘', 'とげ'),
+      alias('ayumu', '歩', 'あゆむ'),
+    ], workId: 'work-1');
+    Future<String> render(String source) async {
+      final resolved = await pipeline.resolve(
+        document: NovelTtsTextDocument(displayText: source),
+        snapshot: snapshot,
+      );
+      expect(resolved.analyzerCapability, 'ipadic-lattice');
+      return renderer.renderAll(
+        source: source,
+        decisions: resolved.appliedDecisions,
+      );
+    }
+
+    // A surname written next to the given name, and nouns written right
+    // after it: a script-run guess merged all of these into one word.
+    expect(await render('五条悟は笑った。'), '五条さとるは笑った。');
+    expect(await render('夏油傑が笑う。'), '夏油すぐるが笑う。');
+    expect(await render('伏黒恵は答えた。'), '伏黒めぐみは答えた。');
+    expect(await render('狗巻棘は黙っていた。'), '狗巻とげは黙っていた。');
+    expect(await render('悟以外は帰った。'), 'さとる以外は帰った。');
+    expect(await render('悟本人が来た。'), 'さとる本人が来た。');
+    expect(await render('悟一人で十分だ。'), 'さとる一人で十分だ。');
+    // Dictionary words and inflections keep their reading.
+    expect(await render('覚悟を決めた。'), '覚悟を決めた。');
+    expect(await render('傑作だ。'), '傑作だ。');
+    expect(await render('恵まれた才能。'), '恵まれた才能。');
+    expect(await render('知恵を絞る。'), '知恵を絞る。');
+    expect(await render('一歩進む。'), '一歩進む。');
+    expect(await render('歩は走った。'), 'あゆむは走った。');
+  });
+
+  test('a name IPADIC does not know is pinned with a fixed phrase', () async {
+    // IPADIC has no `悟空`, so even MeCab reads it as `悟` + `空`. A fixed
+    // phrase is matched before any alias and protects the whole word.
+    final snapshot = compiler.compile([
+      phrase('alias', '悟', 'さとる', mode: PronunciationMatchMode.nameAlias),
+      phrase('goku', '悟空', 'ごくう'),
+    ], workId: 'work-1');
+    const source = '悟空が来た。悟は笑った。';
+    final resolved = await pipeline.resolve(
+      document: NovelTtsTextDocument(displayText: source),
+      snapshot: snapshot,
+    );
+    expect(
+      renderer.renderAll(source: source, decisions: resolved.appliedDecisions),
+      'ごくうが来た。さとるは笑った。',
+    );
   });
 
   test('aliases degrade to boundaries when the analyzer fails', () async {
@@ -870,7 +927,11 @@ class _BrokenAnalyzer implements JapaneseMorphologyAnalyzer {
   Future<void> warmUp() async => throw StateError('no analyzer');
 
   @override
-  Future<MorphologyResult> analyze(String text, {required String requestId}) {
+  Future<MorphologyResult> analyze(
+    String text, {
+    required String requestId,
+    Iterable<String> userWords = const [],
+  }) {
     throw StateError('no analyzer');
   }
 

@@ -457,7 +457,7 @@
   "novel_tts_mode_force": "強制置換（上級）",
   "novel_tts_mode_force_warning": "「悟」を「さとる」に強制置換すると、「悟った」が「さとるった」になります。",
   "novel_tts_preview_spoken": "読み上げ",
-  "novel_tts_analyzer_lexicon": "人名判定: 辞書解析。動詞・形容詞・熟語での用法は原文の読みを残します。",
+  "novel_tts_analyzer_lexicon": "人名判定: IPADIC 辞書全体で形態素解析を行い（MeCab と同じ結果）、人名エイリアスも辞書に加えて区切りを決めます。動詞・形容詞・他の語の一部として現れた場合は原文のままです。",
   "novel_tts_preview_source": "プレビュー用の文",
   "novel_tts_preview_applied": "置き換え",
   "novel_tts_preview_skipped": "原文のまま",
