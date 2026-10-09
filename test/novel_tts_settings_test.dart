@@ -444,4 +444,13 @@ void main() {
       });
     },
   );
+
+  test('the ruby switch survives a JSON round trip and defaults to on', () {
+    expect(const NovelTtsSettings().useRubyReadings, isTrue);
+    expect(NovelTtsSettings.fromJson(const {}).useRubyReadings, isTrue);
+    final off = NovelTtsSettings.fromJson(
+      const NovelTtsSettings(useRubyReadings: false).toJson(),
+    );
+    expect(off.useRubyReadings, isFalse);
+  });
 }

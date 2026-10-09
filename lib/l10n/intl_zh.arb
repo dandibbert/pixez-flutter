@@ -590,5 +590,7 @@
   "novel_tts_reading_add_selection": "添加读音",
   "novel_tts_reading_add_current": "为当前句添加读音",
   "novel_tts_reading_saved": "已保存 {entry}",
-  "novel_tts_reading_no_match": "没有匹配的词条"
+  "novel_tts_reading_no_match": "没有匹配的词条",
+  "novel_tts_use_ruby": "朗读作者注音",
+  "novel_tts_use_ruby_hint": "用正文里《》中的注音代替原文朗读。只有点号或符号的注音（例如用作强调的・・）始终不读。"
 }

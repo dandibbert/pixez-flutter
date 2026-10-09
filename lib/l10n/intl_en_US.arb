@@ -663,5 +663,7 @@
       }
     }
   },
-  "novel_tts_reading_no_match": "No entries match"
+  "novel_tts_reading_no_match": "No entries match",
+  "novel_tts_use_ruby": "Read author ruby",
+  "novel_tts_use_ruby_hint": "Speak the 《》 reading in place of the base text. Ruby made only of dots or symbols, such as emphasis marks, is never read."
 }

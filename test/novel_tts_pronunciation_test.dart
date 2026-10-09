@@ -337,6 +337,39 @@ void main() {
     expect(await render('歩は走った。'), 'あゆむは走った。');
   });
 
+  test('emphasis ruby is not read, and ruby can be turned off', () async {
+    const source = '本当に宇宙へ行く。';
+    const document = NovelTtsTextDocument(
+      displayText: source,
+      rubyAnnotations: [
+        // 傍点: one dot per character, used for emphasis.
+        NovelTtsRubyAnnotation(start: 0, end: 2, surface: '本当', reading: '・・'),
+        NovelTtsRubyAnnotation(start: 3, end: 5, surface: '宇宙', reading: 'そら'),
+      ],
+    );
+    final snapshot = compiler.compile(const []);
+    Future<String> render({bool useRuby = true}) async {
+      final resolved = await pipeline.resolve(
+        document: document,
+        snapshot: snapshot,
+        useRubyReadings: useRuby,
+      );
+      return renderer.renderAll(
+        source: source,
+        decisions: resolved.appliedDecisions,
+      );
+    }
+
+    expect(await render(), '本当にそらへ行く。');
+    expect(await render(useRuby: false), source);
+    for (final mark in ['・・', '﹅﹅', 'ヽヽ', '●●', '、、', '…', 'ーー']) {
+      expect(isSpeakableRubyReading(mark), isFalse, reason: mark);
+    }
+    for (final reading in ['そら', 'マジ', 'ﾏｼﾞ', '本気', 'RPG', '2']) {
+      expect(isSpeakableRubyReading(reading), isTrue, reason: reading);
+    }
+  });
+
   test('a name IPADIC does not know is pinned with a fixed phrase', () async {
     // IPADIC has no `悟空`, so even MeCab reads it as `悟` + `空`. A fixed
     // phrase is matched before any alias and protects the whole word.

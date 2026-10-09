@@ -566,5 +566,7 @@
   "novel_tts_reading_add_selection": "読みを登録",
   "novel_tts_reading_add_current": "この文に読みを登録",
   "novel_tts_reading_saved": "{entry} を保存しました",
-  "novel_tts_reading_no_match": "一致する項目がありません"
+  "novel_tts_reading_no_match": "一致する項目がありません",
+  "novel_tts_use_ruby": "作者のルビを読む",
+  "novel_tts_use_ruby_hint": "《》のルビを本文の代わりに読み上げます。傍点など記号だけのルビは常に読みません。"
 }

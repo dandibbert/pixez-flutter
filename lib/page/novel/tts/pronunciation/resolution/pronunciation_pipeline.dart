@@ -7,6 +7,33 @@ import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation
 import 'package:pixez/page/novel/tts/pronunciation/morphology/pronunciation_worker.dart';
 import 'package:pixez/page/novel/tts/pronunciation/resolution/japanese_name_disambiguator.dart';
 
+/// Whether an author's ruby is a reading rather than decoration.
+///
+/// Authors also use ruby for emphasis marks (傍点) such as `・・`, `﹅﹅` or
+/// `ヽヽ`. Reading those in place of the base text would drop the words, so
+/// a ruby only counts when it has at least one kana, kanji, letter or digit.
+bool isSpeakableRubyReading(String reading) {
+  for (final rune in reading.runes) {
+    if ((rune >= 0x3041 && rune <= 0x3096) || // hiragana
+        (rune >= 0x30A1 && rune <= 0x30FA) || // katakana, without ・ and ー
+        (rune >= 0xFF66 && rune <= 0xFF9D) || // half-width katakana
+        (rune >= 0x4E00 && rune <= 0x9FFF) ||
+        (rune >= 0x3400 && rune <= 0x4DBF) ||
+        (rune >= 0xF900 && rune <= 0xFAFF) ||
+        (rune >= 0x20000 && rune <= 0x2FA1F) ||
+        rune == 0x3005 || // 々
+        (rune >= 0x30 && rune <= 0x39) ||
+        (rune >= 0x41 && rune <= 0x5A) ||
+        (rune >= 0x61 && rune <= 0x7A) ||
+        (rune >= 0xFF10 && rune <= 0xFF19) ||
+        (rune >= 0xFF21 && rune <= 0xFF3A) ||
+        (rune >= 0xFF41 && rune <= 0xFF5A)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class PronunciationPipeline {
   PronunciationPipeline({
     PronunciationWorker? worker,
@@ -24,11 +51,12 @@ class PronunciationPipeline {
     required PronunciationSnapshot snapshot,
     String sessionId = 'session',
     int? generation,
+    bool useRubyReadings = true,
   }) async {
     final source = document.displayText;
     final gen = generation ?? _worker.sessionGeneration;
     final decisions = <PronunciationDecision>[
-      ..._rubyDecisions(document),
+      if (useRubyReadings) ..._rubyDecisions(document),
       ..._exactDecisions(source, snapshot),
     ];
     final protected = resolvePronunciationOverlaps(decisions);
@@ -122,7 +150,7 @@ class PronunciationPipeline {
     return [
       for (final ruby in document.rubyAnnotations)
         if (ruby.surface.isNotEmpty &&
-            ruby.reading.isNotEmpty &&
+            isSpeakableRubyReading(ruby.reading) &&
             ruby.start >= 0 &&
             ruby.end <= document.displayText.length &&
             document.displayText.substring(ruby.start, ruby.end) ==

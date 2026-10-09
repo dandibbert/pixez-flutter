@@ -44,6 +44,7 @@ const Key novelTtsProviderOpenaiKey = Key('novelTtsProviderOpenai');
 const Key novelTtsProviderCustomKey = Key('novelTtsProviderCustom');
 const Key novelTtsSplitCharsFieldKey = Key('novelTtsSplitCharsField');
 const Key novelTtsAutoContinueKey = Key('novelTtsAutoContinue');
+const Key novelTtsUseRubyKey = Key('novelTtsUseRuby');
 const Key novelTtsCustomUrlFieldKey = Key('novelTtsCustomUrlField');
 const Key novelTtsReadingsSectionKey = Key('novelTtsReadingsSection');
 
@@ -522,6 +523,16 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          SwitchListTile(
+                            key: novelTtsUseRubyKey,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(i18n.novel_tts_use_ruby),
+                            subtitle: Text(i18n.novel_tts_use_ruby_hint),
+                            value: _settings.useRubyReadings,
+                            onChanged: (value) => _persist(
+                              _draft().copyWith(useRubyReadings: value),
+                            ),
+                          ),
                           Text(
                             i18n.novel_tts_analyzer_lexicon,
                             style: Theme.of(context).textTheme.bodySmall,

@@ -336,6 +336,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         current != null &&
         chapter != null &&
         (previous.splitChars != loaded.splitChars ||
+            previous.useRubyReadings != loaded.useRubyReadings ||
             jsonEncode(
                   previous.readings.map((item) => item.toJson()).toList(),
                 ) !=
@@ -1248,6 +1249,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
               snapshot: snapshot,
               sessionId: '$id:${page + pageOffset}',
               generation: generation,
+              useRubyReadings: (_playbackSettings ?? settings).useRubyReadings,
             );
       if (!_isSession(generation)) return const [];
       if (snapshot != null &&
