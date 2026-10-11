@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       flutter_version:
-        description: Flutter version to build with (empty for the latest stable)
+        description: Flutter version to build with (empty for the pinned default)
         required: false
         default: ''
   pull_request:
@@ -30,7 +30,10 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ inputs.flutter_version }}
+          # 3.47.7 changed SemanticsObject parenting, and Shortcuts' Get
+          # Selected Text stopped seeing the reader's selection on device.
+          # Stay on the last version verified on an iPhone until that is fixed.
+          flutter-version: ${{ inputs.flutter_version || '3.47.5' }}
 
       - name: Flutter version
         run: flutter --version
