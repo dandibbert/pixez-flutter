@@ -4,9 +4,17 @@
 #import <objc/runtime.h>
 
 static NSString *pixezSelectedText = @"";
+static IMP pixezOrigIsAccessibilityElement = NULL;
+static IMP pixezOrigAccessibilityLabel = NULL;
+static IMP pixezOrigAccessibilityValue = NULL;
 
 void PixezSetSelectedText(NSString *text) {
   pixezSelectedText = text.length ? [text copy] : @"";
+}
+
+static BOOL PixezIsFlutterView(id object) {
+  Class viewClass = NSClassFromString(@"FlutterView");
+  return viewClass != Nil && [object isKindOfClass:viewClass];
 }
 
 static NSString *PixezSelectedTextMethod(id self, SEL cmd) {
@@ -16,42 +24,108 @@ static NSString *PixezSelectedTextMethod(id self, SEL cmd) {
 }
 
 static NSRange PixezSelectedTextRangeMethod(id self, SEL cmd) {
+  (void)self;
   (void)cmd;
   if (pixezSelectedText.length == 0) {
     return NSMakeRange(NSNotFound, 0);
   }
-  NSString *haystack = nil;
-  if ([self respondsToSelector:@selector(accessibilityLabel)]) {
-    haystack = [self accessibilityLabel];
-  }
-  if (haystack.length == 0 && [self respondsToSelector:@selector(accessibilityValue)]) {
-    haystack = [self accessibilityValue];
-  }
-  if (haystack.length == 0) {
-    Class viewClass = NSClassFromString(@"FlutterView");
-    if (viewClass != Nil && [self isKindOfClass:viewClass]) {
-      return NSMakeRange(0, pixezSelectedText.length);
-    }
-    return NSMakeRange(NSNotFound, 0);
-  }
-  NSRange found = [haystack rangeOfString:pixezSelectedText];
-  if (found.location == NSNotFound) {
-    return NSMakeRange(NSNotFound, 0);
-  }
-  return found;
+  return NSMakeRange(0, pixezSelectedText.length);
 }
 
-static void PixezAddSelectedTextMethods(Class cls) {
+static void PixezCopy(id self, SEL cmd, id sender) {
+  (void)self;
+  (void)cmd;
+  (void)sender;
+  if (pixezSelectedText.length == 0) {
+    return;
+  }
+  [UIPasteboard generalPasteboard].string = pixezSelectedText;
+}
+
+static BOOL PixezIsAccessibilityElement(id self, SEL cmd) {
+  BOOL original = NO;
+  if (pixezOrigIsAccessibilityElement != NULL) {
+    original = ((BOOL(*)(id, SEL))pixezOrigIsAccessibilityElement)(self, cmd);
+  }
+  if (pixezSelectedText.length == 0 || !PixezIsFlutterView(self)) {
+    return original;
+  }
+  return YES;
+}
+
+static NSString *PixezAccessibilityLabel(id self, SEL cmd) {
+  if (pixezSelectedText.length > 0 && PixezIsFlutterView(self)) {
+    return pixezSelectedText;
+  }
+  if (pixezOrigAccessibilityLabel == NULL) {
+    return nil;
+  }
+  return ((NSString * (*)(id, SEL))pixezOrigAccessibilityLabel)(self, cmd);
+}
+
+static NSString *PixezAccessibilityValue(id self, SEL cmd) {
+  if (pixezSelectedText.length > 0 && PixezIsFlutterView(self)) {
+    return pixezSelectedText;
+  }
+  if (pixezOrigAccessibilityValue == NULL) {
+    return nil;
+  }
+  return ((NSString * (*)(id, SEL))pixezOrigAccessibilityValue)(self, cmd);
+}
+
+static void PixezInstall(Class cls, SEL sel, IMP imp, const char *types, IMP *original) {
   if (cls == Nil) {
     return;
   }
+  Method method = class_getInstanceMethod(cls, sel);
+  if (method == NULL) {
+    class_addMethod(cls, sel, imp, types);
+    return;
+  }
+  Class owner = class_getSuperclass(cls);
+  Method superMethod = owner == Nil ? NULL : class_getInstanceMethod(owner, sel);
+  if (superMethod != NULL && method_getImplementation(method) == method_getImplementation(superMethod)) {
+    if (original != NULL) {
+      *original = method_getImplementation(method);
+    }
+    class_addMethod(cls, sel, imp, types);
+    return;
+  }
+  IMP previous = method_setImplementation(method, imp);
+  if (original != NULL && *original == NULL) {
+    *original = previous;
+  }
+}
+
+static void PixezAddSelectedText(Class cls) {
+  if (cls == Nil) {
+    return;
+  }
+  class_addMethod(cls, @selector(accessibilitySelectedText), (IMP)PixezSelectedTextMethod, "@@:");
   class_addMethod(cls, NSSelectorFromString(@"_accessibilitySelectedText"),
                   (IMP)PixezSelectedTextMethod, "@@:");
+  class_addMethod(cls, @selector(accessibilitySelectedTextRange), (IMP)PixezSelectedTextRangeMethod,
+                  "{_NSRange=QQ}@:");
   class_addMethod(cls, NSSelectorFromString(@"_accessibilitySelectedTextRange"),
                   (IMP)PixezSelectedTextRangeMethod, "{_NSRange=QQ}@:");
+  class_addMethod(cls, @selector(copy:), (IMP)PixezCopy, "v@:@");
 }
 
 void PixezInstallSelectedTextAccessibility(void) {
-  PixezAddSelectedTextMethods(NSClassFromString(@"SemanticsObject"));
-  PixezAddSelectedTextMethods(NSClassFromString(@"FlutterView"));
+  static BOOL installed = NO;
+  if (installed) {
+    return;
+  }
+  installed = YES;
+
+  Class viewClass = NSClassFromString(@"FlutterView");
+  PixezInstall(viewClass, @selector(isAccessibilityElement), (IMP)PixezIsAccessibilityElement, "B@:",
+               &pixezOrigIsAccessibilityElement);
+  PixezInstall(viewClass, @selector(accessibilityLabel), (IMP)PixezAccessibilityLabel, "@@:",
+               &pixezOrigAccessibilityLabel);
+  PixezInstall(viewClass, @selector(accessibilityValue), (IMP)PixezAccessibilityValue, "@@:",
+               &pixezOrigAccessibilityValue);
+  PixezAddSelectedText(viewClass);
+  PixezAddSelectedText(NSClassFromString(@"SemanticsObject"));
+  PixezAddSelectedText(NSClassFromString(@"FlutterViewController"));
 }
