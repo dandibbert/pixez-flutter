@@ -1,6 +1,7 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/component/search_date_filter.dart';
 import 'package:pixez/lighting/lighting_store.dart';
@@ -8,6 +9,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_lighting_list.dart';
 import 'package:pixez/page/novel/search/novel_search_filter_sheet.dart';
+import 'package:pixez/page/novel/search/novel_search_page.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/store/search_result_mode.dart';
 
@@ -49,12 +51,21 @@ class _NovelResultListState extends State<NovelResultList> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 16.0),
-                child: Text(
-                  _query.word,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              // Tapping the query reopens search with it, ready to edit.
+              child: InkWell(
+                onTap: () {
+                  Leader.push(
+                    context,
+                    NovelSearchPage(initialQuery: _query.word),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16.0),
+                  child: Text(
+                    _query.word,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ),

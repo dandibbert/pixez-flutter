@@ -18,6 +18,7 @@ import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
+import 'package:pixez/page/novel/tts/pronunciation/morphology/ipadic_japanese_analyzer.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
@@ -34,6 +35,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // Widget tests run on a fake clock, where the background isolate that
+  // inflates the dictionary never finishes. Load it once for real up front.
+  setUpAll(() => IpadicJapaneseAnalyzer().warmUp());
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -1292,11 +1296,15 @@ void main() {
     await tester.enterText(find.byKey(novelTtsReadingValueFieldKey), 'きょう');
     await tester.tap(find.byKey(novelTtsReadingSaveKey));
     await tester.pumpAndSettle();
-    expect(find.text('今日  →  きょう'), findsOneWidget);
+    expect(find.text('今日 → きょう'), findsOneWidget);
     expect(NovelTtsSettings.load().readings, [
-      const NovelTtsReading(surface: '今日', reading: 'きょう'),
+      const NovelTtsReading(
+        surface: '今日',
+        reading: 'きょう',
+        mode: PronunciationMatchMode.exactPhrase,
+      ),
     ]);
-    expect(find.text('Fixed phrase'), findsOneWidget);
+    expect(find.text('Fixed phrase · All works'), findsOneWidget);
   });
 
   testWidgets('a lone kanji is saved as a name alias, not a fixed phrase', (
@@ -1327,7 +1335,7 @@ void main() {
       NovelTtsSettings.load().readings.single.mode,
       PronunciationMatchMode.nameAlias,
     );
-    expect(find.text('Name alias'), findsOneWidget);
+    expect(find.text('Name alias · All works'), findsOneWidget);
   });
 
   testWidgets('captures the mark editor previewing a name alias', (

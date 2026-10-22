@@ -1,19 +1,13 @@
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
-import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.dart';
 
 class PronunciationMigration {
   const PronunciationMigration();
 
   static final _han = RegExp(r'^[\u3400-\u9FFF\uF900-\uFAFF]+$');
-  static final _kana = RegExp(
-    r'^[\u3040-\u309F\u30A0-\u30FFー]+$',
-  );
+  static final _kana = RegExp(r'^[\u3040-\u309F\u30A0-\u30FFー]+$');
 
-  List<PronunciationRule> migrateV1(
-    Iterable<NovelTtsReading> readings, {
-    int nowMs = 0,
-  }) {
+  List<PronunciationRule> migrateV1(Iterable<NovelTtsReading> readings) {
     final rules = <PronunciationRule>[];
     var index = 0;
     for (final reading in readings) {
@@ -25,16 +19,19 @@ class PronunciationMigration {
       final mode = trimmed.mode ?? classified.mode;
       rules.add(
         PronunciationRule(
-          id: 'migrated-v1-$index',
+          id: trimmed.id ?? 'migrated-v1-$index',
           surface: trimmed.surface,
           reading: trimmed.reading,
           mode: mode,
-          scope: const PronunciationScope(type: PronunciationScopeType.global),
+          scope: trimmed.scope,
           priority: 0,
           // Only the guessed classification may leave a rule off; a mode the
           // user picked is a mode the user wants applied.
-          enabled: trimmed.mode != null || classified.enabled,
-          updatedAtEpochMs: nowMs,
+          enabled: trimmed.isActive,
+          // Entries without an edit time fall back to their position, which
+          // keeps "later in the list wins" for them and loses to any entry
+          // edited since.
+          updatedAtEpochMs: trimmed.updatedAt > 0 ? trimmed.updatedAt : index,
           needsReview: trimmed.mode == null && classified.needsReview,
         ),
       );

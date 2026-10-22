@@ -38,6 +38,7 @@ class LexiconJapaneseAnalyzer implements JapaneseMorphologyAnalyzer {
   Future<MorphologyResult> analyze(
     String text, {
     required String requestId,
+    Iterable<String> userWords = const [],
   }) async {
     await warmUp();
     return MorphologyResult(tokens: tokenize(text));

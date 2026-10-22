@@ -13,6 +13,9 @@ import 'package:pixez/page/novel/tts/novel_tts_now_playing.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/page/novel/tts/pronunciation/matching/pronunciation_compiler.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.dart';
+import 'package:pixez/page/novel/tts/pronunciation/models/resolved_pronunciation_text.dart';
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -288,6 +291,63 @@ void main() {
         );
       }
       expect(reader.session?.novelId, 20);
+      await reader.stop();
+    },
+  );
+
+  test(
+    'a continued chapter keeps its ruby and its own work-scoped readings',
+    () async {
+      final settings = _settings.copyWith(
+        readings: const [
+          NovelTtsReading(
+            id: 'teacher',
+            surface: '先生',
+            reading: 'せんせい',
+            mode: PronunciationMatchMode.exactPhrase,
+            scope: PronunciationScope(
+              type: PronunciationScopeType.work,
+              scopeId: '2',
+            ),
+          ),
+        ],
+      );
+      final reader = controller(settings: () => settings);
+      addTearDown(reader.dispose);
+      reader.onLoadChapter = (id) async => NovelTtsChapter(
+        novelId: id,
+        title: 'Story $id',
+        author: 'Author',
+        pageTexts: const ['先生と彼方へ。'],
+        pageDocuments: const [
+          NovelTtsTextDocument(
+            displayText: '先生と彼方へ。',
+            rubyAnnotations: [
+              NovelTtsRubyAnnotation(
+                start: 3,
+                end: 5,
+                surface: '彼方',
+                reading: 'かなた',
+              ),
+            ],
+          ),
+        ],
+      );
+      await reader.start(
+        novelId: 1,
+        title: 'Story 1',
+        author: 'Author',
+        page: 1,
+        totalPages: 1,
+        pageText: '先生が来た。',
+        nextSeriesId: 2,
+      );
+      await _until(() => reader.clips.any((clip) => clip.novelId == 2));
+      final first = reader.clips.firstWhere((clip) => clip.novelId == 1);
+      final second = reader.clips.firstWhere((clip) => clip.novelId == 2);
+      // The entry belongs to work 2 only.
+      expect(first.spokenText, '先生が来た。');
+      expect(second.spokenText, 'せんせいとかなたへ。');
       await reader.stop();
     },
   );

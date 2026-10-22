@@ -1,3 +1,4 @@
+import 'package:pixez/page/novel/tts/pronunciation/matching/phrase_trie.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/morphology_token.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_decision.dart';
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dart';
@@ -90,7 +91,7 @@ class JapaneseNameDisambiguator {
     required bool analyzerAvailable,
   }) {
     final surface = source.substring(candidate.start, candidate.end);
-    if (surface != candidate.rule.surface) {
+    if (!pronunciationSurfaceMatches(surface, candidate.rule.surface)) {
       return _skip(candidate, surface, PronunciationReason.invalidSourceRange);
     }
     if (candidate.rule.mode == PronunciationMatchMode.force) {
@@ -113,23 +114,48 @@ class JapaneseNameDisambiguator {
       );
     }
 
+    if (morphology.exactBoundaries) {
+      return _decideWithLattice(
+        source: source,
+        candidate: candidate,
+        surface: surface,
+        tokens: morphology.tokens,
+      );
+    }
+
     final token = _coveringToken(morphology.tokens, candidate);
     final atTokenStart = token == null || token.start == candidate.start;
 
     // An honorific or a quoted call cannot follow a conjugated verb, so this
     // evidence is checked before the verb rejection below.
     if (atTokenStart && _startsWithAny(after, japaneseHonorifics)) {
-      return _apply(candidate, surface, PronunciationReason.morphologyProperName);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
     }
     if (atTokenStart && _isQuotedVocative(source, candidate)) {
-      return _apply(candidate, surface, PronunciationReason.morphologyProperName);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
     }
     if (atTokenStart && _isQuotativeWho(after)) {
-      return _apply(candidate, surface, PronunciationReason.quotativeNameContext);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.quotativeNameContext,
+      );
     }
 
     if (token == null) {
-      return _skip(candidate, surface, PronunciationReason.rejectedLowConfidence);
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedLowConfidence,
+      );
     }
     if (_looksLikeVerbOrAdjective(token)) {
       return _skip(
@@ -159,9 +185,112 @@ class JapaneseNameDisambiguator {
       );
     }
     if (_startsWithAny(after, japaneseNameParticles)) {
-      return _apply(candidate, surface, PronunciationReason.nameParticleContext);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.nameParticleContext,
+      );
     }
     return _apply(candidate, surface, PronunciationReason.aliasWithoutConflict);
+  }
+
+  /// A full lattice search decides the word boundaries, so the alias is the
+  /// name exactly when the best path has it as whole words that are not a
+  /// verb or an adjective. Nothing is inferred from the characters around it.
+  PronunciationDecision _decideWithLattice({
+    required String source,
+    required PronunciationCandidate candidate,
+    required String surface,
+    required List<MorphologyToken> tokens,
+  }) {
+    final inside = <MorphologyToken>[];
+    MorphologyToken? straddling;
+    MorphologyToken? next;
+    for (final token in tokens) {
+      if (token.end <= candidate.start) {
+        continue;
+      }
+      if (token.start >= candidate.end) {
+        next ??= token;
+        continue;
+      }
+      if (token.start < candidate.start || token.end > candidate.end) {
+        straddling ??= token;
+      } else {
+        inside.add(token);
+      }
+    }
+    // `悟って誰` parses as the verb `悟る`, but nobody asks who a verb is.
+    if (straddling == null || straddling.start == candidate.start) {
+      if (_isQuotativeWho(source.substring(candidate.end))) {
+        return _apply(
+          candidate,
+          surface,
+          PronunciationReason.quotativeNameContext,
+        );
+      }
+    }
+    if (straddling != null) {
+      return _skip(
+        candidate,
+        surface,
+        _isInflecting(straddling)
+            ? PronunciationReason.rejectedInflectionSuffix
+            : PronunciationReason.rejectedInsideLargerToken,
+      );
+    }
+    if (inside.isEmpty) {
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedLowConfidence,
+      );
+    }
+    if (inside.any(_isInflecting)) {
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedVerbOrAdjective,
+      );
+    }
+    // The dictionary preferred a suffix or prefix reading (`一歩`, `御恵`):
+    // the characters attach to the neighbouring word.
+    if (inside.every((token) => !token.isUserWord) && inside.any(_isAffix)) {
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedInsideLargerToken,
+      );
+    }
+    if (inside.any(
+      (token) => token.isUserWord || token.partOfSpeech.contains('人名'),
+    )) {
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
+    }
+    if (next != null && next.partOfSpeech.firstOrNull == '助詞') {
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.nameParticleContext,
+      );
+    }
+    return _apply(candidate, surface, PronunciationReason.aliasWithoutConflict);
+  }
+
+  bool _isAffix(MorphologyToken token) {
+    final pos = token.partOfSpeech;
+    return pos.firstOrNull == '接頭詞' || (pos.length > 1 && pos[1] == '接尾');
+  }
+
+  /// Verbs, adjectives and auxiliaries: the characters are being conjugated,
+  /// not named.
+  bool _isInflecting(MorphologyToken token) {
+    final pos = token.partOfSpeech.firstOrNull;
+    return pos == '動詞' || pos == '形容詞' || pos == '助動詞';
   }
 
   /// Degraded path: no part of speech, so only boundaries and the honorific and
@@ -176,17 +305,33 @@ class JapaneseNameDisambiguator {
   }) {
     if (_startsWithAny(after, japaneseHonorifics) ||
         _isQuotedVocative(source, candidate)) {
-      return _apply(candidate, surface, PronunciationReason.morphologyProperName);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.morphologyProperName,
+      );
     }
     if (_isKanjiAt(source, candidate.start - 1) ||
         _isKanjiAt(source, candidate.end)) {
-      return _skip(candidate, surface, PronunciationReason.rejectedInsideLargerToken);
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedInsideLargerToken,
+      );
     }
     if (_startsWithAny(after, japaneseInflectionSuffixes)) {
-      return _skip(candidate, surface, PronunciationReason.rejectedInflectionSuffix);
+      return _skip(
+        candidate,
+        surface,
+        PronunciationReason.rejectedInflectionSuffix,
+      );
     }
     if (_startsWithAny(after, japaneseNameParticles)) {
-      return _apply(candidate, surface, PronunciationReason.nameParticleContext);
+      return _apply(
+        candidate,
+        surface,
+        PronunciationReason.nameParticleContext,
+      );
     }
     return _skip(candidate, surface, reason);
   }
@@ -231,7 +376,10 @@ class JapaneseNameDisambiguator {
     if (!after.startsWith('って')) {
       return false;
     }
-    return _startsWithAny(after.substring('って'.length), japanesePersonQuestions);
+    return _startsWithAny(
+      after.substring('って'.length),
+      japanesePersonQuestions,
+    );
   }
 
   bool _isKanjiAt(String source, int index) {

@@ -72,6 +72,7 @@ class NovelTtsChapter {
     required this.title,
     required this.author,
     required this.pageTexts,
+    this.pageDocuments,
     this.coverUrl,
     this.prevSeriesId,
     this.nextSeriesId,
@@ -82,6 +83,10 @@ class NovelTtsChapter {
   final String author;
   final String? coverUrl;
   final List<String> pageTexts;
+
+  /// Pages with their ruby, when the loader has the reader spans. Without it
+  /// a continued chapter loses the author's readings.
+  final List<NovelTtsTextDocument>? pageDocuments;
   final int? prevSeriesId;
   final int? nextSeriesId;
 }
@@ -201,7 +206,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
   final PronunciationPipeline _pronunciationPipeline;
   final SourceAwareNovelTtsSplitter _splitter;
   final PronunciationRenderer _renderer;
-  PronunciationSnapshot? _sessionSnapshot;
+
+  /// Compiled dictionary per chapter: work-scoped entries differ by chapter.
+  final Map<int, PronunciationSnapshot> _snapshots = {};
   final Map<String, List<PronunciationDecision>> _pageDecisions = {};
 
   StreamSubscription<void>? _completionSub;
@@ -329,6 +336,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         current != null &&
         chapter != null &&
         (previous.splitChars != loaded.splitChars ||
+            previous.useRubyReadings != loaded.useRubyReadings ||
             jsonEncode(
                   previous.readings.map((item) => item.toJson()).toList(),
                 ) !=
@@ -386,7 +394,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _playbackSettings = loaded;
     _seriesId = seriesId;
     _pageDecisions.clear();
-    _sessionSnapshot = null;
+    _snapshots.clear();
     _chapters.clear();
     _chapterDocuments.clear();
     _loadedSeriesIds.clear();
@@ -428,7 +436,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
         settingsReadings: loaded.readings,
       );
       if (!_isSession(generation)) return;
-      _sessionSnapshot = snapshot;
+      _snapshots[novelId] = snapshot;
       built = await _clipsFromDocuments(
         documents,
         loaded.clampedSplitChars,
@@ -524,6 +532,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     required int page,
     required int totalPages,
     required String pageText,
+    NovelTtsTextDocument? pageDocument,
     int? prevSeriesId,
     int? nextSeriesId,
     bool fromEnd = false,
@@ -532,11 +541,12 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     if (current == null) {
       return;
     }
+    final document = pageDocument ?? novelTtsDocumentFromText(pageText);
     final generation = _sessionGeneration;
     List<NovelTtsClip> pageClips;
     try {
       pageClips = await _clipsFromDocuments(
-        [novelTtsDocumentFromText(pageText)],
+        [document],
         settings.clampedSplitChars,
         novelId: current.novelId,
         pageOffset: page,
@@ -593,7 +603,9 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       final oldDocuments = _chapterDocuments[current.novelId] ?? const [];
       _chapterDocuments[current.novelId] = [
         for (var index = 0; index < texts.length; index++)
-          if (index != page - 1 && index < oldDocuments.length)
+          if (index == page - 1)
+            document
+          else if (index < oldDocuments.length)
             oldDocuments[index]
           else
             novelTtsDocumentFromText(texts[index]),
@@ -674,7 +686,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _chapterDocuments.clear();
     _loadedSeriesIds.clear();
     _pageDecisions.clear();
-    _sessionSnapshot = null;
+    _snapshots.clear();
     _playbackSettings = null;
     status = NovelTtsStatus.idle;
     errorMessage = null;
@@ -1059,9 +1071,14 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
       if (loaded == null || !isActive || !_isSession(generation)) {
         return false;
       }
-      final documents = [
-        for (final text in loaded.pageTexts) novelTtsDocumentFromText(text),
-      ];
+      final provided = loaded.pageDocuments;
+      final documents =
+          provided != null && provided.length == loaded.pageTexts.length
+          ? provided
+          : [
+              for (final text in loaded.pageTexts)
+                novelTtsDocumentFromText(text),
+            ];
       final extra = await _clipsFromDocuments(
         documents,
         settings.clampedSplitChars,
@@ -1189,6 +1206,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _pageDecisions.removeWhere(
       (key, _) => !retained.contains(int.tryParse(key.split(':').first)),
     );
+    _snapshots.removeWhere((id, _) => !retained.contains(id));
   }
 
   Future<List<NovelTtsClip>> _clipsFromDocuments(
@@ -1198,8 +1216,25 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     int pageOffset = 1,
   }) async {
     final id = novelId ?? session?.novelId ?? 0;
-    final snapshot = _sessionSnapshot;
     final generation = _sessionGeneration;
+    var snapshot = _snapshots[id];
+    if (snapshot == null) {
+      // A chapter reached by series playback: compile its own snapshot so
+      // entries limited to one work follow the work being read.
+      try {
+        snapshot = await _pronunciationRepository.snapshotFor(
+          workId: '$id',
+          seriesId: _seriesId,
+          settingsReadings: (_playbackSettings ?? settings).readings,
+        );
+      } catch (_) {
+        snapshot = null;
+      }
+      if (!_isSession(generation)) return const [];
+      if (snapshot != null) {
+        _snapshots[id] = snapshot;
+      }
+    }
     final result = <NovelTtsClip>[];
     for (var page = 0; page < pages.length; page++) {
       if (!_isSession(generation)) return const [];
@@ -1214,6 +1249,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
               snapshot: snapshot,
               sessionId: '$id:${page + pageOffset}',
               generation: generation,
+              useRubyReadings: (_playbackSettings ?? settings).useRubyReadings,
             );
       if (!_isSession(generation)) return const [];
       if (snapshot != null &&
@@ -1592,7 +1628,7 @@ class NovelTtsController extends ChangeNotifier with WidgetsBindingObserver {
     _loadedSeriesIds.clear();
     _queuedClips.clear();
     _protectedCachePaths.clear();
-    _sessionSnapshot = null;
+    _snapshots.clear();
     clips = const [];
     session = null;
     final synth = _synthesizer;

@@ -23,6 +23,7 @@ class NovelTtsSettings {
     this.provider = NovelTtsProvider.custom,
     this.splitChars = defaultSplitChars,
     this.autoContinue = true,
+    this.useRubyReadings = true,
     this.prefetchCount = 4,
     this.microsoftKey = '',
     this.microsoftRegion = 'eastasia',
@@ -51,6 +52,9 @@ class NovelTtsSettings {
   final NovelTtsProvider provider;
   final int splitChars;
   final bool autoContinue;
+
+  /// Read the author's ruby (`《》`) instead of the base text.
+  final bool useRubyReadings;
   final int prefetchCount;
   final String microsoftKey;
   final String microsoftRegion;
@@ -79,6 +83,7 @@ class NovelTtsSettings {
     NovelTtsProvider? provider,
     int? splitChars,
     bool? autoContinue,
+    bool? useRubyReadings,
     int? prefetchCount,
     String? microsoftKey,
     String? microsoftRegion,
@@ -107,6 +112,7 @@ class NovelTtsSettings {
       provider: provider ?? this.provider,
       splitChars: splitChars ?? this.splitChars,
       autoContinue: autoContinue ?? this.autoContinue,
+      useRubyReadings: useRubyReadings ?? this.useRubyReadings,
       prefetchCount: prefetchCount ?? this.prefetchCount,
       microsoftKey: microsoftKey ?? this.microsoftKey,
       microsoftRegion: microsoftRegion ?? this.microsoftRegion,
@@ -322,6 +328,7 @@ class NovelTtsSettings {
       'provider': provider.name,
       'splitChars': splitChars,
       'autoContinue': autoContinue,
+      'useRubyReadings': useRubyReadings,
       'prefetchCount': prefetchCount,
       'microsoftKey': microsoftKey,
       'microsoftRegion': microsoftRegion,
@@ -359,6 +366,7 @@ class NovelTtsSettings {
         defaultSplitChars,
       ).clamp(minSplitChars, maxSplitChars).toInt(),
       autoContinue: json['autoContinue'] as bool? ?? true,
+      useRubyReadings: json['useRubyReadings'] as bool? ?? true,
       prefetchCount: _finiteInt(json['prefetchCount'], 4).clamp(1, 4).toInt(),
       microsoftKey: json['microsoftKey'] as String? ?? '',
       microsoftRegion: json['microsoftRegion'] as String? ?? 'eastasia',
