@@ -592,5 +592,10 @@
   "novel_tts_reading_saved": "已保存 {entry}",
   "novel_tts_reading_no_match": "没有匹配的词条",
   "novel_tts_use_ruby": "朗读作者注音",
-  "novel_tts_use_ruby_hint": "用正文里《》中的注音代替原文朗读。只有点号或符号的注音（例如用作强调的・・）始终不读。"
+  "novel_tts_use_ruby_hint": "用正文里《》中的注音代替原文朗读。只有点号或符号的注音（例如用作强调的・・）始终不读。",
+  "exit_pixez": "退出PixEz",
+  "minimize_on_exit": "退出时最小化",
+  "minimize_on_exit_message": "关闭窗口时最小化到系统托盘",
+  "show_window": "显示窗口",
+  "related_users": "相关画师"
 }
