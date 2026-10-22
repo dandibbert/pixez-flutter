@@ -4,6 +4,7 @@ import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key novelTtsQuickVoiceKey = Key('novelTtsQuickVoice');
 const Key novelTtsBarKey = Key('novelTtsBar');
@@ -101,7 +102,7 @@ class NovelTtsBar extends StatelessWidget {
                   key: novelTtsPrevButtonKey,
                   tooltip: i18n.novel_tts_prev,
                   onPressed: () => controller.skip(direction: 'prev'),
-                  icon: const Icon(Icons.skip_previous),
+                  icon: const WcIcon(Icons.skip_previous),
                 ),
                 if (controller.status == NovelTtsStatus.playing ||
                     controller.status == NovelTtsStatus.synthesizing)
@@ -109,7 +110,7 @@ class NovelTtsBar extends StatelessWidget {
                     key: novelTtsPauseButtonKey,
                     tooltip: i18n.novel_tts_pause,
                     onPressed: controller.pause,
-                    icon: const Icon(Icons.pause_circle_filled),
+                    icon: const WcIcon(Icons.pause_circle_filled),
                   )
                 else
                   IconButton(
@@ -120,37 +121,37 @@ class NovelTtsBar extends StatelessWidget {
                     onPressed: controller.status == NovelTtsStatus.paused
                         ? controller.resume
                         : null,
-                    icon: const Icon(Icons.play_circle_filled),
+                    icon: const WcIcon(Icons.play_circle_filled),
                   ),
                 IconButton(
                   key: novelTtsNextButtonKey,
                   tooltip: i18n.novel_tts_next,
                   onPressed: () => controller.skip(direction: 'next'),
-                  icon: const Icon(Icons.skip_next),
+                  icon: const WcIcon(Icons.skip_next),
                 ),
                 IconButton(
                   key: novelTtsStopButtonKey,
                   tooltip: i18n.novel_tts_stop,
                   onPressed: controller.stop,
-                  icon: const Icon(Icons.stop),
+                  icon: const WcIcon(Icons.stop),
                 ),
                 IconButton(
                   key: novelTtsQuickVoiceKey,
                   tooltip: i18n.novel_tts_quick_voice,
                   onPressed: () => _selectVoice(context),
-                  icon: const Icon(Icons.record_voice_over_outlined),
+                  icon: const WcIcon(Icons.record_voice_over_outlined),
                 ),
                 if (onAddReading != null && controller.currentClip != null)
                   IconButton(
                     key: novelTtsAddReadingFromBarKey,
                     tooltip: i18n.novel_tts_reading_add_current,
                     onPressed: onAddReading,
-                    icon: const Icon(Icons.spellcheck),
+                    icon: const WcIcon(Icons.spellcheck),
                   ),
                 IconButton(
                   tooltip: i18n.novel_tts_settings,
                   onPressed: onOpenSettings,
-                  icon: const Icon(Icons.tune),
+                  icon: const WcIcon(Icons.tune),
                 ),
               ],
             ),
@@ -200,7 +201,7 @@ class NovelTtsBar extends StatelessWidget {
                   Navigator.pop(context);
                   onOpenSettings();
                 },
-                icon: const Icon(Icons.tune),
+                icon: const WcIcon(Icons.tune),
                 label: Text(i18n.novel_tts_settings),
               ),
             ],

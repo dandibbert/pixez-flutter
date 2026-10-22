@@ -20,6 +20,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result_illust_list.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class BookTagPage extends StatefulWidget {
   @override
@@ -51,99 +52,99 @@ class _BookTagPageState extends State<BookTagPage>
     if (edit)
       return Observer(
         builder: (context) {
-        return Container(
-          child: Column(
-            children: [
-              AppBar(
-                elevation: 0.0,
-                backgroundColor: Colors.transparent,
-                actions: [
-                  IconButton(
-                      icon: Icon(Icons.save),
+          return Container(
+            child: Column(
+              children: [
+                AppBar(
+                  elevation: 0.0,
+                  backgroundColor: Colors.transparent,
+                  actions: [
+                    IconButton(
+                      icon: WcIcon(Icons.save),
                       onPressed: () {
                         setState(() {
                           edit = false;
                         });
                       },
                     ),
-                ],
-              ),
+                  ],
+                ),
                 Expanded(child: _buildTagChip()),
-            ],
-          ),
-        );
+              ],
+            ),
+          );
         },
       );
     return Observer(
       builder: (_) {
-      if (_tabController.length != bookTagStore.bookTagList.length) {
-        var index = (_tabController.index >= bookTagStore.bookTagList.length)
-            ? bookTagStore.bookTagList.length - 1
-            : _tabController.index;
-        index = (index < 0) ? 0 : index;
-        _tabController = TabController(
+        if (_tabController.length != bookTagStore.bookTagList.length) {
+          var index = (_tabController.index >= bookTagStore.bookTagList.length)
+              ? bookTagStore.bookTagList.length - 1
+              : _tabController.index;
+          index = (index < 0) ? 0 : index;
+          _tabController = TabController(
             initialIndex: index,
             length: bookTagStore.bookTagList.length,
             vsync: this,
           );
-      }
-      return Scaffold(
-        appBar: AppBar(
-          elevation: 0.0,
-          title: TabBar(
-            onTap: (i) {
-              HapticUtil.selectionClick();
-            },
-            isScrollable: true,
-            controller: _tabController,
-            indicatorSize: TabBarIndicatorSize.label,
+        }
+        return Scaffold(
+          appBar: AppBar(
+            elevation: 0.0,
+            title: TabBar(
+              onTap: (i) {
+                HapticUtil.selectionClick();
+              },
+              isScrollable: true,
+              controller: _tabController,
+              indicatorSize: TabBarIndicatorSize.label,
               tabs: [for (var i in bookTagStore.bookTagList) Tab(text: i)],
-          ),
-          actions: [
-            IconButton(
-                icon: Icon(Icons.undo),
+            ),
+            actions: [
+              IconButton(
+                icon: WcIcon(Icons.undo),
                 onPressed: () {
                   setState(() {
                     edit = true;
                   });
                 },
               ),
-          ],
-        ),
+            ],
+          ),
           body: TabBarView(
             controller: _tabController,
             children: [
-          for (var j in bookTagStore.bookTagList)
-            ResultIllustList(
+              for (var j in bookTagStore.bookTagList)
+                ResultIllustList(
                   initialQuery: IllustSearchQuery(
-              word: j,
+                    word: j,
                     mode: userSetting.searchResultMode,
                   ),
                 ),
             ],
           ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Icon(Icons.close),
-        ),
-        endDrawer: Drawer(
-          child: ListView(
-            children: [
-              for (var j in bookTagStore.bookTagList)
-                ListTile(
-                  title: Text(j),
-                  onTap: () {
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: WcIcon(Icons.close),
+          ),
+          endDrawer: Drawer(
+            child: ListView(
+              children: [
+                for (var j in bookTagStore.bookTagList)
+                  ListTile(
+                    title: Text(j),
+                    onTap: () {
                       _tabController.animateTo(
                         bookTagStore.bookTagList.indexOf(j),
                       );
-                  },
+                    },
                   ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+        );
       },
     );
   }
@@ -164,7 +165,10 @@ class _BookTagPageState extends State<BookTagPage>
               await _deleteConfirm(_items[index]);
               return null;
             },
-            background: Container(color: Colors.red, child: Icon(Icons.delete)),
+            background: Container(
+              color: Colors.red,
+              child: WcIcon(Icons.delete),
+            ),
             child: ListTile(
               key: Key('$index'),
               title: Text('${_items[index]}'),
@@ -186,26 +190,26 @@ class _BookTagPageState extends State<BookTagPage>
 
   Future _deleteConfirm(String i) async {
     await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(I18n.of(context).delete + "$i?"),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(I18n.of(context).delete + "$i?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
               child: Text(I18n.of(context).cancel),
             ),
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    bookTagStore.unBookTag(i);
-                  },
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                bookTagStore.unBookTag(i);
+              },
               child: Text(I18n.of(context).ok),
             ),
-            ],
-          );
+          ],
+        );
       },
     );
   }

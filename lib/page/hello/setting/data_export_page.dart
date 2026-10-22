@@ -8,6 +8,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/glance_illust_persist.dart';
 import 'package:pixez/page/history/history_store.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class DataExportPage extends HookConsumerWidget {
   const DataExportPage({super.key});
@@ -28,7 +29,7 @@ class DataExportPage extends HookConsumerWidget {
             Card(
               margin: EdgeInsets.symmetric(horizontal: 8.0),
               child: ListTile(
-                leading: Icon(
+                leading: WcIcon(
                   Icons.cleaning_services_outlined,
                   color: errorColor,
                 ),

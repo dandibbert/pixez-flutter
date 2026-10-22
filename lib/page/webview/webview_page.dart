@@ -5,6 +5,7 @@ import 'package:pixez/custom_tab_plugin.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/weiss_plugin.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class WebViewPage extends StatefulWidget {
   final String url;
@@ -81,7 +82,7 @@ javascript:(function() {
         title: Text(""),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.open_in_browser),
+            icon: WcIcon(Icons.open_in_browser),
             onPressed: () {
               try {
                 CustomTabPlugin.launch(widget.url);
@@ -91,7 +92,7 @@ javascript:(function() {
             },
           ),
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: WcIcon(Icons.refresh),
             onPressed: () => _webViewController.reload(),
           ),
         ],

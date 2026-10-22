@@ -83,30 +83,30 @@ class _ResultPageState extends State<ResultPage> {
         appBar: AppBar(
           elevation: 0.0,
           title: TabBar(
-              indicatorSize: TabBarIndicatorSize.label,
-              onTap: (i) {
-                HapticUtil.selectionClick();
-                if (i == index) {
-                  topStore.setTop("401");
-                }
-                index = i;
-              },
-              tabs: [
+            indicatorSize: TabBarIndicatorSize.label,
+            onTap: (i) {
+              HapticUtil.selectionClick();
+              if (i == index) {
+                topStore.setTop("401");
+              }
+              index = i;
+            },
+            tabs: [
               Tab(text: I18n.of(context).illust),
               Tab(text: I18n.of(context).painter),
             ],
-                ),
-                ),
+          ),
+        ),
         body: TabBarView(
           children: [
             ResultIllustList(
               initialQuery: _query,
               restoreQuery: widget.initialQuery != null,
               onQueryChanged: _recordQuery,
-        ),
+            ),
             SearchResultPainterPage(word: _query.word),
           ],
-          ),
+        ),
       ),
     );
   }

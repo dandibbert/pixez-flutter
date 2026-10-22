@@ -16,6 +16,7 @@ import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 final novelSeriesProvider =
     NotifierProvider<NovelSeriesNotifier, NovelSeriesState?>(() {
@@ -176,7 +177,7 @@ class NovelSeriesPage extends HookConsumerWidget {
                     ShareParams(text: link, sharePositionOrigin: pos),
                   );
                 },
-                icon: Icon(Icons.share),
+                icon: WcIcon(Icons.share),
               );
             },
           ),

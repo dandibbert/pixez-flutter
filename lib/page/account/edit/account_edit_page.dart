@@ -22,6 +22,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/account/edit/account_edit_store.dart';
 import 'package:pixez/page/webview/account_deletion_webview_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class AccountEditPage extends StatefulWidget {
   @override
@@ -72,7 +73,7 @@ class _AccountEditPageState extends State<AccountEditPage> {
           alignment: Alignment(0, 0.8),
           child: Card(
             child: ListTile(
-              leading: Icon(Icons.error),
+              leading: WcIcon(Icons.error),
               title: Text("Email format error"),
             ),
           ),
@@ -153,7 +154,9 @@ class _AccountEditPageState extends State<AccountEditPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(I18n.of(context).account_message),
-        actions: <Widget>[IconButton(icon: Icon(Icons.save), onPressed: _save)],
+        actions: <Widget>[
+          IconButton(icon: WcIcon(Icons.save), onPressed: _save),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -191,9 +194,9 @@ class _AccountEditPageState extends State<AccountEditPage> {
               Card(
                 margin: const EdgeInsets.fromLTRB(8, 16, 8, 0),
                 child: ListTile(
-                  leading: Icon(Icons.vpn_key_outlined),
+                  leading: WcIcon(Icons.vpn_key_outlined),
                   title: Text(I18n.of(context).export + " Token"),
-                  trailing: Icon(Icons.copy),
+                  trailing: WcIcon(Icons.copy),
                   onTap: () async {
                     Clipboard.setData(
                       ClipboardData(text: accountStore.now!.refreshToken),
@@ -207,9 +210,9 @@ class _AccountEditPageState extends State<AccountEditPage> {
             Card(
               margin: const EdgeInsets.fromLTRB(8, 16, 8, 0),
               child: ListTile(
-                leading: Icon(Icons.lock_outline),
+                leading: WcIcon(Icons.lock_outline),
                 title: Text(I18n.of(context).change_password),
-                trailing: Icon(Icons.chevron_right),
+                trailing: WcIcon(Icons.chevron_right),
                 onTap: _showChangePasswordDialog,
               ),
             ),
@@ -217,7 +220,7 @@ class _AccountEditPageState extends State<AccountEditPage> {
             Card(
               margin: EdgeInsets.symmetric(horizontal: 8.0),
               child: ListTile(
-                leading: Icon(Icons.delete_outline, color: errorColor),
+                leading: WcIcon(Icons.delete_outline, color: errorColor),
                 title: Text(
                   I18n.of(context).account_deletion,
                   style: TextStyle(color: errorColor),

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SaveEvalPage extends StatefulWidget {
   final String? eval;
@@ -19,51 +20,51 @@ class _SaveEvalPageState extends State<SaveEvalPage> {
   late TextEditingController _textEditingController;
   String? _fileName;
   Illusts _illusts = Illusts(
+    id: 100000,
+    title: "title",
+    type: "illust",
+    imageUrls: ImageUrls(
+      squareMedium: "https://c/xxx.jpg",
+      medium: "https://c/xxx.png",
+      large: "https://c/xxx.jpeg",
+    ),
+    caption: "caption",
+    restrict: 0,
+    user: User(
       id: 100000,
-      title: "title",
-      type: "illust",
-      imageUrls: ImageUrls(
-        squareMedium: "https://c/xxx.jpg",
-        medium: "https://c/xxx.png",
-        large: "https://c/xxx.jpeg",
-      ),
-      caption: "caption",
-      restrict: 0,
-      user: User(
-        id: 100000,
-        name: "name",
-        account: "account",
-        profileImageUrls: ProfileImageUrls(
-          medium: "https://c/xxxxx.jpg",
-        ),
-        isFollowed: false,
-      ),
-      tags: [
-        Tags(name: "tag1", translatedName: "tag1Tranlate"),
-        Tags(name: "tag2", translatedName: "tag2Tranlate"),
-      ],
-      tools: ["SAI"],
-      createDate: "2020-12-31T00:00:00+09:00",
-      pageCount: 1,
-      width: 500,
-      height: 500,
-      sanityLevel: 6,
-      xRestrict: 0,
-      metaPages: [],
-      totalView: 100000,
-      totalComments: 1,
-      totalBookmarks: 1000,
-      isBookmarked: false,
-      visible: true,
-      isMuted: false,
-      illustAIType: 0);
+      name: "name",
+      account: "account",
+      profileImageUrls: ProfileImageUrls(medium: "https://c/xxxxx.jpg"),
+      isFollowed: false,
+    ),
+    tags: [
+      Tags(name: "tag1", translatedName: "tag1Tranlate"),
+      Tags(name: "tag2", translatedName: "tag2Tranlate"),
+    ],
+    tools: ["SAI"],
+    createDate: "2020-12-31T00:00:00+09:00",
+    pageCount: 1,
+    width: 500,
+    height: 500,
+    sanityLevel: 6,
+    xRestrict: 0,
+    metaPages: [],
+    totalView: 100000,
+    totalComments: 1,
+    totalBookmarks: 1000,
+    isBookmarked: false,
+    visible: true,
+    isMuted: false,
+    illustAIType: 0,
+  );
 
   String _exampleJson = "";
 
   @override
   void initState() {
     _textEditingController = TextEditingController(
-        text: widget.eval ?? userSetting.nameEval ?? default_func_str);
+      text: widget.eval ?? userSetting.nameEval ?? default_func_str,
+    );
     super.initState();
     _exampleJson = JsonEncoder.withIndent('  ').convert(_illusts.toJson());
   }
@@ -88,37 +89,39 @@ function eval(illust, index, mime) {
         title: Text("Script"),
         actions: [
           IconButton(
-              onPressed: () async {
-                await userSetting.setFileNameEval(0);
-                Navigator.of(context).pop();
-              },
-              icon: Icon(Icons.cancel)),
+            onPressed: () async {
+              await userSetting.setFileNameEval(0);
+              Navigator.of(context).pop();
+            },
+            icon: WcIcon(Icons.cancel),
+          ),
           IconButton(
-              onPressed: () async {
-                final text = _textEditingController.text.trim();
-                if (text.isEmpty) return;
-                final string =
-                    await saveStore.testEvalName(text, _illusts, 1, "png");
-                if (string.isEmpty) {
-                  BotToast.showText(text: "func eval error");
-                  return;
-                }
-                await userSetting.setNameEval(text);
-                await userSetting.setFileNameEval(1);
-                Navigator.of(context).pop();
-              },
-              icon: Icon(Icons.check))
+            onPressed: () async {
+              final text = _textEditingController.text.trim();
+              if (text.isEmpty) return;
+              final string = await saveStore.testEvalName(
+                text,
+                _illusts,
+                1,
+                "png",
+              );
+              if (string.isEmpty) {
+                BotToast.showText(text: "func eval error");
+                return;
+              }
+              await userSetting.setNameEval(text);
+              await userSetting.setFileNameEval(1);
+              Navigator.of(context).pop();
+            },
+            icon: WcIcon(Icons.check),
+          ),
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Container(
-              height: 12,
-            ),
-            ListTile(
-              title: Text(I18n.of(context).script_page_hint),
-            ),
+            Container(height: 12),
+            ListTile(title: Text(I18n.of(context).script_page_hint)),
             ListTile(
               title: Text("Example output file name:"),
               subtitle: Text(_fileName ?? "undefined"),
@@ -128,19 +131,20 @@ function eval(illust, index, mime) {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
-                    expands: true,
-                    maxLines: null,
-                    keyboardType: TextInputType.multiline,
-                    controller: _textEditingController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'Input Code here',
-                      labelText: 'Code',
-                    )),
+                  expands: true,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  controller: _textEditingController,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Input Code here',
+                    labelText: 'Code',
+                  ),
+                ),
               ),
             ),
             ListTile(
-              leading: Icon(Icons.read_more),
+              leading: WcIcon(Icons.read_more),
               title: Text("Read script from scheme"),
               onTap: () {
                 Clipboard.getData("text/plain").then((value) {
@@ -156,7 +160,7 @@ function eval(illust, index, mime) {
               },
             ),
             ListTile(
-              leading: Icon(Icons.play_arrow),
+              leading: WcIcon(Icons.play_arrow),
               title: Text("Run and test"),
               onTap: () async {
                 final text = _textEditingController.text.trim();
@@ -164,13 +168,11 @@ function eval(illust, index, mime) {
                 run(text);
               },
             ),
-            ListTile(
-              title: Text("Example illust json:"),
-            ),
+            ListTile(title: Text("Example illust json:")),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(_exampleJson),
-            )
+            ),
           ],
         ),
       ),

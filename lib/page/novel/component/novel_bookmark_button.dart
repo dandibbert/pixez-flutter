@@ -19,6 +19,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/models/novel_recom_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class NovelBookmarkButton extends StatefulWidget {
   final Novel novel;
@@ -54,15 +55,21 @@ class _NovelBookmarkButtonState extends State<NovelBookmarkButton> {
       },
       child: IconButton(
         icon: widget.novel.isBookmarked
-            ? Icon(Icons.bookmark,
-                color: Theme.of(context).textTheme.bodySmall!.color)
-            : Icon(Icons.bookmark_border,
-                color: Theme.of(context).textTheme.bodySmall!.color),
+            ? WcIcon(
+                Icons.bookmark,
+                color: Theme.of(context).textTheme.bodySmall!.color,
+              )
+            : WcIcon(
+                Icons.bookmark_border,
+                color: Theme.of(context).textTheme.bodySmall!.color,
+              ),
         onPressed: () async {
           if (!widget.novel.isBookmarked) {
             try {
-              await apiClient.postNovelBookmarkAdd(widget.novel.id,
-                  userSetting.defaultPrivateLike ? "private" : "public");
+              await apiClient.postNovelBookmarkAdd(
+                widget.novel.id,
+                userSetting.defaultPrivateLike ? "private" : "public",
+              );
               HapticUtil.medium();
               setState(() {
                 widget.novel.isBookmarked = true;

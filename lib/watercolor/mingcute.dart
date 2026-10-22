@@ -9,6 +9,7 @@ abstract final class MingCute {
   /// Material icon → MingCute name, plus whether the Material glyph already
   /// shows a filled state (favorite vs favorite_border).
   static final Map<IconData, (String, bool)> _byMaterial = {
+    Icons.account_box: ('user_3', false),
     Icons.add: ('add', false),
     Icons.arrow_back: ('arrow_left', false),
     Icons.arrow_upward: ('arrow_up', false),
@@ -49,6 +50,7 @@ abstract final class MingCute {
     Icons.filter_alt_outlined: ('filter', false),
     Icons.folder: ('folder', false),
     Icons.folder_open: ('folder_open', false),
+    Icons.folder_open_rounded: ('folder_open', false),
     Icons.format_line_spacing: ('line_height', false),
     Icons.fullscreen: ('fullscreen', false),
     Icons.fullscreen_exit: ('fullscreen_exit', false),
@@ -61,6 +63,7 @@ abstract final class MingCute {
     Icons.info_outline: ('information', false),
     Icons.layers_outlined: ('layers', false),
     Icons.leaderboard: ('trophy', false),
+    Icons.library_books: ('book_2', false),
     Icons.link: ('link', false),
     Icons.link_rounded: ('link', false),
     Icons.list: ('list_check', false),
@@ -86,6 +89,7 @@ abstract final class MingCute {
     Icons.play_circle_outline: ('play_circle', false),
     Icons.refresh: ('refresh_2', false),
     Icons.refresh_outlined: ('refresh_2', false),
+    Icons.remove_red_eye: ('eye_2', false),
     Icons.report: ('warning', false),
     Icons.save: ('download_2', false),
     Icons.save_alt: ('download_2', false),
@@ -101,6 +105,7 @@ abstract final class MingCute {
     Icons.stop: ('stop', false),
     Icons.tag: ('hashtag', false),
     Icons.text_fields: ('font', false),
+    Icons.timelapse_rounded: ('time', false),
     Icons.translate: ('translate_2', false),
     Icons.tune: ('settings_6', false),
     Icons.undo: ('back', false),

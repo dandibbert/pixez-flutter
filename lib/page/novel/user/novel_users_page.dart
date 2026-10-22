@@ -29,6 +29,7 @@ import 'package:pixez/page/user/user_store.dart';
 import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class NovelUsersPage extends StatefulWidget {
   final int id;
@@ -126,7 +127,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
             Builder(
               builder: (context) {
                 return IconButton(
-                  icon: Icon(Icons.share),
+                  icon: WcIcon(Icons.share),
                   onPressed: () {
                     final box = context.findRenderObject() as RenderBox?;
                     final pos = box != null

@@ -19,6 +19,8 @@ import 'dart:math';
 import 'package:material_ui/material_ui.dart' hide SearchBar;
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/watercolor/watercolor_paper.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
@@ -31,6 +33,7 @@ import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/page/search/search_bar.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
+import 'package:pixez/models/trend_tags.dart';
 import 'package:pixez/page/search/trend_tags_store.dart';
 import 'package:pixez/page/webview/saucenao_webview_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
@@ -200,15 +203,17 @@ class _SearchPageState extends State<SearchPage>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          I18n.of(context).history,
-                          style: TextStyle(
-                            fontSize: 16.0,
-                            color: Theme.of(
-                              context,
-                            ).textTheme.headlineSmall!.color,
-                          ),
-                        ),
+                        WatercolorTokens.of(context) == null
+                            ? Text(
+                                I18n.of(context).history,
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall!.color,
+                                ),
+                              )
+                            : WcSectionLabel(I18n.of(context).history),
                       ],
                     ),
                   );
@@ -351,13 +356,18 @@ class _SearchPageState extends State<SearchPage>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                I18n.of(context).recommand_tag,
-                style: TextStyle(
-                  fontSize: 16.0,
-                  color: Theme.of(context).textTheme.titleLarge!.color,
-                ),
-              ),
+              child: WatercolorTokens.of(context) == null
+                  ? Text(
+                      I18n.of(context).recommand_tag,
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        color: Theme.of(context).textTheme.titleLarge!.color,
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 2),
+                      child: WcSectionLabel(I18n.of(context).recommand_tag),
+                    ),
             ),
           ),
           if (_trendTagsStore.trendTags.isNotEmpty)
@@ -387,55 +397,64 @@ class _SearchPageState extends State<SearchPage>
                         ),
                       );
                     },
-                    child: Card(
-                      clipBehavior: Clip.antiAlias,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                      ),
-                      child: Stack(
-                        children: <Widget>[
-                          PixivImage(
-                            tags[index].illust.imageUrls.squareMedium,
-                            fit: BoxFit.cover,
-                          ),
-                          Opacity(
-                            opacity: 0.4,
-                            child: Container(
-                              decoration: BoxDecoration(color: Colors.black),
-                            ),
-                          ),
-                          Align(
-                            child: Padding(
-                              padding: const EdgeInsets.all(2.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Text(
-                                    "#${tags[index].tag}",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  if (tags[index].translatedName != null &&
-                                      tags[index].translatedName!.isNotEmpty)
-                                    Text(
-                                      tags[index].translatedName!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                ],
+                    child: WatercolorTokens.of(context) != null
+                        ? _buildWatercolorTrendTag(context, tags[index], index)
+                        : Card(
+                            clipBehavior: Clip.antiAlias,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(8.0),
                               ),
                             ),
-                            alignment: Alignment.bottomCenter,
+                            child: Stack(
+                              children: <Widget>[
+                                PixivImage(
+                                  tags[index].illust.imageUrls.squareMedium,
+                                  fit: BoxFit.cover,
+                                ),
+                                Opacity(
+                                  opacity: 0.4,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        Text(
+                                          "#${tags[index].tag}",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        if (tags[index].translatedName !=
+                                                null &&
+                                            tags[index]
+                                                .translatedName!
+                                                .isNotEmpty)
+                                          Text(
+                                            tags[index].translatedName!,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  alignment: Alignment.bottomCenter,
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
                   );
                 }, childCount: _trendTagsStore.trendTags.length),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -446,6 +465,72 @@ class _SearchPageState extends State<SearchPage>
           SliverToBoxAdapter(
             child: Container(
               height: (MediaQuery.of(context).size.width / 3) - 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Trend tag on paper: the picture under a card label, with a pigment
+  /// edge along the bottom.
+  Widget _buildWatercolorTrendTag(
+    BuildContext context,
+    TrendTags tag,
+    int index,
+  ) {
+    final tokens = WatercolorTokens.of(context)!;
+    final pigment = tokens.pigment(index);
+    return Container(
+      margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: tokens.card,
+        borderRadius: BorderRadius.circular(WatercolorTokens.radiusSmall),
+        border: Border(
+          top: BorderSide(color: tokens.line),
+          left: BorderSide(color: tokens.line),
+          right: BorderSide(color: tokens.line),
+          bottom: BorderSide(color: pigment, width: 3),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          PixivImage(tag.illust.imageUrls.squareMedium, fit: BoxFit.cover),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(5),
+              padding: const EdgeInsets.fromLTRB(7, 4, 7, 4),
+              decoration: BoxDecoration(
+                color: tokens.card.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    "#${tag.tag}",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: tokens.ink,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (tag.translatedName?.isNotEmpty == true)
+                    Text(
+                      tag.translatedName!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: tokens.sub, fontSize: 10),
+                    ),
+                ],
+              ),
             ),
           ),
         ],

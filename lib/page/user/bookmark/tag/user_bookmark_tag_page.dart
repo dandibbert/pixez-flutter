@@ -22,6 +22,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/user/bookmark/tag/bookmark_tag_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class UserBookmarkTagPage extends StatefulWidget {
   final String? currentTag;
@@ -138,10 +139,10 @@ class _UserBookmarkTagPageState extends State<UserBookmarkTagPage>
                                 _tagController.clear();
                               });
                             },
-                            icon: Icon(Icons.clear),
+                            icon: WcIcon(Icons.clear),
                           ),
                         IconButton(
-                          icon: Icon(Icons.check),
+                          icon: WcIcon(Icons.check),
                           onPressed: () {
                             final text = _tagController.text.trim();
                             if (text.isEmpty) {

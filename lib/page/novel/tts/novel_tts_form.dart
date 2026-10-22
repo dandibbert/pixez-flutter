@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key novelTtsAdvancedToggleKey = Key('novelTtsAdvancedToggle');
 const Key novelTtsAddHeaderKey = Key('novelTtsAddHeader');
@@ -123,7 +124,7 @@ class NovelTtsChoiceField extends StatelessWidget {
           border: const OutlineInputBorder(),
           suffixIcon: PopupMenuButton<String>(
             tooltip: label,
-            icon: const Icon(Icons.arrow_drop_down),
+            icon: const WcIcon(Icons.arrow_drop_down),
             onSelected: (value) {
               controller.text = value;
               onChanged(value);
@@ -339,7 +340,7 @@ class _NovelTtsHeaderListEditorState extends State<NovelTtsHeaderListEditor> {
                     IconButton(
                       tooltip: I18n.of(context).novel_tts_reading_delete,
                       onPressed: () => _remove(i),
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const WcIcon(Icons.delete_outline),
                     ),
                   ],
                 ),
@@ -363,7 +364,7 @@ class _NovelTtsHeaderListEditorState extends State<NovelTtsHeaderListEditor> {
           child: OutlinedButton.icon(
             key: novelTtsAddHeaderKey,
             onPressed: _add,
-            icon: const Icon(Icons.add),
+            icon: const WcIcon(Icons.add),
             label: Text(widget.addLabel),
           ),
         ),

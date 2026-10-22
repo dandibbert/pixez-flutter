@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/watercolor/watercolor_paper.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
@@ -28,14 +29,21 @@ class _SearchBarState extends State<SearchBar> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = WatercolorTokens.of(context);
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: Colors.grey.withValues(alpha: 0.4),
-      ),
+      decoration: tokens == null
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              color: Colors.grey.withValues(alpha: 0.4),
+            )
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              color: tokens.card,
+              border: Border.all(color: tokens.ink, width: 1.5),
+            ),
       child: Container(
-        height: 48,
+        height: tokens == null ? 48 : 50,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -58,8 +66,10 @@ class _SearchBarState extends State<SearchBar> {
                   child: Text(
                     I18n.of(context).search_word_hint,
                     style: TextStyle(
-                      fontSize: 16,
-                      color: Theme.of(context).textTheme.displaySmall!.color,
+                      fontSize: tokens == null ? 16 : 15,
+                      color:
+                          tokens?.sub ??
+                          Theme.of(context).textTheme.displaySmall!.color,
                     ),
                   ),
                 ),

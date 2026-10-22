@@ -26,7 +26,7 @@ history home_4 information layers left line_height link list_check lock mail
 more_1 more_2 news palette paste pause pause_circle pic play play_circle
 refresh_2 right search send_plane settings_3 settings_6 share_2
 skip_forward skip_previous sort_descending star stop sun translate_2 trophy
-up user_3 volume warning
+time up user_3 volume warning
 """.split()
 
 SIZING_PATH = re.compile(r'<path d="M24 0v24H0V0(?:h24Z|z)[^"]*"/>')

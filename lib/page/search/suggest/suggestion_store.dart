@@ -26,8 +26,9 @@ abstract class _SuggestionStoreBase with Store {
   AutoWords? autoWords;
   fetch(String query) async {
     try {
-      AutoWords autoWords =
-          await apiClient.getSearchAutoCompleteKeywords(query);
+      AutoWords autoWords = await apiClient.getSearchAutoCompleteKeywords(
+        query,
+      );
       this.autoWords = autoWords;
     } catch (e) {}
   }

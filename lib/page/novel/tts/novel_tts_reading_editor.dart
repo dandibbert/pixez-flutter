@@ -13,6 +13,7 @@ import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dar
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.dart';
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key novelTtsAddReadingKey = Key('novelTtsAddReading');
 const Key novelTtsBulkReadingKey = Key('novelTtsBulkReading');
@@ -184,7 +185,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
               controller: _search,
               decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const WcIcon(Icons.search),
                 hintText: i18n.novel_tts_reading_search,
                 border: const OutlineInputBorder(),
               ),
@@ -212,7 +213,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
             FilledButton.tonalIcon(
               key: novelTtsAddReadingKey,
               onPressed: () => _edit(context),
-              icon: const Icon(Icons.add),
+              icon: const WcIcon(Icons.add),
               label: Text(i18n.novel_tts_reading_add),
             ),
             OutlinedButton(
@@ -270,7 +271,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
           IconButton(
             key: novelTtsReadingDeleteKey(id),
             tooltip: i18n.novel_tts_reading_delete,
-            icon: const Icon(Icons.delete_outline),
+            icon: const WcIcon(Icons.delete_outline),
             onPressed: () => _delete(context, reading),
           ),
         ],

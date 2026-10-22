@@ -24,6 +24,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/page/hello/ranking/rank_store.dart';
 import 'package:pixez/page/hello/ranking/ranking_mode/rank_mode_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class RankPage extends StatefulWidget {
   RankPage({Key? key});
@@ -47,7 +48,7 @@ class _RankPageState extends State<RankPage>
     "day_r18_ai",
     "day_r18",
     "week_r18",
-    "week_r18g"
+    "week_r18g",
   ];
   var boolList = Map<int, bool>();
   late DateTime nowDate;
@@ -89,87 +90,86 @@ class _RankPageState extends State<RankPage>
   Widget build(BuildContext context) {
     super.build(context);
     final rankListMean = I18n.of(context).mode_list.split(' ');
-    return Observer(builder: (_) {
-      if (rankStore.inChoice) {
-        return _buildChoicePage(context, rankListMean);
-      }
-      if (rankStore.modeList.isNotEmpty) {
-        var list = I18n.of(context).mode_list.split(' ');
-        List<String> titles = [];
-        for (var i = 0; i < rankStore.modeList.length; i++) {
-          int index = modeList.indexOf(rankStore.modeList[i]);
-          titles.add(list[index]);
+    return Observer(
+      builder: (_) {
+        if (rankStore.inChoice) {
+          return _buildChoicePage(context, rankListMean);
         }
-        return DefaultTabController(
-          length: rankStore.modeList.length,
-          child: Column(
-            children: <Widget>[
-              AnimatedContainer(
-                duration: Duration(milliseconds: 400),
-                height: !fullScreenStore.fullscreen
-                    ? (kToolbarHeight + MediaQuery.of(context).padding.top)
-                    : 0,
-                child: AppBar(
-                  title: TabBar(
-                    onTap: (i) {
-                      HapticUtil.selectionClick();
-                      setState(() {
-                        this.index = i;
-                      });
-                    },
-                    tabAlignment: TabAlignment.start,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    isScrollable: true,
-                    tabs: <Widget>[
-                      for (var i in titles)
-                        Tab(
-                          text: i,
+        if (rankStore.modeList.isNotEmpty) {
+          var list = I18n.of(context).mode_list.split(' ');
+          List<String> titles = [];
+          for (var i = 0; i < rankStore.modeList.length; i++) {
+            int index = modeList.indexOf(rankStore.modeList[i]);
+            titles.add(list[index]);
+          }
+          return DefaultTabController(
+            length: rankStore.modeList.length,
+            child: Column(
+              children: <Widget>[
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 400),
+                  height: !fullScreenStore.fullscreen
+                      ? (kToolbarHeight + MediaQuery.of(context).padding.top)
+                      : 0,
+                  child: AppBar(
+                    title: TabBar(
+                      onTap: (i) {
+                        HapticUtil.selectionClick();
+                        setState(() {
+                          this.index = i;
+                        });
+                      },
+                      tabAlignment: TabAlignment.start,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      isScrollable: true,
+                      tabs: <Widget>[for (var i in titles) Tab(text: i)],
+                    ),
+                    actions: <Widget>[
+                      if (Platform.isAndroid)
+                        IconButton(
+                          icon: WcIcon(Icons.fullscreen),
+                          onPressed: () {
+                            fullScreenStore.toggle();
+                          },
+                        ),
+                      Visibility(
+                        visible: index < rankStore.modeList.length,
+                        child: IconButton(
+                          icon: WcIcon(Icons.date_range),
+                          onPressed: () async {
+                            await _showTimePicker(context);
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        icon: WcIcon(Icons.undo),
+                        onPressed: () {
+                          rankStore.reset();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      for (var element in rankStore.modeList)
+                        RankModePage(
+                          date: dateTime,
+                          mode: element,
+                          index: rankStore.modeList.indexOf(element),
                         ),
                     ],
                   ),
-                  actions: <Widget>[
-                    if (Platform.isAndroid)
-                      IconButton(
-                        icon: Icon(Icons.fullscreen),
-                        onPressed: () {
-                          fullScreenStore.toggle();
-                        },
-                      ),
-                    Visibility(
-                      visible: index < rankStore.modeList.length,
-                      child: IconButton(
-                        icon: Icon(Icons.date_range),
-                        onPressed: () async {
-                          await _showTimePicker(context);
-                        },
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.undo),
-                      onPressed: () {
-                        rankStore.reset();
-                      },
-                    )
-                  ],
                 ),
-              ),
-              Expanded(
-                child: TabBarView(children: [
-                  for (var element in rankStore.modeList)
-                    RankModePage(
-                      date: dateTime,
-                      mode: element,
-                      index: rankStore.modeList.indexOf(element),
-                    ),
-                ]),
-              )
-            ],
-          ),
-        );
-      } else {
-        return _buildChoicePage(context, rankListMean);
-      }
-    });
+              ],
+            ),
+          );
+        } else {
+          return _buildChoicePage(context, rankListMean);
+        }
+      },
+    );
   }
 
   Widget _buildChoicePage(BuildContext context, List<String> rankListMean) {
@@ -181,12 +181,12 @@ class _RankPageState extends State<RankPage>
             title: Text(I18n.of(context).choice_you_like),
             actions: <Widget>[
               IconButton(
-                icon: Icon(Icons.save),
+                icon: WcIcon(Icons.save),
                 onPressed: () async {
                   await rankStore.saveChange(boolList);
                   rankStore.inChoice = false;
                 },
-              )
+              ),
             ],
           ),
           Expanded(
@@ -197,24 +197,25 @@ class _RankPageState extends State<RankPage>
                 children: [
                   for (var e in rankListMean)
                     FilterChip(
-                        label: Text(e),
-                        selected: _rankFilters.contains(e),
-                        onSelected: (v) {
-                          boolList[rankListMean.indexOf(e)] = v;
-                          if (v) {
-                            setState(() {
-                              _rankFilters.add(e);
-                            });
-                          } else {
-                            setState(() {
-                              _rankFilters.remove(e);
-                            });
-                          }
-                        }),
+                      label: Text(e),
+                      selected: _rankFilters.contains(e),
+                      onSelected: (v) {
+                        boolList[rankListMean.indexOf(e)] = v;
+                        if (v) {
+                          setState(() {
+                            _rankFilters.add(e);
+                          });
+                        } else {
+                          setState(() {
+                            _rankFilters.remove(e);
+                          });
+                        }
+                      },
+                    ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -225,12 +226,13 @@ class _RankPageState extends State<RankPage>
   Future _showTimePicker(BuildContext context) async {
     var nowdate = DateTime.now();
     var date = await showDatePicker(
-        context: context,
-        initialDate: nowDateTime,
-        locale: userSetting.locale,
-        firstDate: DateTime(2007, 8),
-        //pixiv于2007年9月10日由上谷隆宏等人首次推出第一个测试版...
-        lastDate: nowdate);
+      context: context,
+      initialDate: nowDateTime,
+      locale: userSetting.locale,
+      firstDate: DateTime(2007, 8),
+      //pixiv于2007年9月10日由上谷隆宏等人首次推出第一个测试版...
+      lastDate: nowdate,
+    );
     if (date != null && mounted) {
       nowDateTime = date;
       setState(() {

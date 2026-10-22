@@ -7,6 +7,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 /// Seed presets of the theme-color palette, as hue and saturation; the seed
 /// itself is that hue at 60% lightness.
@@ -644,7 +645,7 @@ class _SwatchButton extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Icon(Icons.check, size: 18, color: tokens.onPigment),
+                    WcIcon(Icons.check, size: 18, color: tokens.onPigment),
                   ],
                 ],
               ),

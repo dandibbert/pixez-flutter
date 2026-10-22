@@ -7,6 +7,7 @@ import 'package:pixez/page/novel/viewer/novel_font_picker.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key novelReaderHeaderKey = Key('novelReaderHeader');
 const Key novelReaderArticleKey = Key('novelReaderArticle');
@@ -95,7 +96,10 @@ class NovelReaderHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           child: Row(
             children: [
-              IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
+              IconButton(
+                icon: const WcIcon(Icons.arrow_back),
+                onPressed: onBack,
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +137,7 @@ class NovelReaderHeader extends StatelessWidget {
                 IconButton(
                   key: novelReaderDetailsButtonKey,
                   tooltip: I18n.of(context).novel_details,
-                  icon: const Icon(Icons.info_outline),
+                  icon: const WcIcon(Icons.info_outline),
                   onPressed: onDetails,
                 ),
               if (trailing != null) trailing!,
@@ -627,13 +631,13 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
               contentPadding: EdgeInsets.zero,
               title: Text(_fontLabel()),
               subtitle: Text(I18n.of(context).novel_font_search),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const WcIcon(Icons.chevron_right),
               onTap: _openFontPicker,
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.text_fields),
+                const WcIcon(Icons.text_fields),
                 const SizedBox(width: 12),
                 Text(_fontSize.round().toString()),
                 Expanded(
@@ -654,7 +658,7 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
             ),
             Row(
               children: [
-                const Icon(Icons.format_line_spacing),
+                const WcIcon(Icons.format_line_spacing),
                 const SizedBox(width: 12),
                 Text(_lineHeight.toStringAsFixed(1)),
                 Expanded(

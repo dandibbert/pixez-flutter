@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:pixez/watercolor/watercolor_paper.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
 
 /// Builds the Material theme for the watercolor style from [tokens].
 ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
@@ -48,12 +50,18 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
     cardColor: tokens.card,
     dividerColor: tokens.line,
     extensions: [tokens],
+    textTheme: _textTheme(tokens),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       foregroundColor: tokens.ink,
       elevation: 0,
       scrolledUnderElevation: 0,
+      titleTextStyle: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: tokens.ink,
+      ),
     ),
     cardTheme: CardThemeData(
       color: tokens.card,
@@ -90,6 +98,13 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
       shape: rounded(WatercolorTokens.radiusSmall),
     ),
     dividerTheme: DividerThemeData(color: tokens.line, space: 1),
+    listTileTheme: ListTileThemeData(
+      iconColor: tokens.ink,
+      textColor: tokens.ink,
+      minTileHeight: 50,
+      titleTextStyle: TextStyle(fontSize: 15, color: tokens.ink),
+      subtitleTextStyle: TextStyle(fontSize: 12, color: tokens.sub),
+    ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStatePropertyAll(tokens.ink),
       trackColor: WidgetStateProperty.resolveWith(
@@ -130,9 +145,14 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
     ),
     tabBarTheme: TabBarThemeData(
       dividerColor: Colors.transparent,
-      labelColor: tokens.ink,
+      labelColor: tokens.onPigment,
       unselectedLabelColor: tokens.sub,
-      indicatorColor: tokens.accent,
+      labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      unselectedLabelStyle: const TextStyle(fontSize: 15),
+      indicator: PigmentTabIndicator(tokens.pigment(0)),
+      indicatorSize: TabBarIndicatorSize.label,
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+      splashFactory: NoSplash.splashFactory,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -165,5 +185,16 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
         ),
       },
     ),
+  );
+}
+
+/// System fonts in ink, with secondary sizes in the secondary ink.
+TextTheme _textTheme(WatercolorTokens tokens) {
+  final base = Typography.material2021(
+    platform: defaultTargetPlatform,
+  ).black.apply(bodyColor: tokens.ink, displayColor: tokens.ink);
+  return base.copyWith(
+    bodySmall: base.bodySmall?.copyWith(color: tokens.sub),
+    labelSmall: base.labelSmall?.copyWith(color: tokens.sub),
   );
 }

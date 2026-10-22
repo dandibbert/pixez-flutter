@@ -20,6 +20,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SaveFormatPage extends StatefulWidget {
   @override
@@ -57,18 +58,23 @@ class _SaveFormatPageState extends State<SaveFormatPage> {
   }
 
   _buildActionText(String text) => ActionChip(
-      label: Text("$text"),
-      onPressed: () {
-        if (_textEditingController.selection.end == -1) return;
-        var insertText = "{$text}";
-        if (text == "_") insertText = "_";
-        final textSelection = _textEditingController.selection;
-        _textEditingController.text = _textEditingController.text
-            .replaceRange(textSelection.start, textSelection.end, insertText);
-        _textEditingController.selection = textSelection.copyWith(
-            baseOffset: textSelection.start + insertText.length,
-            extentOffset: textSelection.start + insertText.length);
-      });
+    label: Text("$text"),
+    onPressed: () {
+      if (_textEditingController.selection.end == -1) return;
+      var insertText = "{$text}";
+      if (text == "_") insertText = "_";
+      final textSelection = _textEditingController.selection;
+      _textEditingController.text = _textEditingController.text.replaceRange(
+        textSelection.start,
+        textSelection.end,
+        insertText,
+      );
+      _textEditingController.selection = textSelection.copyWith(
+        baseOffset: textSelection.start + insertText.length,
+        extentOffset: textSelection.start + insertText.length,
+      );
+    },
+  );
   String intialFormat = "{illust_id}_p{part}";
 
   @override
@@ -78,104 +84,125 @@ class _SaveFormatPageState extends State<SaveFormatPage> {
         title: Text(I18n.of(context).save_format),
         actions: <Widget>[
           IconButton(
-              icon: Icon(Icons.refresh),
-              onPressed: () async {
-                _textEditingController.text = intialFormat;
-                await userSetting.setFormat(intialFormat);
-              }),
+            icon: WcIcon(Icons.refresh),
+            onPressed: () async {
+              _textEditingController.text = intialFormat;
+              await userSetting.setFormat(intialFormat);
+            },
+          ),
           IconButton(
-              icon: Icon(Icons.save),
-              onPressed: () {
-                var needBack = false;
-                badText.forEach((element) {
-                  if (_textEditingController.text.contains(element)) {
-                    needBack = true;
-                  }
-                });
-                if (!_textEditingController.text.contains('{part}')) {
-                  BotToast.showText(
-                      text: I18n.of(context)
-                          .save_format_lose_part_warning('{part}'));
-                  return;
+            icon: WcIcon(Icons.save),
+            onPressed: () {
+              var needBack = false;
+              badText.forEach((element) {
+                if (_textEditingController.text.contains(element)) {
+                  needBack = true;
                 }
-                if (_textEditingController.text.isNotEmpty && !needBack)
-                  Navigator.of(context).pop(_textEditingController.text);
-              }),
+              });
+              if (!_textEditingController.text.contains('{part}')) {
+                BotToast.showText(
+                  text: I18n.of(
+                    context,
+                  ).save_format_lose_part_warning('{part}'),
+                );
+                return;
+              }
+              if (_textEditingController.text.isNotEmpty && !needBack)
+                Navigator.of(context).pop(_textEditingController.text);
+            },
+          ),
         ],
       ),
       body: Container(
-        child: ListView(children: [
-          // ListTile(
-          //   onTap: () {
-          //     Leader.push(context, SaveEvalPage());
-          //   },
-          //   title: Text("EVAL"),
-          //   subtitle: Text("Eval"),
-          // ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
+        child: ListView(
+          children: [
+            // ListTile(
+            //   onTap: () {
+            //     Leader.push(context, SaveEvalPage());
+            //   },
+            //   title: Text("EVAL"),
+            //   subtitle: Text("Eval"),
+            // ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
                 controller: _textEditingController,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   hintText: 'Input File Name Format',
                   labelText: 'File Name Format',
-                )),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Wrap(
-              spacing: 4.0,
-              children: <Widget>[
-                _buildActionText("title"),
-                _buildActionText("_"),
-                _buildActionText("part"),
-                _buildActionText("illust_id"),
-                _buildActionText("user_id"),
-                _buildActionText("user_name"),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Wrap(
+                spacing: 4.0,
+                children: <Widget>[
+                  _buildActionText("title"),
+                  _buildActionText("_"),
+                  _buildActionText("part"),
+                  _buildActionText("illust_id"),
+                  _buildActionText("user_id"),
+                  _buildActionText("user_name"),
+                ],
+              ),
+            ),
+            Observer(
+              builder: (_) {
+                return SwitchListTile(
+                  title: Text(I18n.of(context).clear_old_format_file),
+                  subtitle: Text(
+                    I18n.of(context).clear_old_format_file_message,
+                  ),
+                  onChanged: (bool value) {
+                    HapticUtil.light();
+                    userSetting.setIsClearnOldFormatFile(value);
+                  },
+                  value: userSetting.isClearOldFormatFile,
+                );
+              },
+            ),
+            DataTable(
+              columns: <DataColumn>[
+                DataColumn(label: Text("Name")),
+                DataColumn(label: Text("Result")),
+              ],
+              rows: <DataRow>[
+                DataRow(
+                  cells: [
+                    DataCell(Text('{illust_id}')),
+                    DataCell(Text(I18n.of(context).illust_id)),
+                  ],
+                ),
+                DataRow(
+                  cells: [
+                    DataCell(Text('{title}')),
+                    DataCell(Text(I18n.of(context).title)),
+                  ],
+                ),
+                DataRow(
+                  cells: [
+                    DataCell(Text('{user_id}')),
+                    DataCell(Text(I18n.of(context).painter_id)),
+                  ],
+                ),
+                DataRow(
+                  cells: [
+                    DataCell(Text('{user_name}')),
+                    DataCell(Text(I18n.of(context).painter_name)),
+                  ],
+                ),
+                DataRow(
+                  cells: [
+                    DataCell(Text('{part}')),
+                    DataCell(Text(I18n.of(context).which_part)),
+                  ],
+                ),
               ],
             ),
-          ),
-          Observer(builder: (_) {
-            return SwitchListTile(
-              title: Text(I18n.of(context).clear_old_format_file),
-              subtitle: Text(I18n.of(context).clear_old_format_file_message),
-              onChanged: (bool value) {
-                HapticUtil.light();
-                userSetting.setIsClearnOldFormatFile(value);
-              },
-              value: userSetting.isClearOldFormatFile,
-            );
-          }),
-          DataTable(
-            columns: <DataColumn>[
-              DataColumn(label: Text("Name")),
-              DataColumn(label: Text("Result")),
-            ],
-            rows: <DataRow>[
-              DataRow(cells: [
-                DataCell(Text('{illust_id}')),
-                DataCell(Text(I18n.of(context).illust_id)),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('{title}')),
-                DataCell(Text(I18n.of(context).title)),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('{user_id}')),
-                DataCell(Text(I18n.of(context).painter_id)),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('{user_name}')),
-                DataCell(Text(I18n.of(context).painter_name)),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('{part}')),
-                DataCell(Text(I18n.of(context).which_part)),
-              ]),
-            ],
-          )
-        ]),
+          ],
+        ),
       ),
     );
   }

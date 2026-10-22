@@ -36,6 +36,7 @@ import 'package:pixez/store/welcome_page_type.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SettingQualityPage extends StatefulWidget {
   @override
@@ -108,8 +109,8 @@ class _SettingQualityPageState extends State<SettingQualityPage>
               children: [
                 if (Platform.isAndroid)
                   ListTile(
-                    leading: Icon(Icons.android),
-                    trailing: const Icon(Icons.arrow_right),
+                    leading: WcIcon(Icons.android),
+                    trailing: const WcIcon(Icons.arrow_right),
                     title: Text(I18n.of(context).platform_special_setting),
                     subtitle: Text(
                       "For Android",
@@ -122,24 +123,24 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                     },
                   ),
                 ListTile(
-                  leading: const Icon(Icons.network_check),
+                  leading: const WcIcon(Icons.network_check),
                   title: Text(I18n.of(context).network),
-                  trailing: const Icon(Icons.arrow_right),
+                  trailing: const WcIcon(Icons.arrow_right),
                   onTap: () => Leader.push(
                     context,
                     NetworkPage(automaticallyImplyLeading: true),
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.info_outline),
+                  leading: const WcIcon(Icons.info_outline),
                   title: Text(I18n.of(context).share_info_format),
-                  trailing: const Icon(Icons.arrow_right),
+                  trailing: const WcIcon(Icons.arrow_right),
                   onTap: () => Leader.push(context, CopyTextPage()),
                 ),
                 _buildLanguageSelect(),
                 Divider(),
                 ListTile(
-                  leading: const Icon(Icons.feed),
+                  leading: const WcIcon(Icons.feed),
                   title: Text(I18n.of(context).feed_preview_quality),
                   trailing: SettingSelectMenu(
                     index: userSetting.feedPreviewQuality,
@@ -154,7 +155,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo),
+                  leading: const WcIcon(Icons.photo),
                   title: Text(
                     I18n.of(context).illustration_detail_page_quality,
                   ),
@@ -171,7 +172,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo_album),
+                  leading: const WcIcon(Icons.photo_album),
                   title: Text(I18n.of(context).manga_detail_page_quality),
                   trailing: SettingSelectMenu(
                     index: userSetting.mangaQuality,
@@ -186,7 +187,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.zoom_out_map),
+                  leading: const WcIcon(Icons.zoom_out_map),
                   title: Text(I18n.of(context).large_preview_zoom_quality),
                   trailing: SettingSelectMenu(
                     index: userSetting.zoomQuality,
@@ -197,7 +198,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.home),
+                  leading: const WcIcon(Icons.home),
                   title: Text(I18n.of(context).welcome_page),
                   trailing: SettingSelectMenu(
                     index: userSetting.materialWelcomePageIndex,
@@ -210,7 +211,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.manage_search),
+                  leading: const WcIcon(Icons.manage_search),
                   title: Text(I18n.of(context).search_result_mode),
                   trailing: SettingSelectMenu(
                     index: userSetting.searchResultMode.index,
@@ -226,7 +227,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.layers_outlined),
+                  leading: const WcIcon(Icons.layers_outlined),
                   title: Text(I18n.of(context).layout_mode),
                   trailing: SettingSelectMenu(
                     index: userSetting.padMode,
@@ -237,7 +238,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.stay_primary_portrait),
+                  leading: const WcIcon(Icons.stay_primary_portrait),
                   title: Text(I18n.of(context).crosscount),
                   trailing: SettingSelectMenu(
                     index: userSetting.crossAdapt
@@ -259,7 +260,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.stay_primary_landscape),
+                  leading: const WcIcon(Icons.stay_primary_landscape),
                   title: Text(I18n.of(context).crosscount),
                   trailing: SettingSelectMenu(
                     index: userSetting.hCrossAdapt
@@ -281,7 +282,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.task),
+                  leading: const WcIcon(Icons.task),
                   title: Text(I18n.of(context).max_download_task_running_count),
                   trailing: SettingSelectMenu(
                     index: userSetting.maxRunningTask - 1,
@@ -295,7 +296,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                 ),
                 if (_widgetTypeIndex != -1)
                   ListTile(
-                    leading: const Icon(Icons.widgets),
+                    leading: const WcIcon(Icons.widgets),
                     title: Text(I18n.of(context).appwidget_recommend_type),
                     trailing: SettingSelectMenu(
                       index: _widgetTypeIndex,
@@ -497,7 +498,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
       child: Column(
         children: [
           ListTile(
-            leading: Icon(Icons.translate),
+            leading: WcIcon(Icons.translate),
             title: Text("Language"),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -645,7 +646,7 @@ class _SettingSelectMenuState extends State<SettingSelectMenu> {
                 Row(
                   children: [SizedBox(width: 8.0), Text("${_items[_index]}")],
                 ),
-                Icon(Icons.arrow_drop_down),
+                WcIcon(Icons.arrow_drop_down),
               ],
             ),
             constraints: BoxConstraints(minWidth: 90),

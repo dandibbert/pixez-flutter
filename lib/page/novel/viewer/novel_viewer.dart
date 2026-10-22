@@ -60,6 +60,7 @@ import 'package:pixez/saf_plugin.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as Path;
+import 'package:pixez/watercolor/mingcute.dart';
 
 class NovelViewerPage extends StatefulWidget {
   final int id;
@@ -710,11 +711,11 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
             NovelBookmarkButton(novel: novel),
             IconButton(
               tooltip: I18n.of(context).setting,
-              icon: const Icon(Icons.text_fields),
+              icon: const WcIcon(Icons.text_fields),
               onPressed: () => _showSettings(context),
             ),
             IconButton(
-              icon: const Icon(Icons.more_vert),
+              icon: const WcIcon(Icons.more_vert),
               onPressed: () => _showMessage(context),
             ),
           ],
@@ -1038,7 +1039,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const WcIcon(Icons.close),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -1273,7 +1274,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               ),
               ListTile(
                 title: Text(I18n.of(context).history),
-                leading: Icon(
+                leading: WcIcon(
                   Icons.history,
                   color: Theme.of(context).colorScheme.onSurface.withAlpha(
                     _novelStore.positionBooked ? 225 : 120,
@@ -1306,14 +1307,14 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               if (Platform.isAndroid)
                 ListTile(
                   title: Text(I18n.of(context).export),
-                  leading: const Icon(Icons.folder_zip),
+                  leading: const WcIcon(Icons.folder_zip),
                   onTap: () {
                     _export();
                   },
                 ),
               ListTile(
                 title: Text(I18n.of(context).setting),
-                leading: const Icon(Icons.settings),
+                leading: const WcIcon(Icons.settings),
                 onTap: () {
                   Navigator.of(context).pop();
                   _showSettings(context);
@@ -1321,7 +1322,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               ),
               ListTile(
                 title: Text(I18n.of(context).novel_tts_settings),
-                leading: const Icon(Icons.headphones),
+                leading: const WcIcon(Icons.headphones),
                 onTap: () {
                   Navigator.of(context).pop();
                   openNovelTtsSettings(context);
@@ -1331,7 +1332,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 builder: (context) {
                   return ListTile(
                     title: Text(I18n.of(context).share),
-                    leading: const Icon(Icons.share),
+                    leading: const WcIcon(Icons.share),
                     onTap: () {
                       Navigator.of(context).pop();
                       final box = context.findRenderObject() as RenderBox?;

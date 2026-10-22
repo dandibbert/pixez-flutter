@@ -24,6 +24,8 @@ import 'package:pixez/supportor_plugin.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
 
 class IllustDetailContent extends StatefulWidget {
   final Illusts illusts;
@@ -114,9 +116,14 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
             child: ShortcutSelectionArea(
               child: Text(
                 data.title,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium!.copyWith(fontSize: 18),
+                style: WatercolorTokens.of(context) == null
+                    ? Theme.of(
+                        context,
+                      ).textTheme.bodyMedium!.copyWith(fontSize: 18)
+                    : const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
               ),
             ),
           ),
@@ -316,10 +323,18 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 14),
         child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onInverseSurface,
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
+          decoration: WatercolorTokens.of(context) == null
+              ? BoxDecoration(
+                  color: Theme.of(context).colorScheme.onInverseSurface,
+                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                )
+              : BoxDecoration(
+                  color: WatercolorTokens.of(context)!.card,
+                  borderRadius: BorderRadius.circular(
+                    WatercolorTokens.radiusMedium,
+                  ),
+                  border: Border.all(color: WatercolorTokens.of(context)!.line),
+                ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             child: Container(
@@ -357,6 +372,39 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   }
 
   Widget _buildCommentTextArea(BuildContext context, Illusts data) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Material(
+          color: tokens.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+            side: BorderSide(color: tokens.line),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () {
+              Leader.push(context, CommentPage(id: data.id));
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  WcListIcon(Icons.comment, pigment: 1),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${I18n.of(context).view_comment}${data.commentCountText}',
+                    style: TextStyle(fontSize: 14, color: tokens.ink),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Center(
       child: Padding(
         padding: EdgeInsets.only(left: 16.0, right: 16.0),
@@ -462,6 +510,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   }
 
   Widget buildRow(BuildContext context, Tags f) {
+    final tokens = WatercolorTokens.of(context);
     return GestureDetector(
       onLongPress: () async {
         HapticUtil.heavy();
@@ -480,11 +529,17 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
         );
       },
       child: Container(
-        height: 25,
+        height: tokens == null ? 25 : 28,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.secondaryContainer,
-          borderRadius: const BorderRadius.all(Radius.circular(12.5)),
+          color: tokens == null
+              ? Theme.of(context).colorScheme.secondaryContainer
+              : tokens
+                    .pigment(_illusts.tags.indexOf(f))
+                    .withValues(alpha: 0.55),
+          borderRadius: BorderRadius.all(
+            Radius.circular(tokens == null ? 12.5 : 14),
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -511,8 +566,10 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                     ),
                 ],
                 style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontSize: 12,
+                  color:
+                      tokens?.onPigment ??
+                      Theme.of(context).colorScheme.primary,
+                  fontSize: tokens == null ? 12 : 13,
                 ),
               ),
             ),
@@ -588,12 +645,17 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                             },
                             child: Text(
                               illust.user.name,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodySmall!.color,
-                              ),
+                              style: WatercolorTokens.of(context) == null
+                                  ? TextStyle(
+                                      fontSize: 14,
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall!.color,
+                                    )
+                                  : const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                             ),
                           ),
                         ),

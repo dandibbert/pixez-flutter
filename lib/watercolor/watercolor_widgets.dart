@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 
@@ -200,6 +201,118 @@ class WcSectionLabel extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: tokens.sub,
+      ),
+    );
+  }
+}
+
+/// Tab indicator: a soft pigment wash behind the selected tab's label.
+class PigmentTabIndicator extends Decoration {
+  const PigmentTabIndicator(this.color);
+
+  final Color color;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
+      _PigmentTabPainter(color);
+
+  @override
+  bool operator ==(Object other) =>
+      other is PigmentTabIndicator && other.color == color;
+
+  @override
+  int get hashCode => color.hashCode;
+}
+
+class _PigmentTabPainter extends BoxPainter {
+  _PigmentTabPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size!;
+    final height = (size.height - 10).clamp(0.0, 30.0);
+    final rect = Rect.fromCenter(
+      center: offset + size.center(Offset.zero),
+      width: size.width + 20,
+      height: height,
+    );
+    final soft = Paint()
+      ..color = color.withValues(alpha: color.a * 0.85)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.6);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(height / 2)),
+      soft,
+    );
+    // A second, offset wash gives the edge a hand-painted wobble.
+    canvas.drawOval(
+      Rect.fromLTWH(
+        rect.left + rect.width * 0.08,
+        rect.top - 2,
+        rect.width * 0.7,
+        rect.height * 0.75,
+      ),
+      Paint()
+        ..color = color.withValues(alpha: color.a * 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+    );
+  }
+}
+
+/// Leading icon of a list row. In the watercolor style the icon sits on a
+/// small dab of the [pigment]-th pigment; in the classic style it is the
+/// plain icon.
+class WcListIcon extends StatelessWidget {
+  const WcListIcon(this.icon, {super.key, this.pigment = 0});
+
+  final IconData icon;
+  final int pigment;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens == null) return WcIcon(icon);
+    return SizedBox(
+      width: 30,
+      height: 28,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: 8,
+            top: 9,
+            width: 22,
+            height: 18,
+            child: PigmentWash(
+              color: tokens.pigment(pigment),
+              opacity: 0.75,
+              shape: PigmentShape.dot,
+            ),
+          ),
+          WcIcon(icon, size: 22, color: tokens.ink),
+        ],
+      ),
+    );
+  }
+}
+
+/// A group of list rows: a paper card in the watercolor style, the bare
+/// rows in the classic style.
+class WcListGroup extends StatelessWidget {
+  const WcListGroup({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (WatercolorTokens.of(context) == null) return child;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: WcPanel(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        radius: 22,
+        child: child,
       ),
     );
   }
