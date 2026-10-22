@@ -453,91 +453,93 @@ class _StyleCard extends StatelessWidget {
           HapticUtil.selectionClick();
           userSetting.setUiStyle(style);
         },
-        child: AnimatedContainer(
-          duration: WcMotion.medium,
-          curve: WcMotion.standard,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: tokens.card,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? tokens.ink : tokens.line,
-              width: selected ? 2 : 1,
+        child: PressScale(
+          child: AnimatedContainer(
+            duration: WcMotion.medium,
+            curve: WcMotion.standard,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: tokens.card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? tokens.ink : tokens.line,
+                width: selected ? 2 : 1,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 70,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: previewBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        for (var i = 0; i < 2; i++)
-                          Container(
-                            width: 46,
-                            height: 30,
-                            margin: const EdgeInsets.fromLTRB(2, 2, 4, 0),
-                            decoration: BoxDecoration(
-                              color: previewCard,
-                              borderRadius: BorderRadius.circular(
-                                watercolor ? 8 : 4,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: watercolor ? tokens.card : previewCard,
-                        borderRadius: BorderRadius.circular(
-                          watercolor ? 10 : 0,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 70,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: previewBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          for (var i = 0; i < dots.length; i++)
+                          for (var i = 0; i < 2; i++)
                             Container(
-                              width: i == 0 ? 18 : 10,
-                              height: 10,
+                              width: 46,
+                              height: 30,
+                              margin: const EdgeInsets.fromLTRB(2, 2, 4, 0),
                               decoration: BoxDecoration(
-                                color: dots[i],
-                                borderRadius: BorderRadius.circular(5),
+                                color: previewCard,
+                                borderRadius: BorderRadius.circular(
+                                  watercolor ? 8 : 4,
+                                ),
                               ),
                             ),
                         ],
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      Container(
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: watercolor ? tokens.card : previewCard,
+                          borderRadius: BorderRadius.circular(
+                            watercolor ? 10 : 0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            for (var i = 0; i < dots.length; i++)
+                              Container(
+                                width: i == 0 ? 18 : 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: dots[i],
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: tokens.ink,
+                const SizedBox(height: 8),
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.ink,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: tokens.sub),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: tokens.sub),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -565,27 +567,29 @@ class _PalettePill extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: WcMotion.medium,
-          curve: WcMotion.standard,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? tokens.card : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? tokens.ink : tokens.line,
-              width: selected ? 1.5 : 1,
+        child: PressScale(
+          child: AnimatedContainer(
+            duration: WcMotion.medium,
+            curve: WcMotion.standard,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? tokens.card : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: selected ? tokens.ink : tokens.line,
+                width: selected ? 1.5 : 1,
+              ),
             ),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-              color: tokens.ink,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                color: tokens.ink,
+              ),
             ),
           ),
         ),
@@ -618,50 +622,52 @@ class _SwatchButton extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Column(
-          children: [
-            SizedBox(
-              width: 44,
-              height: 40,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 4,
-                      ),
-                      child: swatch,
-                    ),
-                  ),
-                  if (selected) ...[
+        child: PressScale(
+          child: Column(
+            children: [
+              SizedBox(
+                width: 44,
+                height: 40,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
                     Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: ShapeDecoration(
-                          shape: OvalBorder(
-                            side: BorderSide(color: tokens.ink, width: 1.6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        child: swatch,
+                      ),
+                    ),
+                    if (selected) ...[
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: ShapeDecoration(
+                            shape: OvalBorder(
+                              side: BorderSide(color: tokens.ink, width: 1.6),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    WcIcon(Icons.check, size: 18, color: tokens.onPigment),
+                      WcIcon(Icons.check, size: 18, color: tokens.onPigment),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                color: tokens.ink,
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  color: tokens.ink,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

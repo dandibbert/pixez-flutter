@@ -31,6 +31,7 @@ import 'package:pixez/page/hello/setting/save_format_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class PlatformPage extends StatefulWidget {
   @override
@@ -212,6 +213,7 @@ class _PlatformPageState extends State<PlatformPage> {
                   leading: WcIcon(Icons.mobile_screen_share),
                   onTap: () {
                     showModalBottomSheet(
+                      sheetAnimationStyle: WcMotion.sheet(context),
                       context: context,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(

@@ -30,6 +30,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class WaterFallLoading extends StatefulWidget {
   const WaterFallLoading({Key? key}) : super(key: key);
@@ -192,7 +193,7 @@ class _LightingListState extends State<LightingList> {
     final controller = TextEditingController(
       text: _store.currentPage.toString(),
     );
-    final page = await showDialog<int>(
+    final page = await showWcDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(I18n.of(context).jump_to_page),

@@ -9,6 +9,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/models/glance_illust_persist.dart';
 import 'package:pixez/page/history/history_store.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class DataExportPage extends HookConsumerWidget {
   const DataExportPage({super.key});
@@ -167,7 +168,7 @@ class DataExportPage extends HookConsumerWidget {
   }
 
   Future _showClearCacheDialog(BuildContext context) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(I18n.of(context).clear_all_cache),

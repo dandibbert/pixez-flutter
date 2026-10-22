@@ -33,28 +33,3 @@ class WatercolorPaper extends StatelessWidget {
     );
   }
 }
-
-/// Puts each route on its own sheet of paper, so pages stay opaque while the
-/// scaffold background is transparent.
-class WatercolorPageTransitionsBuilder extends PageTransitionsBuilder {
-  const WatercolorPageTransitionsBuilder(this.inner);
-
-  final PageTransitionsBuilder inner;
-
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return inner.buildTransitions(
-      route,
-      context,
-      animation,
-      secondaryAnimation,
-      WatercolorPaper(child: child),
-    );
-  }
-}

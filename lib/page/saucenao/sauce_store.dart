@@ -35,6 +35,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 part 'sauce_store.g.dart';
 
@@ -68,7 +69,7 @@ abstract class SauceStoreBase with Store {
     if (Platform.isAndroid && context != null) {
       final skipAlert = Prefer.getBool("photo_picker_type_selected") ?? false;
       if (!skipAlert) {
-        await showDialog(
+        await showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(

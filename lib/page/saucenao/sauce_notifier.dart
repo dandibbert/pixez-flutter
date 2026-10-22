@@ -21,6 +21,7 @@ import 'package:pixez/main.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 part 'sauce_notifier.freezed.dart';
 part 'sauce_notifier.g.dart';
@@ -61,7 +62,7 @@ class Sauce extends _$Sauce {
     if (Platform.isAndroid && context != null) {
       final skipAlert = Prefer.getBool("photo_picker_type_selected") ?? false;
       if (!skipAlert) {
-        await showDialog(
+        await showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(

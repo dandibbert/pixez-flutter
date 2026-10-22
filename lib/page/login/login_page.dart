@@ -30,6 +30,7 @@ import 'package:pixez/page/webview/webview_page.dart';
 import 'package:pixez/weiss_plugin.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -133,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(height: 4),
                         OutlinedButton(
                           onPressed: () async {
-                            await showDialog(
+                            await showWcDialog(
                               context: context,
                               builder: (context) => TokenPage(),
                             );

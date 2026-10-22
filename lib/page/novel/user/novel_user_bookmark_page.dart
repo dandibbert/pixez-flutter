@@ -29,6 +29,7 @@ import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/page/user/works/works_page.dart';
 import 'package:pixez/exts.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NovelUserBookmarkPage extends StatefulWidget {
   final int id;
@@ -246,6 +247,7 @@ class _NovelUserBookmarkPageState extends State<NovelUserBookmarkPage> {
 
   Future _buildShowModalBottomSheet(BuildContext context) {
     return showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),

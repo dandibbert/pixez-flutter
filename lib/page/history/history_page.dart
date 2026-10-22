@@ -29,6 +29,7 @@ import 'package:pixez/page/picture/illust_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/search/result_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 enum _HistoryAction { delete, openSourceSearch }
 
@@ -101,7 +102,7 @@ class HistoryPage extends HookConsumerWidget {
     IllustPersist history,
   ) async {
     final sourceQuery = restoreIllustHistoryOrigin(history);
-    final action = await showDialog<_HistoryAction>(
+    final action = await showWcDialog<_HistoryAction>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(I18n.of(context).history_item_actions),
@@ -198,7 +199,7 @@ class HistoryPage extends HookConsumerWidget {
   }
 
   Future<void> _cleanAll(BuildContext context, WidgetRef ref) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

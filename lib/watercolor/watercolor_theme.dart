@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
-import 'package:pixez/watercolor/watercolor_paper.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
 
@@ -50,6 +51,10 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
     cardColor: tokens.card,
     dividerColor: tokens.line,
     extensions: [tokens],
+    splashFactory: PigmentInkSplash.factory,
+    splashColor: tokens.pigment(0).withValues(alpha: 0.45),
+    highlightColor: Colors.transparent,
+    hoverColor: tokens.pigment(0).withValues(alpha: 0.08),
     textTheme: _textTheme(tokens),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
@@ -90,6 +95,7 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
       backgroundColor: tokens.card,
       surfaceTintColor: Colors.transparent,
       modalBackgroundColor: tokens.card,
+      modalBarrierColor: Colors.black.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(WatercolorTokens.radiusLarge),
@@ -206,21 +212,15 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: WatercolorPageTransitionsBuilder(
-          ZoomPageTransitionsBuilder(),
-        ),
-        TargetPlatform.iOS: WatercolorPageTransitionsBuilder(
+        TargetPlatform.android: WatercolorPageTransitionsBuilder(),
+        TargetPlatform.iOS: WatercolorPaperTransitionsBuilder(
           CupertinoPageTransitionsBuilder(),
         ),
-        TargetPlatform.macOS: WatercolorPageTransitionsBuilder(
+        TargetPlatform.macOS: WatercolorPaperTransitionsBuilder(
           CupertinoPageTransitionsBuilder(),
         ),
-        TargetPlatform.linux: WatercolorPageTransitionsBuilder(
-          ZoomPageTransitionsBuilder(),
-        ),
-        TargetPlatform.windows: WatercolorPageTransitionsBuilder(
-          ZoomPageTransitionsBuilder(),
-        ),
+        TargetPlatform.linux: WatercolorPageTransitionsBuilder(),
+        TargetPlatform.windows: WatercolorPageTransitionsBuilder(),
       },
     ),
   );

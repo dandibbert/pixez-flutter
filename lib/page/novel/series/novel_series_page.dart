@@ -19,6 +19,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 final novelSeriesProvider =
     NotifierProvider<NovelSeriesNotifier, NovelSeriesState?>(() {
@@ -387,31 +388,33 @@ class NovelSeriesPage extends HookConsumerWidget {
                 child: GestureDetector(
                   onTap: () => _toggleWatchlist(ref, data),
                   behavior: HitTestBehavior.opaque,
-                  child: SizedBox(
-                    height: 44,
-                    child: PigmentBackdrop(
-                      color: tokens.pigment(0),
-                      visible: !added,
-                      bleed: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 3,
-                      ),
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: added ? tokens.line : Colors.transparent,
-                          ),
+                  child: PressScale(
+                    child: SizedBox(
+                      height: 44,
+                      child: PigmentBackdrop(
+                        color: tokens.pigment(0),
+                        visible: !added,
+                        bleed: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 3,
                         ),
-                        child: Text(
-                          added
-                              ? I18n.of(context).watchlist_added
-                              : I18n.of(context).add_to_watchlist,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: added ? tokens.sub : tokens.onPigment,
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: added ? tokens.line : Colors.transparent,
+                            ),
+                          ),
+                          child: Text(
+                            added
+                                ? I18n.of(context).watchlist_added
+                                : I18n.of(context).add_to_watchlist,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: added ? tokens.sub : tokens.onPigment,
+                            ),
                           ),
                         ),
                       ),

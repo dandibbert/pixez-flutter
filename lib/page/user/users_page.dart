@@ -49,6 +49,7 @@ import 'package:pixez/page/user/user_store.dart';
 import 'package:pixez/page/user/works/works_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 /*
 🎵 Lyn-The Whims of Fate🎵
@@ -454,7 +455,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           ? userStore.userDetail!.profile.background_image_url != null
                 ? InkWell(
                     onLongPress: () {
-                      showDialog(
+                      showWcDialog(
                         context: context,
                         builder: (context) {
                           return AlertDialog(
@@ -524,7 +525,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
             break;
           case 1:
             {
-              final result = await showDialog(
+              final result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   return AlertDialog(
@@ -739,7 +740,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
                   url: userStore.user!.profileImageUrls.medium,
                   size: Size(80, 80),
                   onTap: () {
-                    showDialog(
+                    showWcDialog(
                       context: context,
                       builder: (context) {
                         return AlertDialog(

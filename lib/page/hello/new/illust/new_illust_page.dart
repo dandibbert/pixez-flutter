@@ -24,6 +24,7 @@ import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NewIllustPage extends StatefulWidget {
   final String restrict;
@@ -121,6 +122,7 @@ class _NewIllustPageState extends State<NewIllustPage> {
           icon: WcIcon(Icons.list),
           onPressed: () {
             showModalBottomSheet(
+              sheetAnimationStyle: WcMotion.sheet(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),

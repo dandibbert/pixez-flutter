@@ -5,6 +5,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class UserFollowButton extends StatefulWidget {
   final int id;
@@ -111,24 +112,26 @@ class _UserFollowButtonState extends State<UserFollowButton> {
       onLongPress: () {
         _longPressAction();
       },
-      child: Container(
-        height: 32,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              I18n.of(context).follow,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
+      child: PressScale(
+        child: Container(
+          height: 32,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Text(
+                I18n.of(context).follow,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
           ),
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Theme.of(context).colorScheme.secondary,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Theme.of(context).colorScheme.secondary,
+          ),
         ),
       ),
     );
@@ -187,7 +190,7 @@ class _UserFollowButtonState extends State<UserFollowButton> {
 
   _longPressAction() {
     HapticUtil.heavy();
-    showDialog(
+    showWcDialog(
       context: context,
       builder: (context) {
         return FollowDetailAlert(

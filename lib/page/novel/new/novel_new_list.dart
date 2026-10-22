@@ -4,6 +4,7 @@ import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_lighting_list.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NovelNewList extends StatefulWidget {
   const NovelNewList({super.key});
@@ -31,6 +32,7 @@ class _NovelNewListState extends State<NovelNewList> {
               icon: WcIcon(Icons.list),
               onPressed: () {
                 showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(

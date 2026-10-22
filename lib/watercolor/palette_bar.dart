@@ -88,76 +88,80 @@ class _PaletteWell extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 46,
-              height: 40,
-              child: CustomPaint(
-                painter: _WellPainter(
-                  paper: tokens.paper,
-                  shade: tokens.isDark
-                      ? const Color(0x59000000)
-                      : const Color(0x2E6E5646),
-                  highlight: tokens.isDark
-                      ? const Color(0x14FFFFFF)
-                      : const Color(0xE6FFFFFF),
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 3,
-                      height: 8,
-                      child: _Pigment(color: pigment, opacity: 0.6),
-                    ),
-                    Positioned(
-                      left: -1,
-                      top: 1,
-                      right: -1,
-                      bottom: 1,
-                      child: AnimatedScale(
-                        scale: selected ? 1 : 0,
-                        duration: reduced ? Duration.zero : WcMotion.medium,
-                        curve: WcMotion.bounce,
-                        child: AnimatedOpacity(
-                          opacity: selected ? 1 : 0,
-                          duration: reduced ? WcMotion.short : WcMotion.medium,
-                          curve: WcMotion.standard,
-                          child: _Pigment(color: pigment, opacity: 0.9),
+        child: PressScale(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 46,
+                height: 40,
+                child: CustomPaint(
+                  painter: _WellPainter(
+                    paper: tokens.paper,
+                    shade: tokens.isDark
+                        ? const Color(0x59000000)
+                        : const Color(0x2E6E5646),
+                    highlight: tokens.isDark
+                        ? const Color(0x14FFFFFF)
+                        : const Color(0xE6FFFFFF),
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 3,
+                        height: 8,
+                        child: _Pigment(color: pigment, opacity: 0.6),
+                      ),
+                      Positioned(
+                        left: -1,
+                        top: 1,
+                        right: -1,
+                        bottom: 1,
+                        child: AnimatedScale(
+                          scale: selected ? 1 : 0,
+                          duration: reduced ? Duration.zero : WcMotion.medium,
+                          curve: WcMotion.bounce,
+                          child: AnimatedOpacity(
+                            opacity: selected ? 1 : 0,
+                            duration: reduced
+                                ? WcMotion.short
+                                : WcMotion.medium,
+                            curve: WcMotion.standard,
+                            child: _Pigment(color: pigment, opacity: 0.9),
+                          ),
                         ),
                       ),
-                    ),
-                    WcIcon(
-                      item.icon,
-                      size: 24,
-                      filled: selected,
-                      color: selected ? tokens.onPigment : tokens.sub,
-                    ),
-                  ],
+                      WcIcon(
+                        item.icon,
+                        size: 24,
+                        filled: selected,
+                        color: selected ? tokens.onPigment : tokens.sub,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedDefaultTextStyle(
-              duration: WcMotion.short,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.2,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                color: selected ? tokens.ink : tokens.sub,
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: WcMotion.short,
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.2,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  color: selected ? tokens.ink : tokens.sub,
+                ),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

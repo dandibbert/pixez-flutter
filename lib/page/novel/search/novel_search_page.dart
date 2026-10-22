@@ -35,6 +35,7 @@ import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tag_tile.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class NovelSearchPage extends StatefulWidget {
   final String? initialQuery;
@@ -374,7 +375,7 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
     return GestureDetector(
       onLongPress: () {
         HapticUtil.heavy();
-        showDialog(
+        showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(

@@ -13,6 +13,7 @@ import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NovelWatchList extends StatefulHookConsumerWidget {
   const NovelWatchList({super.key});
@@ -261,22 +262,26 @@ class NovelSeriesItem extends StatelessWidget {
                           NovelViewerPage(id: data.latestContentId),
                         );
                       },
-                      child: SizedBox(
-                        height: 32,
-                        child: PigmentBackdrop(
-                          color: pigment,
-                          bleed: const EdgeInsets.symmetric(
-                            horizontal: 2,
-                            vertical: 2,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Text(
-                              I18n.of(context).view_latest,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: tokens.onPigment,
+                      child: PressScale(
+                        child: SizedBox(
+                          height: 32,
+                          child: PigmentBackdrop(
+                            color: pigment,
+                            bleed: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                              vertical: 2,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              child: Text(
+                                I18n.of(context).view_latest,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: tokens.onPigment,
+                                ),
                               ),
                             ),
                           ),

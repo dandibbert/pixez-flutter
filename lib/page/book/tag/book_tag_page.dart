@@ -21,6 +21,7 @@ import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result_illust_list.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class BookTagPage extends StatefulWidget {
   @override
@@ -189,7 +190,7 @@ class _BookTagPageState extends State<BookTagPage>
   }
 
   Future _deleteConfirm(String i) async {
-    await showDialog(
+    await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

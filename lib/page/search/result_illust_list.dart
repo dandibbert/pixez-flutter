@@ -31,6 +31,7 @@ import 'package:pixez/page/search/result_illust_store.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class ResultIllustList extends StatefulWidget {
   final IllustSearchQuery initialQuery;
@@ -390,6 +391,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
     );
     // showDialog(context: context, builder: (context) => resultIllustSortWidget);
     showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(

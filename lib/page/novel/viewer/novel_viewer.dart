@@ -61,6 +61,8 @@ import 'package:pixez/supportor_plugin.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as Path;
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NovelViewerPage extends StatefulWidget {
   final int id;
@@ -940,7 +942,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   Future<void> _showJumpDialog(BuildContext context, int totalPages) async {
     final controller = TextEditingController(text: _currentPage.toString());
-    final page = await showDialog<int>(
+    final page = await showWcDialog<int>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -977,6 +979,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   Future<void> _showSettings(BuildContext context) async {
     await showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -1013,6 +1016,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   Future<void> _showDetails(BuildContext context) async {
     final novel = _novelStore.novel!;
     await showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -1136,7 +1140,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
   }
 
   Future _longPressTag(BuildContext context, Tag f) async {
-    switch (await showDialog(
+    switch (await showWcDialog(
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(
@@ -1243,6 +1247,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
 
   Future _showMessage(BuildContext context) {
     return showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

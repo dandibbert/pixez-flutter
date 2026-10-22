@@ -597,26 +597,28 @@ class _WatercolorPageButton extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        height: 40,
-        child: leading
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color, width: 1.5),
-                ),
-                child: content,
-              )
-            : PigmentBackdrop(
-                color: tokens.pigment(0),
-                visible: enabled,
-                bleed: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-                child: Padding(
+      child: PressScale(
+        child: SizedBox(
+          height: 40,
+          child: leading
+              ? Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color, width: 1.5),
+                  ),
                   child: content,
+                )
+              : PigmentBackdrop(
+                  color: tokens.pigment(0),
+                  visible: enabled,
+                  bleed: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: content,
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }

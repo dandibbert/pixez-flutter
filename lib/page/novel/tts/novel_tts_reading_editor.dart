@@ -14,6 +14,7 @@ import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.da
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 const Key novelTtsAddReadingKey = Key('novelTtsAddReading');
 const Key novelTtsBulkReadingKey = Key('novelTtsBulkReading');
@@ -89,7 +90,7 @@ Future<NovelTtsReading?> showNovelTtsReadingDialog(
   String? initialSurface,
   String? previewText,
 }) {
-  return showDialog<NovelTtsReading>(
+  return showWcDialog<NovelTtsReading>(
     context: context,
     builder: (context) => _ReadingDialog(
       initial: initial,
@@ -338,7 +339,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
   Future<void> _bulk(BuildContext context) async {
     final i18n = I18n.of(context);
     final messenger = ScaffoldMessenger.maybeOf(context);
-    final raw = await showDialog<String>(
+    final raw = await showWcDialog<String>(
       context: context,
       builder: (context) => const _BulkReadingDialog(),
     );

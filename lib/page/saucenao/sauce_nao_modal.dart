@@ -25,6 +25,8 @@ import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/page/saucenao/sauce_nao_result.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 enum _SauceNaoPhase { idle, loading, done, error }
 
@@ -33,6 +35,7 @@ class SauceNaoModal extends StatefulWidget {
 
   static Future<void> show(BuildContext context) async {
     final result = await showModalBottomSheet<SauceNaoResult>(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -324,7 +327,7 @@ class _SauceNaoModalState extends State<SauceNaoModal> {
     if (!Platform.isAndroid || !mounted) return;
     final skipAlert = Prefer.getBool("photo_picker_type_selected") ?? false;
     if (skipAlert) return;
-    await showDialog(
+    await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

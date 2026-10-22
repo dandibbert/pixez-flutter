@@ -47,6 +47,7 @@ import 'package:pixez/page/theme/theme_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({Key? key}) : super(key: key);
@@ -367,7 +368,7 @@ class _SettingPageState extends State<SettingPage> {
   }
 
   Future _showLogoutDialog(BuildContext context) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

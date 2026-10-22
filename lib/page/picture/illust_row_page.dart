@@ -47,6 +47,8 @@ import 'package:pixez/page/zoom/photo_zoom_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class IllustRowPage extends StatefulWidget {
   final int id;
@@ -626,7 +628,7 @@ class _IllustRowPageState extends State<IllustRowPage>
   }
 
   Future _longPressTag(BuildContext context, Tags f) async {
-    switch (await showDialog(
+    switch (await showWcDialog(
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(
@@ -826,6 +828,7 @@ class _IllustRowPageState extends State<IllustRowPage>
       return;
     }
     showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -879,6 +882,7 @@ class _IllustRowPageState extends State<IllustRowPage>
       indexs.add(false);
     }
     final result = await showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
@@ -1106,7 +1110,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                           title: Text(I18n.of(dialogContext).report),
                           leading: WcIcon(Icons.report),
                           onTap: () async {
-                            await showDialog(
+                            await showWcDialog(
                               context: dialogContext,
                               builder: (context) {
                                 return AlertDialog(

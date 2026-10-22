@@ -20,6 +20,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class NovelHistory extends StatefulWidget {
   @override
@@ -43,7 +44,7 @@ class _NovelHistoryState extends State<NovelHistory> {
             child: WcIcon(Icons.delete_forever),
             onPressed: () async {
               HapticUtil.selectionClick();
-              final result = await showDialog(
+              final result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   return AlertDialog(

@@ -24,6 +24,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/directory/directory_store.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class DirectoryPage extends StatefulWidget {
   final String? initPath;
@@ -81,7 +82,7 @@ class _DirectoryPageState extends State<DirectoryPage> {
           IconButton(
             icon: WcIcon(Icons.create_new_folder_outlined),
             onPressed: () async {
-              final result = await showDialog(
+              final result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   final controller = TextEditingController();

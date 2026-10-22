@@ -6,6 +6,7 @@ import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 const Key novelTtsQuickVoiceKey = Key('novelTtsQuickVoice');
 const Key novelTtsBarKey = Key('novelTtsBar');
@@ -216,6 +217,7 @@ class NovelTtsBar extends StatelessWidget {
     final settings = controller.settings;
     final i18n = I18n.of(context);
     final selected = await showModalBottomSheet<NovelTtsVoicePreset>(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       showDragHandle: true,
       isScrollControlled: true,

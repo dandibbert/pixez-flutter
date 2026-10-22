@@ -26,6 +26,7 @@ import 'package:pixez/page/theme/watercolor_theme_settings.dart';
 import 'package:pixez/store/user_setting.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class ColorPickPage extends StatefulWidget {
   final Color initialColor;
@@ -100,7 +101,7 @@ class _ColorPickPageState extends State<ColorPickPage> {
                     ),
                   );
 
-              String result = await showDialog(
+              String result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   return AlertDialog(

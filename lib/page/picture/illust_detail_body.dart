@@ -28,6 +28,7 @@ import 'package:pixez/page/comment/comment_page.dart';
 import 'package:pixez/page/picture/illust_detail_store.dart';
 import 'package:pixez/page/search/result_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class GestureMe extends GestureRecognizer {
   @override
@@ -46,51 +47,55 @@ class IllustDetailBody extends StatelessWidget {
   IllustDetailBody({Key? key, required this.illust}) : super(key: key);
 
   Widget colorText(String text, BuildContext context) => Text(
-        text,
-        style: TextStyle(color: Theme.of(context).colorScheme.secondary),
-      );
+    text,
+    style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+  );
 
   Widget _buildNameAvatar(
-      BuildContext context, Illusts illust, IllustDetailStore _store) {
+    BuildContext context,
+    Illusts illust,
+    IllustDetailStore _store,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         Padding(
-            child: GestureDetector(
-              onLongPress: () {
-                _store.followUser();
-              },
-              child: Container(
-                height: 70,
-                width: 70,
-                child: Stack(
-                  children: <Widget>[
-                    Center(
-                      child: SizedBox(
-                        height: 70,
-                        width: 70,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _store.isFollow
-                                ? Colors.yellow
-                                : Theme.of(context).colorScheme.secondary,
-                          ),
+          child: GestureDetector(
+            onLongPress: () {
+              _store.followUser();
+            },
+            child: Container(
+              height: 70,
+              width: 70,
+              child: Stack(
+                children: <Widget>[
+                  Center(
+                    child: SizedBox(
+                      height: 70,
+                      width: 70,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _store.isFollow
+                              ? Colors.yellow
+                              : Theme.of(context).colorScheme.secondary,
                         ),
                       ),
                     ),
-                    Center(
-                      child: PainterAvatar(
-                        url: illust.user.profileImageUrls.medium,
-                        id: illust.user.id,
-                      ),
+                  ),
+                  Center(
+                    child: PainterAvatar(
+                      url: illust.user.profileImageUrls.medium,
+                      id: illust.user.id,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            padding: EdgeInsets.all(8.0)),
+          ),
+          padding: EdgeInsets.all(8.0),
+        ),
         Expanded(
           child: Padding(
             padding: EdgeInsets.all(8.0),
@@ -100,12 +105,11 @@ class IllustDetailBody extends StatelessWidget {
               children: <Widget>[
                 Text(
                   illust.title,
-                  style:
-                      TextStyle(color: Theme.of(context).colorScheme.secondary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
                 ),
-                Container(
-                  height: 4.0,
-                ),
+                Container(height: 4.0),
                 Text(
                   illust.user.name,
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -134,97 +138,94 @@ class IllustDetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final IllustDetailStore _store = IllustDetailStore(illust);
-    return Observer(builder: (context) {
-      return Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            _buildNameAvatar(context, illust, _store),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: <Widget>[
-                      Text(I18n.of(context).illust_id),
-                      Container(
-                        width: 10.0,
-                      ),
-                      colorText(illust.id.toString(), context),
-                      Container(
-                        width: 20.0,
-                      ),
-                      Text(I18n.of(context).pixel),
-                      Container(
-                        width: 10.0,
-                      ),
-                      colorText("${illust.width}x${illust.height}", context)
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: <Widget>[
-                      Text(I18n.of(context).total_view),
-                      Container(
-                        width: 10.0,
-                      ),
-                      colorText(illust.totalView.toString(), context),
-                      Container(
-                        width: 20.0,
-                      ),
-                      Text(I18n.of(context).total_bookmark),
-                      Container(
-                        width: 10.0,
-                      ),
-                      colorText("${illust.totalBookmarks}", context)
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 2, // gap between adjacent chips
-                runSpacing: 0, // gap between lines
-                children: [
-                  if (illust.illustAIType == 2)
-                    Text("${I18n.of(context).ai_generated}",
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                            color: Theme.of(context).colorScheme.secondary)),
-                  for (var f in illust.tags) buildRow(context, f)
-                ],
-              ),
-            ),
-            Card(
-              child: Padding(
+    return Observer(
+      builder: (context) {
+        return Container(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _buildNameAvatar(context, illust, _store),
+              Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: SelectableHtml(
-                  data: illust.caption.isEmpty ? "~" : illust.caption,
+                child: Column(
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: <Widget>[
+                        Text(I18n.of(context).illust_id),
+                        Container(width: 10.0),
+                        colorText(illust.id.toString(), context),
+                        Container(width: 20.0),
+                        Text(I18n.of(context).pixel),
+                        Container(width: 10.0),
+                        colorText("${illust.width}x${illust.height}", context),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: <Widget>[
+                        Text(I18n.of(context).total_view),
+                        Container(width: 10.0),
+                        colorText(illust.totalView.toString(), context),
+                        Container(width: 20.0),
+                        Text(I18n.of(context).total_bookmark),
+                        Container(width: 10.0),
+                        colorText("${illust.totalBookmarks}", context),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextButton(
-                child: Text(I18n.of(context).view_comment,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge!),
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (BuildContext context) => CommentPage(
-                            id: illust.id,
-                          )));
-                },
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 2, // gap between adjacent chips
+                  runSpacing: 0, // gap between lines
+                  children: [
+                    if (illust.illustAIType == 2)
+                      Text(
+                        "${I18n.of(context).ai_generated}",
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                    for (var f in illust.tags) buildRow(context, f),
+                  ],
+                ),
               ),
-            )
-          ],
-        ),
-      );
-    });
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SelectableHtml(
+                    data: illust.caption.isEmpty ? "~" : illust.caption,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextButton(
+                  child: Text(
+                    I18n.of(context).view_comment,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge!,
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            CommentPage(id: illust.id),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget buildRow(BuildContext context, Tags f) {
@@ -234,61 +235,64 @@ class IllustDetailBody extends StatelessWidget {
         await _longPressTag(context, f);
       },
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-          return ResultPage(
-            word: f.name,
-            translatedName: f.translatedName ?? "",
-          );
-        }));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) {
+              return ResultPage(
+                word: f.name,
+                translatedName: f.translatedName ?? "",
+              );
+            },
+          ),
+        );
       },
       child: RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-              text: "#${f.name}",
-              children: [
-                TextSpan(
-                  text: " ",
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                TextSpan(
-                    text: "${f.translatedName ?? ""}",
-                    style: Theme.of(context).textTheme.bodySmall)
-              ],
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall!
-                  .copyWith(color: Theme.of(context).colorScheme.secondary))),
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          text: "#${f.name}",
+          children: [
+            TextSpan(text: " ", style: Theme.of(context).textTheme.bodySmall),
+            TextSpan(
+              text: "${f.translatedName ?? ""}",
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            color: Theme.of(context).colorScheme.secondary,
+          ),
+        ),
+      ),
     );
   }
 
   Future _longPressTag(BuildContext context, Tags f) async {
-    switch (await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return SimpleDialog(
-            title: Text(f.name),
-            children: <Widget>[
-              SimpleDialogOption(
-                onPressed: () {
-                  Navigator.pop(context, 0);
-                },
-                child: Text(I18n.of(context).ban),
-              ),
-              SimpleDialogOption(
-                onPressed: () {
-                  Navigator.pop(context, 1);
-                },
-                child: Text(I18n.of(context).bookmark),
-              ),
-            ],
-          );
-        })) {
+    switch (await showWcDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: Text(f.name),
+          children: <Widget>[
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context, 0);
+              },
+              child: Text(I18n.of(context).ban),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context, 1);
+              },
+              child: Text(I18n.of(context).bookmark),
+            ),
+          ],
+        );
+      },
+    )) {
       case 0:
         {
-          muteStore.insertBanTag(BanTagPersist(
-            name: f.name,
-            translateName: f.translatedName ?? "",
-          ));
+          muteStore.insertBanTag(
+            BanTagPersist(name: f.name, translateName: f.translatedName ?? ""),
+          );
         }
         break;
       case 1:

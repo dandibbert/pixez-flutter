@@ -35,6 +35,8 @@ import 'package:pixez/page/about/update_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class AboutPage extends StatefulWidget {
   final bool? newVersion;
@@ -158,6 +160,7 @@ class _AboutPageState extends State<AboutPage> {
               subtitle: Text(I18n.of(context).perol_message),
               onTap: () {
                 showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(
@@ -193,6 +196,7 @@ class _AboutPageState extends State<AboutPage> {
               subtitle: Text(I18n.of(context).right_now_message),
               onTap: () {
                 showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   builder: (BuildContext context) {
                     return Container(
@@ -288,6 +292,7 @@ class _AboutPageState extends State<AboutPage> {
                 onTap: () {
                   if (!Constants.isGooglePlay)
                     showModalBottomSheet(
+                      sheetAnimationStyle: WcMotion.sheet(context),
                       context: context,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(
@@ -432,7 +437,7 @@ class _AboutPageState extends State<AboutPage> {
                   title: Text('Wechat Pay'),
                   subtitle: Text('tap'),
                   onTap: () async {
-                    showDialog(
+                    showWcDialog(
                       context: context,
                       builder: (_) {
                         return AlertDialog(

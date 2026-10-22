@@ -4,6 +4,7 @@ import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 const Key novelSearchFilterSheetKey = Key('novelSearchFilterSheet');
 const Key novelSearchFilterApplyKey = Key('novelSearchFilterApply');
@@ -30,6 +31,7 @@ class NovelSearchFilterSheet extends StatefulWidget {
     bool Function()? canUsePopular,
   }) {
     return showModalBottomSheet<void>(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

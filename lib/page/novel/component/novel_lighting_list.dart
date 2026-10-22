@@ -29,7 +29,9 @@ import 'package:pixez/page/novel/search/novel_search_pager.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/exts.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class NovelLightingList extends StatefulWidget {
   final FutureGet? futureGet;
@@ -163,7 +165,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
       itemBuilder: (context, index) {
         Novel novel = novels[index].novel!;
         final tokens = WatercolorTokens.of(context);
-        return Padding(
+        final item = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: InkWell(
             onTap: () {
@@ -333,6 +335,8 @@ class _NovelLightingListState extends State<NovelLightingList> {
             ),
           ),
         );
+        if (tokens == null) return item;
+        return WcEntrance(token: novels[index], index: index, child: item);
       },
       itemCount: novels.length,
     );
@@ -383,7 +387,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
     final controller = TextEditingController(
       text: _store.currentPage.toString(),
     );
-    final page = await showDialog<int>(
+    final page = await showWcDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(I18n.of(context).jump_to_page),

@@ -30,6 +30,7 @@ import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class NovelUsersPage extends StatefulWidget {
   final int id;
@@ -211,7 +212,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
           ? userStore.userDetail!.profile.background_image_url != null
                 ? InkWell(
                     onLongPress: () {
-                      showDialog(
+                      showWcDialog(
                         context: context,
                         builder: (context) {
                           return AlertDialog(
@@ -357,7 +358,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
             break;
           case 1:
             {
-              final result = await showDialog(
+              final result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   return AlertDialog(
@@ -551,7 +552,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
   }
 
   _showSaveAvatarDialog() {
-    showDialog(
+    showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

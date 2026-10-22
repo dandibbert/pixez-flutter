@@ -25,6 +25,7 @@ import 'package:pixez/models/task_persist.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/store/save_store.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class JobPage extends StatefulWidget {
   @override
@@ -253,6 +254,7 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
       icon: WcIcon(Icons.more_vert),
       onPressed: () async {
         await showModalBottomSheet(
+          sheetAnimationStyle: WcMotion.sheet(context),
           context: context,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),

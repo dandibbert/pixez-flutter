@@ -16,6 +16,7 @@ import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 export 'package:pixez/page/novel/tts/novel_tts_reading_editor.dart'
     show
@@ -208,7 +209,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
 
   Future<void> _saveVoice() async {
     final draft = _draft();
-    final name = await showDialog<String>(
+    final name = await showWcDialog<String>(
       context: context,
       builder: (_) => _VoiceNameDialog(initial: draft.activeVoice),
     );

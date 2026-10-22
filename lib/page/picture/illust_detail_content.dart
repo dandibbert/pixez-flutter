@@ -26,6 +26,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class IllustDetailContent extends StatefulWidget {
   final Illusts illusts;
@@ -439,7 +440,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
   }
 
   Future _longPressTag(BuildContext context, Tags f) async {
-    switch (await showDialog(
+    switch (await showWcDialog(
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(

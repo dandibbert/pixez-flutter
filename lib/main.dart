@@ -49,6 +49,7 @@ import 'package:pixez/store/save_store.dart';
 import 'package:pixez/store/tag_history_store.dart';
 import 'package:pixez/store/top_store.dart';
 import 'package:pixez/store/user_setting.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_theme.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/win32_plugin.dart';
@@ -262,6 +263,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     );
                   },
                   themeMode: userSetting.themeMode,
+                  themeAnimationDuration: watercolor
+                      ? WcMotion.long
+                      : kThemeAnimationDuration,
+                  themeAnimationCurve: watercolor
+                      ? WcMotion.standard
+                      : Curves.linear,
                   theme: watercolor
                       ? buildWatercolorTheme(
                           _watercolorTokens(Brightness.light, lightDynamic),

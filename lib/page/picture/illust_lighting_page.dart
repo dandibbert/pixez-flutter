@@ -56,6 +56,8 @@ import 'package:pixez/page/zoom/photo_zoom_page.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class IllustLightingPage extends StatefulWidget {
   final int id;
@@ -499,7 +501,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                 onLongPress: () async {
                   HapticUtil.heavy();
                   if (userSetting.longPressSaveConfirm) {
-                    final result = await showDialog(
+                    final result = await showWcDialog(
                       context: context,
                       builder: (context) {
                         return AlertDialog(
@@ -769,7 +771,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
   }
 
   Future _longPressTag(BuildContext context, Tags f) async {
-    switch (await showDialog(
+    switch (await showWcDialog(
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(
@@ -1008,6 +1010,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       return;
     }
     showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -1060,6 +1063,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       indexs.add(false);
     }
     final result = await showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
@@ -1309,7 +1313,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                 ),
                               );
                             } else {
-                              await showDialog(
+                              await showWcDialog(
                                 context: dialogContext,
                                 builder: (context) {
                                   return AlertDialog(

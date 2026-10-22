@@ -35,7 +35,9 @@ import 'package:pixez/page/picture/picture_list_page.dart';
 import 'package:pixez/page/picture/tag_for_illust_page.dart';
 import 'package:pixez/page/series/illust_series_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class IllustCard extends StatefulWidget {
   final IllustStore store;
@@ -105,7 +107,7 @@ class _IllustCardState extends State<IllustCard> {
   _onLongPressSave() async {
     HapticUtil.heavy();
     if (userSetting.longPressSaveConfirm) {
-      final result = await showDialog(
+      final result = await showWcDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
@@ -213,7 +215,11 @@ class _IllustCardState extends State<IllustCard> {
         : store.illusts!.width.toDouble() / store.illusts!.height.toDouble();
     final tokens = WatercolorTokens.of(context);
     if (tokens != null) {
-      return _buildWatercolorCard(context, tokens, tooLong, radio);
+      return WcEntrance(
+        token: store,
+        index: iStores?.take(8).toList().indexOf(store) ?? -1,
+        child: _buildWatercolorCard(context, tokens, tooLong, radio),
+      );
     }
     return Card(
       margin: EdgeInsets.all(8.0),
@@ -394,7 +400,7 @@ class _IllustCardState extends State<IllustCard> {
       final firstLongPress = await Prefer.getBool("first_long_press") ?? true;
       if (firstLongPress) {
         await Prefer.setBool("first_long_press", false);
-        await showDialog(
+        await showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -524,6 +530,7 @@ class _IllustCardState extends State<IllustCard> {
               onLongPress: () async {
                 HapticUtil.heavy();
                 final result = await showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   clipBehavior: Clip.hardEdge,
                   shape: RoundedRectangleBorder(

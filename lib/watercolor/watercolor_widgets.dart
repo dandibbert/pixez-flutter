@@ -157,22 +157,26 @@ class WcSegmented extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onSelected(i),
-                  child: SizedBox(
-                    height: height,
-                    child: PigmentBackdrop(
-                      color: tokens.pigment(0),
-                      visible: i == selected,
-                      bleed: const EdgeInsets.fromLTRB(2, 4, 2, 4),
-                      child: Text(
-                        labels[i],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: i == selected
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                          color: i == selected ? tokens.onPigment : tokens.ink,
+                  child: PressScale(
+                    child: SizedBox(
+                      height: height,
+                      child: PigmentBackdrop(
+                        color: tokens.pigment(0),
+                        visible: i == selected,
+                        bleed: const EdgeInsets.fromLTRB(2, 4, 2, 4),
+                        child: Text(
+                          labels[i],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: i == selected
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                            color: i == selected
+                                ? tokens.onPigment
+                                : tokens.ink,
+                          ),
                         ),
                       ),
                     ),

@@ -30,6 +30,7 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/shield/user_show_ai_setting.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class ShieldPage extends StatefulWidget {
   @override
@@ -192,7 +193,7 @@ class _ShieldPageState extends State<ShieldPage> {
   }
 
   Future deleteTag(BuildContext context, BanTagPersist f) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -226,7 +227,7 @@ class _ShieldPageState extends State<ShieldPage> {
 
   _showBanTagAddDialog(BuildContext context) async {
     final controller = TextEditingController();
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -273,7 +274,7 @@ class _ShieldPageState extends State<ShieldPage> {
   }
 
   Future _deleteIllust(BuildContext context, BanIllustIdPersist f) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -306,7 +307,7 @@ class _ShieldPageState extends State<ShieldPage> {
   }
 
   Future _deleteUserIdTag(BuildContext context, BanUserIdPersist f) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

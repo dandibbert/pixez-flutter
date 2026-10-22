@@ -35,6 +35,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/page/novel/viewer/novel_links.dart';
 import 'package:pixez/page/novel/viewer/novel_ruby.dart';
 import 'package:pixez/page/novel/viewer/novel_spans.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 //这一堆都是专门给小说特殊约定写的
 //🎵 EGOIST - Lovely Icecream Princess Sweetie
@@ -48,7 +49,7 @@ class UploadedImageSpan extends WidgetSpan {
           builder: (context) {
             return GestureDetector(
               onLongPress: () async {
-                final action = await showDialog<String>(
+                final action = await showWcDialog<String>(
                   context: context,
                   builder: (context) {
                     return SimpleDialog(
@@ -359,7 +360,7 @@ class NovelSpansGenerator {
               onOpenNovel(novelId);
               return;
             }
-            final open = await showDialog(
+            final open = await showWcDialog(
               context: context,
               builder: (context) {
                 return AlertDialog(

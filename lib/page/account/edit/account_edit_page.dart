@@ -23,6 +23,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/page/account/edit/account_edit_store.dart';
 import 'package:pixez/page/webview/account_deletion_webview_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class AccountEditPage extends StatefulWidget {
   @override
@@ -105,7 +106,7 @@ class _AccountEditPageState extends State<AccountEditPage> {
   }
 
   Future<void> _showChangePasswordDialog() async {
-    await showDialog(
+    await showWcDialog(
       context: context,
       builder: (context) => _ChangePasswordDialog(
         oldPasswordController: _oldPasswordController,
@@ -117,7 +118,7 @@ class _AccountEditPageState extends State<AccountEditPage> {
   }
 
   Future<void> _showAccountDeletionDialog() async {
-    showDialog(
+    showWcDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(

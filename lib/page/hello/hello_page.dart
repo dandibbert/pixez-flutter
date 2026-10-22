@@ -37,6 +37,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/palette_bar.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class HelloPage extends StatefulWidget {
   @override
@@ -143,7 +144,9 @@ class _HelloPageState extends State<HelloPage> {
               : Observer(
                   builder: (context) {
                     return AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
+                      duration: WatercolorTokens.of(context) == null
+                          ? const Duration(milliseconds: 400)
+                          : WcMotion.long,
                       transform: Matrix4.translationValues(
                         0,
                         fullScreenStore.fullscreen
