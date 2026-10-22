@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/selectable_html.dart';
 import 'package:pixez/component/selected_text.dart';
+import 'package:pixez/component/selection_horizontal_scroll.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/exts.dart';
 import 'package:pixez/i18n.dart';
@@ -328,7 +329,11 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                 contextMenuBuilder: (context, selectableRegionState) {
                   return _buildSelectionMenu(selectableRegionState, context);
                 },
-                child: SelectableHtml(data: caption.isEmpty ? "~" : caption),
+                child: SelectionHorizontalScroll(
+                  child: SelectableHtml(
+                    data: caption.isEmpty ? "~" : caption,
+                  ),
+                ),
               ),
             ),
           ),

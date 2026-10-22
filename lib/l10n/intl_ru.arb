@@ -527,5 +527,6 @@
   "novel_tts_reveal_secrets": "Show credentials",
   "novel_tts_copy_details": "Copy details",
   "novel_tts_stage_request": "Building request",
-  "novel_tts_stage_preview": "Preview"
+  "novel_tts_stage_preview": "Preview",
+  "related_users": "Похожие пользователи"
 }
