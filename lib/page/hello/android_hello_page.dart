@@ -44,6 +44,8 @@ import 'package:pixez/page/webview/saucenao_webview_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/palette_bar.dart';
 
 class AndroidHelloPage extends StatefulWidget {
   const AndroidHelloPage({Key? key}) : super(key: key);
@@ -125,7 +127,8 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
                         transform: Matrix4.translationValues(
                           0,
                           fullScreenStore.fullscreen
-                              ? bottomNavigatorHeight!
+                              ? bottomNavigatorHeight! +
+                                    _paletteExtraOffset(context)
                               : 0,
                           0,
                         ),
@@ -159,7 +162,40 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
     );
   }
 
+  /// The palette bar floats above the bottom edge, so it must travel further
+  /// than the classic bar to hide in fullscreen.
+  double _paletteExtraOffset(BuildContext context) =>
+      WatercolorTokens.of(context) == null ? 0 : PaletteBar.hiddenOffset - 80;
+
   Widget _buildNavigationBar(BuildContext context) {
+    void select(int index) {
+      HapticUtil.selectionClick();
+      if (this.index == index) {
+        topStore.setTop("${index + 1}00");
+      }
+      setState(() {
+        this.index = index;
+      });
+      if (_pageController.hasClients) _pageController.jumpToPage(index);
+    }
+
+    if (WatercolorTokens.of(context) != null) {
+      return PaletteBar(
+        items: [
+          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
+          PaletteBarItem(
+            icon: Icons.favorite,
+            label: I18n.of(context).quick_view,
+          ),
+          PaletteBarItem(icon: Icons.search, label: I18n.of(context).search),
+          PaletteBarItem(icon: Icons.more_horiz, label: I18n.of(context).more),
+        ],
+        selectedIndex: index,
+        onSelected: select,
+      );
+    }
+
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -191,16 +227,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
             ),
           ],
           selectedIndex: index,
-          onDestinationSelected: (index) {
-            HapticUtil.selectionClick();
-            if (this.index == index) {
-              topStore.setTop("${index + 1}00");
-            }
-            setState(() {
-              this.index = index;
-            });
-            if (_pageController.hasClients) _pageController.jumpToPage(index);
-          },
+          onDestinationSelected: select,
         ),
       ),
     );

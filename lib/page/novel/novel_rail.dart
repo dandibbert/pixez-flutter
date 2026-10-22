@@ -28,6 +28,8 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/novel/recom/novel_recom_page.dart';
 import 'package:pixez/page/novel/search/novel_search_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/palette_bar.dart';
 
 void openNovelRail(BuildContext context) {
   Navigator.of(
@@ -155,7 +157,34 @@ class _NovelRailState extends State<NovelRail> {
     );
   }
 
-  NavigationBar _buildNavigationBar(BuildContext context) {
+  Widget _buildNavigationBar(BuildContext context) {
+    void select(int index) {
+      HapticUtil.selectionClick();
+      if (this.selectedIndex == index) {
+        topStore.setTop("${index + 1}00");
+      }
+      setState(() {
+        this.selectedIndex = index;
+      });
+      if (_pageController?.hasClients == true) {
+        _pageController!.jumpToPage(index);
+      }
+    }
+
+    if (WatercolorTokens.of(context) != null) {
+      return PaletteBar(
+        items: [
+          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
+          PaletteBarItem(icon: Icons.favorite, label: I18n.of(context).news),
+          PaletteBarItem(icon: Icons.search, label: I18n.of(context).search),
+          PaletteBarItem(icon: Icons.settings, label: I18n.of(context).setting),
+        ],
+        selectedIndex: selectedIndex,
+        onSelected: select,
+      );
+    }
+
     return NavigationBar(
       destinations: [
         NavigationDestination(
@@ -180,18 +209,7 @@ class _NovelRailState extends State<NovelRail> {
         ),
       ],
       selectedIndex: selectedIndex,
-      onDestinationSelected: (index) {
-        HapticUtil.selectionClick();
-        if (this.selectedIndex == index) {
-          topStore.setTop("${index + 1}00");
-        }
-        setState(() {
-          this.selectedIndex = index;
-        });
-        if (_pageController?.hasClients == true) {
-          _pageController!.jumpToPage(index);
-        }
-      },
+      onDestinationSelected: select,
     );
   }
 }
