@@ -90,6 +90,44 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
       shape: rounded(WatercolorTokens.radiusSmall),
     ),
     dividerTheme: DividerThemeData(color: tokens.line, space: 1),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStatePropertyAll(tokens.ink),
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? tokens.pigment(0)
+            : Colors.transparent,
+      ),
+      trackOutlineColor: WidgetStatePropertyAll(tokens.ink),
+      trackOutlineWidth: const WidgetStatePropertyAll(1.5),
+      thumbIcon: const WidgetStatePropertyAll(null),
+    ),
+    sliderTheme: SliderThemeData(
+      activeTrackColor: tokens.accent,
+      inactiveTrackColor: tokens.line,
+      thumbColor: tokens.accent,
+      overlayColor: tokens.pigment(0).withValues(alpha: 0.3),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (states) =>
+            states.contains(WidgetState.selected) ? tokens.accent : null,
+      ),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStatePropertyAll(tokens.accent),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: tokens.accent,
+      linearTrackColor: tokens.line,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: tokens.ink,
+      contentTextStyle: TextStyle(color: tokens.paper),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(WatercolorTokens.radiusSmall),
+      ),
+    ),
     tabBarTheme: TabBarThemeData(
       dividerColor: Colors.transparent,
       labelColor: tokens.ink,

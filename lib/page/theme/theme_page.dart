@@ -22,7 +22,10 @@ import 'package:pixez/component/picker/utils.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/page/theme/watercolor_theme_settings.dart';
+import 'package:pixez/store/user_setting.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class ColorPickPage extends StatefulWidget {
   final Color initialColor;
@@ -220,6 +223,17 @@ class _ThemePageState extends State<ThemePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    if (WatercolorTokens.of(context) != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            I18n.of(context).theme,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+        ),
+        body: const WatercolorThemeSettings(),
+      );
+    }
     return Observer(
       builder: (context) {
         return Scaffold(
@@ -246,6 +260,23 @@ class _ThemePageState extends State<ThemePage> with TickerProviderStateMixin {
             builder: (_) {
               return CustomScrollView(
                 slivers: [
+                  // The only way back to the watercolor style once the
+                  // classic one is picked.
+                  SliverToBoxAdapter(
+                    child: Card(
+                      child: SwitchListTile(
+                        value: false,
+                        onChanged: (_) {
+                          HapticUtil.light();
+                          userSetting.setUiStyle(UiStyle.watercolor);
+                        },
+                        title: Text(I18n.of(context).ui_style_watercolor),
+                        subtitle: Text(
+                          I18n.of(context).ui_style_watercolor_desc,
+                        ),
+                      ),
+                    ),
+                  ),
                   SliverToBoxAdapter(
                     child: Card(
                       child: SwitchListTile(
