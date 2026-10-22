@@ -18,6 +18,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:material_ui/material_ui.dart' hide SearchBar;
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:pixez/watercolor/watercolor_paper.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
@@ -74,7 +75,8 @@ class _SearchPageState extends State<SearchPage>
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => SearchSuggestionPage(),
+        pageBuilder: (_, __, ___) =>
+            WatercolorPaper(child: SearchSuggestionPage()),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/watercolor/watercolor_paper.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 
@@ -47,7 +48,8 @@ class _SearchBarState extends State<SearchBar> {
                   Navigator.push(
                     context,
                     PageRouteBuilder(
-                      pageBuilder: (_, __, ___) => SearchSuggestionPage(),
+                      pageBuilder: (_, __, ___) =>
+                          WatercolorPaper(child: SearchSuggestionPage()),
                     ),
                   );
                 },
