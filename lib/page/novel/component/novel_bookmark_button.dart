@@ -20,6 +20,8 @@ import 'package:pixez/models/novel_recom_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/component/star_icon.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NovelBookmarkButton extends StatefulWidget {
   final Novel novel;
@@ -54,7 +56,9 @@ class _NovelBookmarkButtonState extends State<NovelBookmarkButton> {
         }
       },
       child: IconButton(
-        icon: widget.novel.isBookmarked
+        icon: WatercolorTokens.of(context) != null
+            ? StarIcon(state: widget.novel.isBookmarked ? 2 : 0)
+            : widget.novel.isBookmarked
             ? WcIcon(
                 Icons.bookmark,
                 color: Theme.of(context).textTheme.bodySmall!.color,

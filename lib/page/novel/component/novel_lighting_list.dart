@@ -29,6 +29,7 @@ import 'package:pixez/page/novel/search/novel_search_pager.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/exts.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NovelLightingList extends StatefulWidget {
   final FutureGet? futureGet;
@@ -161,6 +162,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
       padding: EdgeInsets.all(0),
       itemBuilder: (context, index) {
         Novel novel = novels[index].novel!;
+        final tokens = WatercolorTokens.of(context);
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: InkWell(
@@ -183,8 +185,18 @@ class _NovelLightingListState extends State<NovelLightingList> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: PixivImage(novel.imageUrls.medium, width: 80),
+                          padding: tokens == null
+                              ? const EdgeInsets.symmetric(vertical: 8.0)
+                              : const EdgeInsets.fromLTRB(10, 10, 2, 10),
+                          child: tokens == null
+                              ? PixivImage(novel.imageUrls.medium, width: 80)
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: PixivImage(
+                                    novel.imageUrls.medium,
+                                    width: 76,
+                                  ),
+                                ),
                         ),
                         Expanded(
                           child: Column(
@@ -198,7 +210,13 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                 child: Text(
                                   novel.title,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodyLarge,
+                                  style: tokens == null
+                                      ? Theme.of(context).textTheme.bodyLarge
+                                      : TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: tokens.ink,
+                                        ),
                                   maxLines: 3,
                                 ),
                               ),
@@ -216,9 +234,11 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                           .textTheme
                                           .bodySmall!
                                           .copyWith(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.secondary,
+                                            color:
+                                                tokens?.accent ??
+                                                Theme.of(
+                                                  context,
+                                                ).colorScheme.secondary,
                                           ),
                                     ),
                                     Padding(
@@ -260,7 +280,9 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                           horizontal: 1,
                                         ),
                                         child: Text(
-                                          f.name,
+                                          tokens == null
+                                              ? f.name
+                                              : '#${f.name}',
                                           style: Theme.of(
                                             context,
                                           ).textTheme.bodySmall,

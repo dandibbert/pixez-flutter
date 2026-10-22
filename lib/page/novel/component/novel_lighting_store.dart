@@ -69,7 +69,9 @@ abstract class _NovelLightingStoreBase with Store {
   Future<Response> _fetchResponse({bool force = false, int? page}) {
     final requestSource = lightSource;
     if (requestSource is ApiPagedSource) {
-      return _timed(requestSource.fetch(page ?? requestSource.initialPage, force));
+      return _timed(
+        requestSource.fetch(page ?? requestSource.initialPage, force),
+      );
     }
     if (requestSource is ApiForceSource) {
       return _timed(requestSource.fetch(force));
@@ -96,8 +98,9 @@ abstract class _NovelLightingStoreBase with Store {
     refreshing = true;
     try {
       final requestSource = lightSource;
-      final fetchedPage =
-          requestSource is ApiPagedSource ? requestSource.initialPage : null;
+      final fetchedPage = requestSource is ApiPagedSource
+          ? requestSource.initialPage
+          : null;
       final response = await _fetchResponse(force: true, page: fetchedPage);
       if (requestRevision != _sourceRevision) return;
       final novelRecomResponse = NovelRecomResponse.fromJson(response.data);
@@ -178,8 +181,9 @@ abstract class _NovelLightingStoreBase with Store {
     if (nextUrl != null && nextUrl!.isNotEmpty) {
       try {
         Response response = await _timed(_client.getNext(nextUrl!));
-        NovelRecomResponse novelRecomResponse =
-            NovelRecomResponse.fromJson(response.data);
+        NovelRecomResponse novelRecomResponse = NovelRecomResponse.fromJson(
+          response.data,
+        );
         nextUrl = novelRecomResponse.nextUrl;
         final novel = novelRecomResponse.novels;
         novels.addAll(novel.map((element) => NovelStore(element.id, element)));

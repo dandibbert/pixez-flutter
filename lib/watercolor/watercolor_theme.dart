@@ -72,6 +72,11 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
     chipTheme: ChipThemeData(
       backgroundColor: tokens.card,
       selectedColor: tokens.pigment(0),
+      showCheckmark: false,
+      secondaryLabelStyle: TextStyle(
+        color: tokens.onPigment,
+        fontWeight: FontWeight.w700,
+      ),
       side: edge,
       shape: const StadiumBorder(),
       labelStyle: TextStyle(color: tokens.ink),
@@ -98,6 +103,39 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
       shape: rounded(WatercolorTokens.radiusSmall),
     ),
     dividerTheme: DividerThemeData(color: tokens.line, space: 1),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: tokens.pigment(0),
+        foregroundColor: tokens.onPigment,
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        shape: const StadiumBorder(),
+        elevation: 0,
+      ),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: tokens.pigment(0),
+        foregroundColor: tokens.onPigment,
+        shape: const StadiumBorder(),
+        elevation: 0,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: tokens.ink,
+        side: BorderSide(color: tokens.ink, width: 1.5),
+        shape: const StadiumBorder(),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: tokens.accent),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: tokens.card,
+      foregroundColor: tokens.ink,
+      elevation: 2,
+      shape: CircleBorder(side: BorderSide(color: tokens.ink, width: 1.5)),
+    ),
     listTileTheme: ListTileThemeData(
       iconColor: tokens.ink,
       textColor: tokens.ink,
