@@ -29,6 +29,7 @@ import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NovelRecomPage extends StatefulWidget {
   @override
@@ -69,11 +70,18 @@ class _NovelRecomPageState extends State<NovelRecomPage>
             child: Padding(
               child: Text(
                 I18n.of(context).recommend,
-                style: TextStyle(
-                  color: Theme.of(context).textTheme.titleLarge!.color,
-                ),
+                style: WatercolorTokens.of(context) == null
+                    ? TextStyle(
+                        color: Theme.of(context).textTheme.titleLarge!.color,
+                      )
+                    : const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
               ),
-              padding: EdgeInsets.only(left: 8.0, bottom: 10.0),
+              padding: WatercolorTokens.of(context) == null
+                  ? EdgeInsets.only(left: 8.0, bottom: 10.0)
+                  : EdgeInsets.only(left: 16.0, bottom: 10.0),
             ),
           ),
         ],
@@ -152,6 +160,7 @@ class _NovelRecomPageState extends State<NovelRecomPage>
   }
 
   Widget _buildItem(BuildContext context, Novel novel, NovelStore store) {
+    final tokens = WatercolorTokens.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: InkWell(
@@ -175,8 +184,18 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: PixivImage(novel.imageUrls.medium, width: 80),
+                      padding: tokens == null
+                          ? const EdgeInsets.symmetric(vertical: 8.0)
+                          : const EdgeInsets.fromLTRB(10, 10, 2, 10),
+                      child: tokens == null
+                          ? PixivImage(novel.imageUrls.medium, width: 80)
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: PixivImage(
+                                novel.imageUrls.medium,
+                                width: 76,
+                              ),
+                            ),
                     ),
                     Expanded(
                       child: Column(
@@ -187,7 +206,13 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                             child: Text(
                               novel.title,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyLarge,
+                              style: tokens == null
+                                  ? Theme.of(context).textTheme.bodyLarge
+                                  : TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: tokens.ink,
+                                    ),
                               maxLines: 3,
                             ),
                           ),
@@ -203,9 +228,11 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                                   maxLines: 1,
                                   style: Theme.of(context).textTheme.bodySmall!
                                       .copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.secondary,
+                                        color:
+                                            tokens?.accent ??
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.secondary,
                                       ),
                                 ),
                                 Padding(
@@ -243,7 +270,7 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                               children: [
                                 for (var f in novel.tags)
                                   Text(
-                                    f.name,
+                                    tokens == null ? f.name : '#${f.name}',
                                     style: Theme.of(
                                       context,
                                     ).textTheme.bodySmall,

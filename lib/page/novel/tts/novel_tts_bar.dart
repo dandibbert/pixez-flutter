@@ -5,6 +5,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 const Key novelTtsQuickVoiceKey = Key('novelTtsQuickVoice');
 const Key novelTtsBarKey = Key('novelTtsBar');
@@ -50,9 +51,16 @@ class NovelTtsBar extends StatelessWidget {
             : i18n.novel_tts_error,
       NovelTtsStatus.idle => '',
     };
-    return Material(
+    final tokens = WatercolorTokens.of(context);
+    final bar = Material(
       key: novelTtsBarKey,
-      color: scheme.surfaceContainerHigh,
+      color: tokens?.card ?? scheme.surfaceContainerHigh,
+      shape: tokens == null
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+              side: BorderSide(color: tokens.line),
+            ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
         child: Column(
@@ -91,7 +99,8 @@ class NovelTtsBar extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: controller.status == NovelTtsStatus.error
                         ? scheme.error
-                        : scheme.primary,
+                        : tokens?.accent ?? scheme.primary,
+                    fontWeight: tokens == null ? null : FontWeight.w700,
                   ),
                 ),
               ),
@@ -106,22 +115,38 @@ class NovelTtsBar extends StatelessWidget {
                 ),
                 if (controller.status == NovelTtsStatus.playing ||
                     controller.status == NovelTtsStatus.synthesizing)
-                  IconButton(
-                    key: novelTtsPauseButtonKey,
-                    tooltip: i18n.novel_tts_pause,
-                    onPressed: controller.pause,
-                    icon: const WcIcon(Icons.pause_circle_filled),
+                  _wellButton(
+                    tokens,
+                    IconButton(
+                      key: novelTtsPauseButtonKey,
+                      tooltip: i18n.novel_tts_pause,
+                      onPressed: controller.pause,
+                      icon: WcIcon(
+                        tokens == null
+                            ? Icons.pause_circle_filled
+                            : Icons.pause,
+                        color: tokens?.onPigment,
+                      ),
+                    ),
                   )
                 else
-                  IconButton(
-                    key: novelTtsPlayButtonKey,
-                    tooltip: controller.status == NovelTtsStatus.paused
-                        ? i18n.novel_tts_resume
-                        : i18n.novel_tts_play,
-                    onPressed: controller.status == NovelTtsStatus.paused
-                        ? controller.resume
-                        : null,
-                    icon: const WcIcon(Icons.play_circle_filled),
+                  _wellButton(
+                    tokens,
+                    IconButton(
+                      key: novelTtsPlayButtonKey,
+                      tooltip: controller.status == NovelTtsStatus.paused
+                          ? i18n.novel_tts_resume
+                          : i18n.novel_tts_play,
+                      onPressed: controller.status == NovelTtsStatus.paused
+                          ? controller.resume
+                          : null,
+                      icon: WcIcon(
+                        tokens == null
+                            ? Icons.play_circle_filled
+                            : Icons.play_arrow,
+                        color: tokens?.onPigment,
+                      ),
+                    ),
                   ),
                 IconButton(
                   key: novelTtsNextButtonKey,
@@ -158,6 +183,32 @@ class NovelTtsBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+    if (tokens == null) return bar;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: tokens.cardShadow,
+        ),
+        child: bar,
+      ),
+    );
+  }
+
+  /// In the watercolor style the play button sits in a pigment-filled well.
+  Widget _wellButton(WatercolorTokens? tokens, Widget button) {
+    if (tokens == null) return button;
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: tokens.pigment(0).withValues(alpha: 0.85),
+        border: Border.all(color: tokens.ink, width: 1.5),
+      ),
+      child: Center(child: button),
     );
   }
 

@@ -8,6 +8,9 @@ import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
 
 const Key novelReaderHeaderKey = Key('novelReaderHeader');
 const Key novelReaderArticleKey = Key('novelReaderArticle');
@@ -52,7 +55,10 @@ class NovelReaderScaffold extends StatelessWidget {
         if (seriesBar != null) seriesBar!,
         Expanded(child: article),
         if (player != null) player!,
-        Material(color: scheme.surface, elevation: 8, child: pageNav),
+        if (WatercolorTokens.of(context) case final tokens?)
+          _WatercolorDock(tokens: tokens, child: pageNav)
+        else
+          Material(color: scheme.surface, elevation: 8, child: pageNav),
       ],
     );
   }
@@ -82,17 +88,23 @@ class NovelReaderHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final tokens = WatercolorTokens.of(context);
     return Material(
-      color: scheme.surface,
+      color: tokens == null ? scheme.surface : Colors.transparent,
       child: SafeArea(
         bottom: false,
         child: Container(
           key: novelReaderHeaderKey,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: scheme.outlineVariant, width: 2),
-            ),
-          ),
+          foregroundDecoration: tokens == null
+              ? null
+              : _BrushRule(tokens.pigment(0)),
+          decoration: tokens == null
+              ? BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: scheme.outlineVariant, width: 2),
+                  ),
+                )
+              : null,
           padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           child: Row(
             children: [
@@ -123,11 +135,13 @@ class NovelReaderHeader extends StatelessWidget {
                         author,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelSmall?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
+                        style: tokens != null
+                            ? TextStyle(fontSize: 11, color: tokens.accent)
+                            : textTheme.labelSmall?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
                       ),
                     ),
                   ],
@@ -167,14 +181,23 @@ class NovelReaderSeriesBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final i18n = I18n.of(context);
+    final tokens = WatercolorTokens.of(context);
     return Material(
-      color: scheme.surface,
+      color: tokens == null ? scheme.surface : Colors.transparent,
       child: Container(
         key: novelReaderSeriesBarKey,
-        height: 32,
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
-        ),
+        height: tokens == null ? 32 : 36,
+        margin: tokens == null ? null : const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        decoration: tokens == null
+            ? BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: scheme.outlineVariant),
+                ),
+              )
+            : BoxDecoration(
+                color: tokens.pigment(4).withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(18),
+              ),
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
           children: [
@@ -230,7 +253,7 @@ class _SeriesNavButton extends StatelessWidget {
     return IconButton(
       tooltip: tooltip,
       onPressed: enabled ? onTap : null,
-      icon: Icon(icon, size: 20),
+      icon: WcIcon(icon, size: 20),
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
@@ -390,6 +413,8 @@ class NovelReaderPageNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.of(context);
+    final tokens = WatercolorTokens.of(context);
+    if (tokens != null) return _buildWatercolor(context, tokens);
     return SafeArea(
       top: false,
       child: Container(
@@ -448,6 +473,234 @@ class NovelReaderPageNav extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+extension on NovelReaderPageNav {
+  /// Outlined back pill, page count over a pigment progress stroke, and a
+  /// pigment forward pill.
+  Widget _buildWatercolor(BuildContext context, WatercolorTokens tokens) {
+    final i18n = I18n.of(context);
+    final progress = totalPages <= 0
+        ? 0.0
+        : (currentPage / totalPages).clamp(0.0, 1.0);
+    return Container(
+      key: novelReaderPageNavKey,
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          _WatercolorPageButton(
+            icon: navState.canJumpPrevSeries
+                ? Icons.keyboard_double_arrow_left
+                : Icons.chevron_left,
+            label: navState.canJumpPrevSeries
+                ? i18n.reader_series
+                : i18n.reader_page,
+            enabled: !navState.isPrevDisabled,
+            onTap: onPrev,
+            leading: true,
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: onPickPage,
+              borderRadius: BorderRadius.circular(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$currentPage / $totalPages',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: tokens.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 136,
+                    height: 4,
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      color: tokens.line,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: AnimatedFractionallySizedBox(
+                      duration: WcMotion.medium,
+                      curve: WcMotion.standard,
+                      widthFactor: progress,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: tokens.pigment(0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          _WatercolorPageButton(
+            icon: navState.canJumpNextSeries
+                ? Icons.keyboard_double_arrow_right
+                : Icons.chevron_right,
+            label: navState.canJumpNextSeries
+                ? i18n.reader_series
+                : i18n.reader_page,
+            enabled: !navState.isNextDisabled,
+            onTap: onNext,
+            leading: false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WatercolorPageButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+  final bool leading;
+
+  const _WatercolorPageButton({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+    required this.leading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = WatercolorTokens.of(context)!;
+    final color = enabled ? tokens.ink : tokens.ink.withValues(alpha: 0.3);
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (leading) WcIcon(icon, size: 18, color: color),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: leading ? FontWeight.w400 : FontWeight.w700,
+            color: leading ? color : (enabled ? tokens.onPigment : color),
+          ),
+        ),
+        if (!leading)
+          WcIcon(icon, size: 18, color: enabled ? tokens.onPigment : color),
+      ],
+    );
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        height: 40,
+        child: leading
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color, width: 1.5),
+                ),
+                child: content,
+              )
+            : PigmentBackdrop(
+                color: tokens.pigment(0),
+                visible: enabled,
+                bleed: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: content,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+/// The page nav floats on a paper card above the bottom edge.
+class _WatercolorDock extends StatelessWidget {
+  const _WatercolorDock({required this.tokens, required this.child});
+
+  final WatercolorTokens tokens;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+        child: Material(
+          color: tokens.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+            side: BorderSide(color: tokens.line),
+          ),
+          elevation: 0,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: tokens.cardShadow,
+            ),
+            child: MediaQuery.removePadding(
+              context: context,
+              removeBottom: true,
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A short brush stroke of [color] along the bottom edge.
+class _BrushRule extends Decoration {
+  const _BrushRule(this.color);
+
+  final Color color;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
+      _BrushRulePainter(color);
+}
+
+class _BrushRulePainter extends BoxPainter {
+  _BrushRulePainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size!;
+    final left = offset.dx + 12;
+    final width = size.width - 24;
+    final y = offset.dy + size.height - 2;
+    final path = Path()..moveTo(left, y);
+    const waves = 14;
+    for (var i = 1; i <= waves; i++) {
+      final x = left + width * i / waves;
+      path.quadraticBezierTo(
+        x - width / waves / 2,
+        y + (i.isEven ? 1.6 : -1.6),
+        x,
+        y,
+      );
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color.withValues(alpha: color.a * 0.75)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.6),
     );
   }
 }
@@ -603,6 +856,8 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens != null) return _buildWatercolor(context, tokens);
     final i18n = I18n.of(context);
     final scheme = Theme.of(context).colorScheme;
     final previewStyle = NovelReaderStyle.resolve(
@@ -709,5 +964,281 @@ class _NovelReaderSettingsSheetState extends State<NovelReaderSettingsSheet> {
         ),
       ),
     );
+  }
+
+  static const Map<NovelReaderBackground, (Color, Color)> _swatches = {
+    NovelReaderBackground.paper: (Color(0xFFFFFFFF), Color(0xFF1A1A1A)),
+    NovelReaderBackground.sepia: (Color(0xFFF4ECD8), Color(0xFF43372A)),
+    NovelReaderBackground.dark: (Color(0xFF16181C), Color(0xFFC8CBD0)),
+    NovelReaderBackground.black: (Color(0xFF000000), Color(0xFFB7BBC0)),
+  };
+
+  Widget _buildWatercolorSlider({
+    required WatercolorTokens tokens,
+    required String label,
+    required String value,
+    required Key sliderKey,
+    required double min,
+    required double max,
+    required double current,
+    required String minLabel,
+    required String maxLabel,
+    required Color pigment,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: WcSectionLabel(label)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: tokens.ink,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Text(minLabel, style: TextStyle(fontSize: 11, color: tokens.sub)),
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: pigment,
+                  thumbColor: tokens.card,
+                  thumbShape: _RingThumb(tokens.ink, pigment),
+                ),
+                child: Slider(
+                  key: sliderKey,
+                  min: min,
+                  max: max,
+                  value: current,
+                  onChanged: onChanged,
+                ),
+              ),
+            ),
+            Text(maxLabel, style: TextStyle(fontSize: 11, color: tokens.sub)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Font card, size and line-height sliders, background swatches and a
+  /// preview line, laid out like the watercolor reading sheet.
+  Widget _buildWatercolor(BuildContext context, WatercolorTokens tokens) {
+    final i18n = I18n.of(context);
+    final previewStyle = NovelReaderStyle.resolve(
+      color: tokens.ink,
+      fontSize: _fontSize,
+      lineHeight: _lineHeight,
+      fontFamily: _fontFamily,
+    );
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        child: Column(
+          key: novelReaderSettingsKey,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            WcSectionLabel(i18n.novel_font),
+            const SizedBox(height: 8),
+            WcPanel(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                key: novelFontPickerButtonKey,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tokens.pigment(3).withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '文',
+                    style: TextStyle(fontSize: 20, color: tokens.onPigment),
+                  ),
+                ),
+                title: Text(
+                  _fontLabel(),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.ink,
+                  ),
+                ),
+                subtitle: Text(I18n.of(context).novel_font_search),
+                trailing: WcIcon(Icons.chevron_right, color: tokens.sub),
+                onTap: _openFontPicker,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildWatercolorSlider(
+              tokens: tokens,
+              label: i18n.novel_font_size,
+              value: _fontSize.round().toString(),
+              sliderKey: novelFontSizeSliderKey,
+              min: NovelReaderStyle.minFontSize,
+              max: NovelReaderStyle.maxFontSize,
+              current: _fontSize,
+              minLabel: NovelReaderStyle.minFontSize.round().toString(),
+              maxLabel: NovelReaderStyle.maxFontSize.round().toString(),
+              pigment: tokens.pigment(3),
+              onChanged: (value) {
+                setState(() => _fontSize = value);
+                widget.onFontSizeChanged(value);
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildWatercolorSlider(
+              tokens: tokens,
+              label: i18n.novel_line_height,
+              value: _lineHeight.toStringAsFixed(1),
+              sliderKey: novelLineHeightSliderKey,
+              min: NovelReaderStyle.minLineHeight,
+              max: NovelReaderStyle.maxLineHeight,
+              current: _lineHeight,
+              minLabel: NovelReaderStyle.minLineHeight.toStringAsFixed(1),
+              maxLabel: NovelReaderStyle.maxLineHeight.toStringAsFixed(1),
+              pigment: tokens.pigment(0),
+              onChanged: (value) {
+                setState(() => _lineHeight = value);
+                widget.onLineHeightChanged(value);
+              },
+            ),
+            const SizedBox(height: 16),
+            WcSectionLabel(i18n.novel_background),
+            const SizedBox(height: 10),
+            Row(
+              key: novelReaderBackgroundKey,
+              children: [
+                for (final value in NovelReaderBackground.values)
+                  Expanded(child: _buildBackgroundSwatch(tokens, value)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: tokens.pigment(1).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(
+                  WatercolorTokens.radiusSmall,
+                ),
+                border: Border.all(color: tokens.pigment(1)),
+              ),
+              child: Text(
+                '本文プレビュー Preview 预览',
+                key: novelReaderPreviewKey,
+                style: previewStyle,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackgroundSwatch(
+    WatercolorTokens tokens,
+    NovelReaderBackground value,
+  ) {
+    final selected = _background == value;
+    final (fill, text) = _swatches[value] ?? (tokens.paper, tokens.ink);
+    return Semantics(
+      key: novelReaderBackgroundChipKey(value),
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: () => _setBackground(value),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: WcMotion.medium,
+          curve: WcMotion.standard,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(WatercolorTokens.radiusSmall),
+            border: Border.all(
+              color: selected ? tokens.ink : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: fill,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: tokens.line),
+                ),
+                child: Text('文', style: TextStyle(fontSize: 15, color: text)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _backgroundLabel(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  color: tokens.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Slider thumb: a paper disc with an ink ring and a pigment dot.
+class _RingThumb extends SliderComponentShape {
+  const _RingThumb(this.ink, this.pigment);
+
+  final Color ink;
+  final Color pigment;
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
+      const Size.square(22);
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final canvas = context.canvas;
+    canvas.drawCircle(center, 10, Paint()..color = sliderTheme.thumbColor!);
+    canvas.drawCircle(
+      center,
+      10,
+      Paint()
+        ..color = ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+    canvas.drawCircle(center, 4, Paint()..color = pigment);
   }
 }

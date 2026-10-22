@@ -621,5 +621,6 @@
   "preset_mint": "薄荷",
   "preset_cerulean": "天青",
   "preset_lavender": "薰衣草",
-  "preset_ink": "墨灰"
+  "preset_ink": "墨灰",
+  "novel_font_size": "字号"
 }

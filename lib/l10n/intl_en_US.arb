@@ -694,5 +694,6 @@
   "preset_mint": "Mint",
   "preset_cerulean": "Cerulean",
   "preset_lavender": "Lavender",
-  "preset_ink": "Ink gray"
+  "preset_ink": "Ink gray",
+  "novel_font_size": "Font size"
 }

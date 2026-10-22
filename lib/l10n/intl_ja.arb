@@ -593,5 +593,6 @@
   "preset_mint": "ミント",
   "preset_cerulean": "天青",
   "preset_lavender": "ラベンダー",
-  "preset_ink": "墨"
+  "preset_ink": "墨",
+  "novel_font_size": "文字サイズ"
 }

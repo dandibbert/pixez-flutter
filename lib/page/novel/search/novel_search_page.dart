@@ -33,6 +33,8 @@ import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tag_tile.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NovelSearchPage extends StatefulWidget {
   final String? initialQuery;
@@ -86,6 +88,11 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
             slivers: [
               SliverAppBar(
                 title: TextField(
+                  decoration: WatercolorTokens.of(context) == null
+                      ? const InputDecoration()
+                      : _watercolorSearchDecoration(
+                          WatercolorTokens.of(context)!,
+                        ),
                   cursorColor: Theme.of(context).iconTheme.color,
                   style: Theme.of(context).textTheme.titleMedium!.copyWith(
                     color: Theme.of(context).iconTheme.color,
@@ -285,7 +292,40 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
     );
   }
 
+  /// A paper pill with an ink edge, like the illust search box.
+  InputDecoration _watercolorSearchDecoration(WatercolorTokens tokens) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: BorderSide(color: tokens.ink, width: 1.5),
+    );
+    return InputDecoration(
+      isDense: true,
+      filled: true,
+      fillColor: tokens.card,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: border,
+    );
+  }
+
   Widget _buildTagItem(BuildContext context, TrendTags tag) {
+    if (WatercolorTokens.of(context) != null) {
+      return GestureDetector(
+        onLongPress: () {
+          Leader.push(context, IllustLightingPage(id: tag.illust.id));
+        },
+        onTap: () {
+          Leader.push(context, NovelResultPage(word: (tag.tag)));
+        },
+        child: WatercolorTagTile(
+          imageUrl: tag.illust.imageUrls.squareMedium,
+          tag: tag.tag,
+          translatedName: tag.translatedName,
+          index: _tags.indexOf(tag),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.all(1.0),
       child: GestureDetector(
