@@ -34,6 +34,7 @@ import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/page/search/trend_tags_store.dart';
 import 'package:pixez/page/webview/saucenao_webview_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -157,7 +158,7 @@ class _SearchPageState extends State<SearchPage>
                   ),
                   actions: <Widget>[
                     IconButton(
-                      icon: Icon(Icons.search),
+                      icon: WcIcon(Icons.search),
                       onPressed: () {
                         Navigator.of(context, rootNavigator: true).push(
                           MaterialPageRoute(
@@ -322,7 +323,7 @@ class _SearchPageState extends State<SearchPage>
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Icon(
+                            WcIcon(
                               Icons.delete_outline,
                               size: 18.0,
                               color: Theme.of(

@@ -48,6 +48,7 @@ import 'package:pixez/page/user/detail/user_detail.dart';
 import 'package:pixez/page/user/user_store.dart';
 import 'package:pixez/page/user/works/works_page.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 /*
 🎵 Lyn-The Whims of Fate🎵
@@ -279,7 +280,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           leading: CommonBackArea(),
           actions: <Widget>[
             IconButton(
-              icon: Icon(Icons.people_outline),
+              icon: WcIcon(Icons.people_outline),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -300,7 +301,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
             Builder(
               builder: (context) {
                 return IconButton(
-                  icon: Icon(Icons.share),
+                  icon: WcIcon(Icons.share),
                   onPressed: () {
                     final box = context.findRenderObject() as RenderBox?;
                     final pos = box != null

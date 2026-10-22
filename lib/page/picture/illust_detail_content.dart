@@ -23,6 +23,7 @@ import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class IllustDetailContent extends StatefulWidget {
   final Illusts illusts;
@@ -142,7 +143,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-              Icon(
+              WcIcon(
                 Icons.remove_red_eye,
                 color: Theme.of(context).colorScheme.onSurface,
                 size: 12,
@@ -158,7 +159,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                 ),
               ),
               Container(width: 4.0),
-              Icon(
+              WcIcon(
                 Icons.favorite,
                 color: Theme.of(context).colorScheme.onSurface,
                 size: 12.0,
@@ -174,7 +175,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                 ),
               ),
               Container(width: 4.0),
-              Icon(
+              WcIcon(
                 Icons.timelapse_rounded,
                 color: Theme.of(context).colorScheme.onSurface,
                 size: 12.0,
@@ -291,7 +292,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
               onTap: () {
                 _illustStore?.fetch();
               },
-              child: Icon(Icons.refresh),
+              child: WcIcon(Icons.refresh),
             ),
           ),
         ),
@@ -330,9 +331,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                   return _buildSelectionMenu(selectableRegionState, context);
                 },
                 child: SelectionHorizontalScroll(
-                  child: SelectableHtml(
-                    data: caption.isEmpty ? "~" : caption,
-                  ),
+                  child: SelectableHtml(data: caption.isEmpty ? "~" : caption),
                 ),
               ),
             ),
@@ -372,7 +371,7 @@ class _IllustDetailContentState extends State<IllustDetailContent> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  WcIcon(
                     Icons.comment,
                     size: 16,
                     color: Theme.of(context).colorScheme.primary,

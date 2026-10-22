@@ -29,6 +29,7 @@ import 'package:pixez/page/login/token_page.dart';
 import 'package:pixez/page/webview/webview_page.dart';
 import 'package:pixez/weiss_plugin.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -59,7 +60,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: <Widget>[
             IconButton(
-              icon: Icon(Icons.settings),
+              icon: WcIcon(Icons.settings),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => SettingQualityPage()),
@@ -67,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
               },
             ),
             IconButton(
-              icon: Icon(Icons.message),
+              icon: WcIcon(Icons.message),
               onPressed: () {
                 Navigator.of(
                   context,

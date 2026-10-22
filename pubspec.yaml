@@ -81,6 +81,7 @@ dependencies:
   # sqlite3: 3.1.6
   sqflite_common_ffi: ^2.4.2+1
   material_ui: ^1.7.0
+  flutter_svg: ^2.3.0
   cupertino_ui: ^1.1.3
   just_audio: ^0.10.5
   audio_session: ^0.2.2
@@ -118,6 +119,7 @@ flutter:
     - assets/tts/ipadic.bin.gz
     - assets/tts/IPADIC-COPYING.txt
     - assets/watercolor/
+    - assets/icons/mingcute/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

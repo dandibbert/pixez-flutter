@@ -26,6 +26,7 @@ import 'package:pixez/network/network_mode.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'directory_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 showPathDialog(BuildContext context, {bool isFirst = false}) async {
   return Navigator.of(context).push(
@@ -78,7 +79,7 @@ class _SaveModeChoicePageState extends State<SaveModeChoicePage>
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
-        icon: Icon(Icons.next_plan, color: Colors.white),
+        icon: WcIcon(Icons.next_plan, color: Colors.white),
         onPressed: () async => _onPress(context),
         backgroundColor: _animation.value,
         label: Text(
@@ -137,7 +138,7 @@ class _SaveModeChoicePageState extends State<SaveModeChoicePage>
                     ),
                     actions: [
                       IconButton(
-                        icon: Icon(Icons.question_answer),
+                        icon: WcIcon(Icons.question_answer),
                         onPressed: () {
                           Constants.isGooglePlay ||
                                   userSetting.networkMode ==
@@ -152,7 +153,7 @@ class _SaveModeChoicePageState extends State<SaveModeChoicePage>
                         },
                       ),
                       IconButton(
-                        icon: Icon(Icons.close),
+                        icon: WcIcon(Icons.close),
                         onPressed: () {
                           Navigator.of(context).pop();
                         },

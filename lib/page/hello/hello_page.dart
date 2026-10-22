@@ -34,6 +34,7 @@ import 'package:pixez/page/hello/setting/setting_page.dart';
 import 'package:pixez/page/preview/preview_page.dart';
 import 'package:pixez/page/search/search_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class HelloPage extends StatefulWidget {
   @override
@@ -174,23 +175,23 @@ class _HelloPageState extends State<HelloPage> {
             },
             destinations: <NavigationRailDestination>[
               NavigationRailDestination(
-                icon: Icon(Icons.home),
+                icon: WcIcon(Icons.home),
                 label: Text(I18n.of(context).home),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.leaderboard),
+                icon: WcIcon(Icons.leaderboard),
                 label: Text(I18n.of(context).rank),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.favorite),
+                icon: WcIcon(Icons.favorite),
                 label: Text(I18n.of(context).quick_view),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.search),
+                icon: WcIcon(Icons.search),
                 label: Text(I18n.of(context).search),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.more_horiz),
+                icon: WcIcon(Icons.more_horiz),
                 label: Text(I18n.of(context).more),
               ),
             ],
@@ -242,23 +243,23 @@ class _HelloPageState extends State<HelloPage> {
           ).colorScheme.surface.withValues(alpha: 0.9),
           destinations: [
             NavigationDestination(
-              icon: Icon(Icons.home),
+              icon: WcIcon(Icons.home),
               label: I18n.of(context).home,
             ),
             NavigationDestination(
-              icon: Icon(Icons.leaderboard),
+              icon: WcIcon(Icons.leaderboard),
               label: I18n.of(context).rank,
             ),
             NavigationDestination(
-              icon: Icon(Icons.favorite),
+              icon: WcIcon(Icons.favorite),
               label: I18n.of(context).quick_view,
             ),
             NavigationDestination(
-              icon: Icon(Icons.search),
+              icon: WcIcon(Icons.search),
               label: I18n.of(context).search,
             ),
             NavigationDestination(
-              icon: Icon(Icons.more_horiz),
+              icon: WcIcon(Icons.more_horiz),
               label: I18n.of(context).more,
             ),
           ],

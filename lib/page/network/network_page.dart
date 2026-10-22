@@ -4,6 +4,7 @@ import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/network_mode.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class NetworkPage extends StatefulWidget {
   final bool? automaticallyImplyLeading;
@@ -87,7 +88,7 @@ class _NetworkPageState extends State<NetworkPage> {
                             ),
                           ),
                           trailing: IconButton(
-                            icon: Icon(Icons.refresh_outlined),
+                            icon: WcIcon(Icons.refresh_outlined),
                             onPressed: () async {
                               userSetting.setPictureSource(ImageHost);
                               splashStore.setHost(ImageHost);
@@ -176,7 +177,10 @@ class _NetworkPageState extends State<NetworkPage> {
                                       context,
                                     ).requestFocus(FocusNode());
                                   },
-                                  icon: Icon(Icons.check, color: Colors.black),
+                                  icon: WcIcon(
+                                    Icons.check,
+                                    color: Colors.black,
+                                  ),
                                 ),
                                 labelText: I18n.of(context).custom_host,
                               ),

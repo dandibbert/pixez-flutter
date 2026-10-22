@@ -55,6 +55,7 @@ import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/page/zoom/photo_zoom_page.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class IllustLightingPage extends StatefulWidget {
   final int id;
@@ -235,7 +236,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                   Builder(
                     builder: (buttonContext) {
                       return IconButton(
-                        icon: Icon(Icons.more_vert),
+                        icon: WcIcon(Icons.more_vert),
                         onPressed: () {
                           HapticUtil.selectionClick();
                           buildShowModalBottomSheet(
@@ -461,9 +462,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               child: Container(height: MediaQuery.of(context).padding.top),
             ),
           ..._buildPhotoList(data),
-          SliverToBoxAdapter(
-            child: SizedBox.shrink(key: _detailKey),
-          ),
+          SliverToBoxAdapter(child: SizedBox.shrink(key: _detailKey)),
           SliverToBoxAdapter(
             child: IllustDetailContent(
               illusts: data,
@@ -1021,7 +1020,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               illust.metaPages.isNotEmpty
                   ? ListTile(
                       title: Text(I18n.of(context).muti_choice_save),
-                      leading: Icon(Icons.save),
+                      leading: WcIcon(Icons.save),
                       onTap: () async {
                         Navigator.of(context).pop();
                         _showMutiChoiceDialog(illust, context);
@@ -1029,7 +1028,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                     )
                   : Container(),
               ListTile(
-                leading: Icon(Icons.save_alt),
+                leading: WcIcon(Icons.save_alt),
                 onTap: () async {
                   Navigator.of(context).pop();
                   saveStore.saveImage(illust, index: index);
@@ -1042,7 +1041,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                 title: Text(I18n.of(context).save),
               ),
               ListTile(
-                leading: Icon(Icons.cancel),
+                leading: WcIcon(Icons.cancel),
                 onTap: () => Navigator.of(context).pop(),
                 title: Text(I18n.of(context).cancel),
               ),
@@ -1119,7 +1118,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                         visible: indexs[index],
                                         child: Padding(
                                           padding: const EdgeInsets.all(4.0),
-                                          child: Icon(
+                                          child: WcIcon(
                                             Icons.check_circle,
                                             color: Colors.green,
                                           ),
@@ -1154,7 +1153,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                       },
                     ),
                     ListTile(
-                      leading: Icon(Icons.save),
+                      leading: WcIcon(Icons.save),
                       title: Text(I18n.of(context).save),
                       onTap: () async {
                         Navigator.of(context).pop("OK");
@@ -1231,7 +1230,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                             title: Text(
                               I18n.of(dialogContext).muti_choice_save,
                             ),
-                            leading: Icon(Icons.save),
+                            leading: WcIcon(Icons.save),
                             onTap: () async {
                               Navigator.of(dialogContext).pop();
                               _showMutiChoiceDialog(illusts, context);
@@ -1239,7 +1238,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                           ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).copymessage),
-                          leading: Icon(Icons.local_library),
+                          leading: WcIcon(Icons.local_library),
                           onTap: () async {
                             final str = userSetting.illustToShareInfoText(
                               illusts,
@@ -1253,7 +1252,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).share),
-                          leading: Icon(Icons.share),
+                          leading: WcIcon(Icons.share),
                           onTap: () {
                             Navigator.of(dialogContext).pop();
                             SharePlus.instance.share(
@@ -1266,7 +1265,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                           },
                         ),
                         ListTile(
-                          leading: Icon(Icons.link),
+                          leading: WcIcon(Icons.link),
                           title: Text(I18n.of(dialogContext).link),
                           onTap: () async {
                             await Clipboard.setData(
@@ -1283,7 +1282,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).ban),
-                          leading: Icon(Icons.brightness_auto),
+                          leading: WcIcon(Icons.brightness_auto),
                           onTap: () {
                             muteStore.insertBanIllusts(
                               BanIllustIdPersist(
@@ -1296,7 +1295,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).report),
-                          leading: Icon(Icons.report),
+                          leading: WcIcon(Icons.report),
                           onTap: () async {
                             if (Platform.isAndroid) {
                               Navigator.of(dialogContext).pop();

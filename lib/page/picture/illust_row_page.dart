@@ -46,6 +46,7 @@ import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/page/zoom/photo_zoom_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class IllustRowPage extends StatefulWidget {
   final int id;
@@ -160,7 +161,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                   Builder(
                     builder: (buttonContext) {
                       return IconButton(
-                        icon: Icon(Icons.more_vert),
+                        icon: WcIcon(Icons.more_vert),
                         onPressed: () {
                           HapticUtil.selectionClick();
                           buildShowModalBottomSheet(
@@ -191,7 +192,7 @@ class _IllustRowPageState extends State<IllustRowPage>
       //   backgroundColor: Colors.transparent,
       //   actions: [
       //     IconButton(
-      //         icon: Icon(Icons.more_vert),
+      //         icon: WcIcon(Icons.more_vert),
       //         onPressed: () {
       //           buildShowModalBottomSheet(context, _illustStore.illusts!);
       //         })
@@ -837,7 +838,7 @@ class _IllustRowPageState extends State<IllustRowPage>
               illust.metaPages.isNotEmpty
                   ? ListTile(
                       title: Text(I18n.of(context).muti_choice_save),
-                      leading: Icon(Icons.save),
+                      leading: WcIcon(Icons.save),
                       onTap: () async {
                         Navigator.of(context).pop();
                         _showMutiChoiceDialog(illust, context);
@@ -845,7 +846,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                     )
                   : Container(),
               ListTile(
-                leading: Icon(Icons.save_alt),
+                leading: WcIcon(Icons.save_alt),
                 onTap: () async {
                   Navigator.of(context).pop();
                   saveStore.saveImage(illust, index: index);
@@ -859,7 +860,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                 title: Text(I18n.of(context).save),
               ),
               ListTile(
-                leading: Icon(Icons.cancel),
+                leading: WcIcon(Icons.cancel),
                 onTap: () => Navigator.of(context).pop(),
                 title: Text(I18n.of(context).cancel),
               ),
@@ -936,7 +937,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                                         visible: indexs[index],
                                         child: Padding(
                                           padding: const EdgeInsets.all(4.0),
-                                          child: Icon(
+                                          child: WcIcon(
                                             Icons.check_circle,
                                             color: Colors.green,
                                           ),
@@ -971,7 +972,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                       },
                     ),
                     ListTile(
-                      leading: Icon(Icons.save),
+                      leading: WcIcon(Icons.save),
                       title: Text(I18n.of(context).save),
                       onTap: () {
                         Navigator.of(context).pop("OK");
@@ -1037,7 +1038,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                             title: Text(
                               I18n.of(dialogContext).muti_choice_save,
                             ),
-                            leading: Icon(Icons.save),
+                            leading: WcIcon(Icons.save),
                             onTap: () async {
                               Navigator.of(dialogContext).pop();
                               _showMutiChoiceDialog(illusts, context);
@@ -1045,7 +1046,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                           ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).copymessage),
-                          leading: Icon(Icons.local_library),
+                          leading: WcIcon(Icons.local_library),
                           onTap: () async {
                             final str = userSetting.illustToShareInfoText(
                               illusts,
@@ -1059,7 +1060,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).share),
-                          leading: Icon(Icons.share),
+                          leading: WcIcon(Icons.share),
                           onTap: () {
                             Navigator.of(dialogContext).pop();
                             final link =
@@ -1073,7 +1074,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                           },
                         ),
                         ListTile(
-                          leading: Icon(Icons.link),
+                          leading: WcIcon(Icons.link),
                           title: Text(I18n.of(dialogContext).link),
                           onTap: () async {
                             await Clipboard.setData(
@@ -1090,7 +1091,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).ban),
-                          leading: Icon(Icons.brightness_auto),
+                          leading: WcIcon(Icons.brightness_auto),
                           onTap: () {
                             muteStore.insertBanIllusts(
                               BanIllustIdPersist(
@@ -1103,7 +1104,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).report),
-                          leading: Icon(Icons.report),
+                          leading: WcIcon(Icons.report),
                           onTap: () async {
                             await showDialog(
                               context: dialogContext,

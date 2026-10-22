@@ -10,6 +10,7 @@ import 'package:pixez/er/pixiv_image_source.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/network/network_mode.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class NetworkSettingPage extends StatefulWidget {
   @override
@@ -125,9 +126,9 @@ class _NetworkSettingPageState extends State<NetworkSettingPage> {
     if (status == 0) {
       return CircularProgressIndicator();
     } else if (status == 1) {
-      return Icon(Icons.check);
+      return WcIcon(Icons.check);
     } else {
-      return Icon(Icons.error);
+      return WcIcon(Icons.error);
     }
   }
 }

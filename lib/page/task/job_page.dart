@@ -24,6 +24,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/models/task_persist.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/store/save_store.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class JobPage extends StatefulWidget {
   @override
@@ -42,7 +43,9 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     rotationController = AnimationController(
-        duration: const Duration(milliseconds: 500), vsync: this);
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
     _scrollController.addListener(() async {
       if (_scrollController.hasClients) {
         if (_scrollController.offset >=
@@ -77,14 +80,17 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
         if (currentIndex == 1) {
           _list = fetcher.queue
               .where((element) => fetcher.urlPool.contains(element.url))
-              .map((e) => TaskPersist(
+              .map(
+                (e) => TaskPersist(
                   userName: e.illusts?.user.name ?? "",
                   title: e.illusts?.title ?? "",
                   url: e.url ?? "",
                   userId: e.illusts?.user.id ?? 0,
                   illustId: e.illusts?.id ?? 0,
                   fileName: e.fileName ?? "",
-                  status: 1))
+                  status: 1,
+                ),
+              )
               .toList();
         }
       });
@@ -95,7 +101,10 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
     _page = 0;
     _endOfPage = false;
     final results = await taskPersistProvider.getDownloadTask(
-        _page, toTaskStatus(currentIndex), asc);
+      _page,
+      toTaskStatus(currentIndex),
+      asc,
+    );
     if (mounted) {
       setState(() {
         _list = results;
@@ -105,7 +114,10 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
 
   _reQueryFilter() async {
     final results = await taskPersistProvider.getDownloadTask(
-        _page, toTaskStatus(currentIndex), asc);
+      _page,
+      toTaskStatus(currentIndex),
+      asc,
+    );
     if (mounted) {
       setState(() {
         _list = results;
@@ -121,7 +133,10 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
     _nextLoading = true;
     _page++;
     final results = await taskPersistProvider.getDownloadTask(
-        _page, toTaskStatus(currentIndex), asc);
+      _page,
+      toTaskStatus(currentIndex),
+      asc,
+    );
     _endOfPage = results.length < 16;
     _nextLoading = false;
     if (mounted) {
@@ -162,24 +177,19 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
   Widget _buildStatusWidget(int i) {
     switch (i) {
       case 0:
-        return Text("seed",
-            style:
-                Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 12));
+        return Text(
+          "seed",
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 12),
+        );
       case 1:
-        return Text(I18n.of(context).running,
-            style:
-                Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 12));
+        return Text(
+          I18n.of(context).running,
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 12),
+        );
       case 2:
-        return Icon(
-          Icons.check_circle,
-          color: Colors.green,
-          size: 16,
-        );
+        return WcIcon(Icons.check_circle, color: Colors.green, size: 16);
       case 3:
-        return Icon(
-          Icons.error,
-          size: 16,
-        );
+        return WcIcon(Icons.error, size: 16);
       default:
         return Text(
           "seed",
@@ -198,26 +208,30 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
         title: Text(I18n.of(context).task_progress),
         actions: [
           IconButton(
-              onPressed: () {
-                setState(() {
-                  _itemSimple = !_itemSimple;
-                });
-              },
-              icon: (_itemSimple ? Icon(Icons.hide_image) : Icon(Icons.image))),
+            onPressed: () {
+              setState(() {
+                _itemSimple = !_itemSimple;
+              });
+            },
+            icon: (_itemSimple
+                ? WcIcon(Icons.hide_image)
+                : WcIcon(Icons.image)),
+          ),
           RotationTransition(
             turns: Tween(begin: 0.0, end: 0.5).animate(rotationController),
             child: IconButton(
-                onPressed: () {
-                  if (asc)
-                    rotationController.forward();
-                  else
-                    rotationController.reverse();
-                  setState(() {
-                    asc = !asc;
-                  });
-                  _reQueryFilter();
-                },
-                icon: Icon(Icons.sort)),
+              onPressed: () {
+                if (asc)
+                  rotationController.forward();
+                else
+                  rotationController.reverse();
+                setState(() {
+                  asc = !asc;
+                });
+                _reQueryFilter();
+              },
+              icon: WcIcon(Icons.sort),
+            ),
           ),
           buildIconButton(context),
         ],
@@ -225,7 +239,10 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [_buildTopChip(), Expanded(child: _body())],
+          children: [
+            _buildTopChip(),
+            Expanded(child: _body()),
+          ],
         ),
       ),
     );
@@ -233,63 +250,62 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
 
   IconButton buildIconButton(BuildContext context) {
     return IconButton(
-        icon: Icon(Icons.more_vert),
-        onPressed: () async {
-          await showModalBottomSheet(
-              context: context,
-              shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(16.0))),
-              builder: (_) {
-                return SafeArea(
-                  child: Column(
-                    children: <Widget>[
-                      ListTile(
-                        title: Text(I18n.of(context).retry_failed_tasks),
-                        onTap: () async {
-                          final results =
-                              await taskPersistProvider.getAllAccount();
-                          results.forEach((element) {
-                            if (element.status == 3) {
-                              _retryJob(element);
-                            }
-                          });
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      ListTile(
-                        title: Text(I18n.of(context).retry_seed_task),
-                        onTap: () async {
-                          final results =
-                              await taskPersistProvider.getAllAccount();
-                          results.forEach((element) {
-                            if (element.status == 0) {
-                              _retryJob(element);
-                            }
-                          });
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      ListTile(
-                        title: Text(I18n.of(context).clear_completed_tasks),
-                        onTap: () async {
-                          final results =
-                              await taskPersistProvider.getAllAccount();
-                          results.forEach((element) {
-                            if (element.status == 2) {
-                              _deleteJob(element);
-                            }
-                          });
-                          Navigator.of(context).pop();
-                        },
-                      )
-                    ],
-                    mainAxisSize: MainAxisSize.min,
+      icon: WcIcon(Icons.more_vert),
+      onPressed: () async {
+        await showModalBottomSheet(
+          context: context,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+          ),
+          builder: (_) {
+            return SafeArea(
+              child: Column(
+                children: <Widget>[
+                  ListTile(
+                    title: Text(I18n.of(context).retry_failed_tasks),
+                    onTap: () async {
+                      final results = await taskPersistProvider.getAllAccount();
+                      results.forEach((element) {
+                        if (element.status == 3) {
+                          _retryJob(element);
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
                   ),
-                );
-              });
-          initMethod();
-        });
+                  ListTile(
+                    title: Text(I18n.of(context).retry_seed_task),
+                    onTap: () async {
+                      final results = await taskPersistProvider.getAllAccount();
+                      results.forEach((element) {
+                        if (element.status == 0) {
+                          _retryJob(element);
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ListTile(
+                    title: Text(I18n.of(context).clear_completed_tasks),
+                    onTap: () async {
+                      final results = await taskPersistProvider.getAllAccount();
+                      results.forEach((element) {
+                        if (element.status == 2) {
+                          _deleteJob(element);
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+                mainAxisSize: MainAxisSize.min,
+              ),
+            );
+          },
+        );
+        initMethod();
+      },
+    );
   }
 
   int currentIndex = 0;
@@ -312,14 +328,17 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
             if (currentIndex == 1) {
               _list = fetcher.queue
                   .where((element) => fetcher.urlPool.contains(element.url))
-                  .map((e) => TaskPersist(
+                  .map(
+                    (e) => TaskPersist(
                       userName: e.illusts?.user.name ?? "",
                       title: e.illusts?.title ?? "",
                       url: e.url ?? "",
                       userId: e.illusts?.user.id ?? 0,
                       illustId: e.illusts?.id ?? 0,
                       fileName: e.fileName ?? "",
-                      status: 1))
+                      status: 1,
+                    ),
+                  )
                   .toList();
             } else {
               _refresh();
@@ -341,10 +360,9 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
             child: Center(
               child: Text(
                 "[ ]",
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium!
-                    .copyWith(fontSize: 24),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium!.copyWith(fontSize: 24),
               ),
             ),
           );
@@ -358,18 +376,14 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
     JobEntity? jobEntity = fetcher.jobMaps[taskPersist.url];
     if (currentIndex != 0) {
       if ((jobEntity?.status ?? taskPersist.status) != currentIndex)
-        return Visibility(
-          child: Container(
-            height: 0,
-          ),
-          visible: false,
-        );
+        return Visibility(child: Container(height: 0), visible: false);
     }
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12))),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
       child: InkWell(
         onTap: () {
           Leader.push(context, IllustLightingPage(id: taskPersist.illustId));
@@ -398,25 +412,21 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
                                     width: 100,
                                     child: Center(
                                       child: CircularProgressIndicator(
-                                        value: ((jobEntity.min ?? 0.0) /
-                                                ((jobEntity.max ?? 0.0)))
-                                            .toDouble(),
+                                        value:
+                                            ((jobEntity.min ?? 0.0) /
+                                                    ((jobEntity.max ?? 0.0)))
+                                                .toDouble(),
                                         backgroundColor: Colors.grey[200],
                                       ),
                                     ),
                                   )
-                                : Container(
-                                    height: 100,
-                                    width: 100,
-                                  ),
+                                : Container(height: 100, width: 100),
                           ],
                         ),
                         width: 100,
                         height: 100,
                       )
-                    : Container(
-                        width: 8,
-                      ),
+                    : Container(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,44 +447,43 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
                           ),
                           if (_itemSimple) ...[
                             InkWell(
-                                onTap: () {
-                                  _retryJob(taskPersist);
-                                },
-                                child: Icon(Icons.refresh)),
+                              onTap: () {
+                                _retryJob(taskPersist);
+                              },
+                              child: WcIcon(Icons.refresh),
+                            ),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: InkWell(
-                                  onTap: () {
-                                    _deleteJob(taskPersist);
-                                  },
-                                  child: Icon(Icons.delete)),
+                                onTap: () {
+                                  _deleteJob(taskPersist);
+                                },
+                                child: WcIcon(Icons.delete),
+                              ),
                             ),
                           ],
                           Padding(
                             padding: const EdgeInsets.only(right: 16.0),
                             child: _buildStatusWidget(
-                                jobEntity?.status ?? taskPersist.status),
+                              jobEntity?.status ?? taskPersist.status,
+                            ),
                           ),
                         ],
                       ),
                       Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: Text(
                           taskPersist.userName,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge!
+                          style: Theme.of(context).textTheme.bodyLarge!
                               .copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.primary,
-                                  fontSize: 12),
+                                color: Theme.of(context).colorScheme.primary,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
                       (!_itemSimple)
                           ? Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               mainAxisSize: MainAxisSize.max,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -482,22 +491,22 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
                                 Row(
                                   children: [
                                     IconButton(
-                                        onPressed: () {
-                                          _retryJob(taskPersist);
-                                        },
-                                        icon: Icon(Icons.refresh)),
+                                      onPressed: () {
+                                        _retryJob(taskPersist);
+                                      },
+                                      icon: WcIcon(Icons.refresh),
+                                    ),
                                     IconButton(
-                                        onPressed: () {
-                                          _deleteJob(taskPersist);
-                                        },
-                                        icon: Icon(Icons.delete)),
+                                      onPressed: () {
+                                        _deleteJob(taskPersist);
+                                      },
+                                      icon: WcIcon(Icons.delete),
+                                    ),
                                   ],
-                                )
+                                ),
                               ],
                             )
-                          : Container(
-                              height: 10,
-                            ),
+                          : Container(height: 10),
                     ],
                   ),
                 ),
@@ -509,8 +518,7 @@ class _JobPageState extends State<JobPage> with SingleTickerProviderStateMixin {
                     right: 0.0,
                     bottom: 0.0,
                     child: LinearProgressIndicator(
-                      value: ((jobEntity.min ?? 0.0) /
-                              ((jobEntity.max ?? 0.0)))
+                      value: ((jobEntity.min ?? 0.0) / ((jobEntity.max ?? 0.0)))
                           .toDouble(),
                       backgroundColor: Colors.grey[200],
                     ),

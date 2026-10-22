@@ -32,6 +32,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:pixez/models/task_persist.dart';
 import 'package:pixez/page/task/job_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 part 'save_store.g.dart';
 
@@ -141,7 +142,7 @@ abstract class _SaveStoreBase with Store {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   IconButton(
-                    icon: Icon(Icons.arrow_downward),
+                    icon: WcIcon(Icons.arrow_downward),
                     onPressed: () {
                       Navigator.of(ctx!, rootNavigator: true).push(
                         MaterialPageRoute(
@@ -185,7 +186,7 @@ abstract class _SaveStoreBase with Store {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    IconButton(icon: Icon(Icons.info), onPressed: () {}),
+                    IconButton(icon: WcIcon(Icons.info), onPressed: () {}),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8.0,
@@ -209,7 +210,7 @@ abstract class _SaveStoreBase with Store {
                           }
                         }
                       },
-                      icon: Icon(Icons.refresh),
+                      icon: WcIcon(Icons.refresh),
                     ),
                   ],
                 ),
@@ -229,7 +230,7 @@ abstract class _SaveStoreBase with Store {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   IconButton(
-                    icon: Icon(Icons.refresh),
+                    icon: WcIcon(Icons.refresh),
                     onPressed: () {
                       saveStore.redo(stream.data, stream.index ?? 0);
                     },

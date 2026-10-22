@@ -9,6 +9,7 @@ import 'package:image/image.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pixez/custom_tab_plugin.dart';
 import 'package:pixez/er/leader.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SauncenaoWebview extends StatefulWidget {
   final String? path;
@@ -109,7 +110,7 @@ class _SauncenaoWebviewState extends State<SauncenaoWebview> {
         title: Text(""),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.open_in_browser),
+            icon: WcIcon(Icons.open_in_browser),
             onPressed: () {
               try {
                 CustomTabPlugin.launch(_url);
@@ -119,7 +120,7 @@ class _SauncenaoWebviewState extends State<SauncenaoWebview> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: WcIcon(Icons.refresh),
             onPressed: () => _webViewController.reload(),
           ),
         ],

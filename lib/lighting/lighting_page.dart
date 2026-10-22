@@ -29,6 +29,7 @@ import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class WaterFallLoading extends StatefulWidget {
   const WaterFallLoading({Key? key}) : super(key: key);
@@ -56,12 +57,12 @@ class LightingList extends StatefulWidget {
 
   const LightingList({
     Key? key,
-      required this.source,
-      this.header,
-      this.isNested,
-      this.scrollController,
-      this.portal,
-      this.ai,
+    required this.source,
+    this.header,
+    this.isNested,
+    this.scrollController,
+    this.portal,
+    this.ai,
     this.filter,
     this.onPageChanged,
   }) : super(key: key);
@@ -165,7 +166,7 @@ class _LightingListState extends State<LightingList> {
               onPressed: loading || _store.currentPage <= 1
                   ? null
                   : () => _loadPage(_store.currentPage - 1),
-              icon: const Icon(Icons.chevron_left),
+              icon: const WcIcon(Icons.chevron_left),
               label: Text(I18n.of(context).pre),
             ),
             TextButton(
@@ -179,7 +180,7 @@ class _LightingListState extends State<LightingList> {
                   ? null
                   : () => _loadPage(_store.currentPage + 1),
               label: Text(I18n.of(context).next),
-              icon: const Icon(Icons.chevron_right),
+              icon: const WcIcon(Icons.chevron_right),
             ),
           ],
         ),
@@ -237,7 +238,7 @@ class _LightingListState extends State<LightingList> {
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(I18n.of(context).search_page_unavailable)),
-    );
+      );
       return;
     }
     widget.onPageChanged?.call(page);
@@ -257,41 +258,41 @@ class _LightingListState extends State<LightingList> {
       return false;
     });
     return NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification notification) {
-          if (widget.isNested == true) {
-            return true;
-          }
-          ScrollMetrics metrics = notification.metrics;
-          if (backToTopVisible == metrics.atEdge && mounted) {
-            setState(() {
-              backToTopVisible = !backToTopVisible;
-            });
-          }
+      onNotification: (ScrollNotification notification) {
+        if (widget.isNested == true) {
           return true;
-        },
-        child: EasyRefresh.builder(
-          controller: _refreshController,
-          header: PixezDefault.header(context),
+        }
+        ScrollMetrics metrics = notification.metrics;
+        if (backToTopVisible == metrics.atEdge && mounted) {
+          setState(() {
+            backToTopVisible = !backToTopVisible;
+          });
+        }
+        return true;
+      },
+      child: EasyRefresh.builder(
+        controller: _refreshController,
+        header: PixezDefault.header(context),
         footer: _isPaged ? null : PixezDefault.footer(context),
-          scrollController: _scrollController,
-          onRefresh: () {
+        scrollController: _scrollController,
+        onRefresh: () {
           if (_isPaged) {
             _store.fetchPage(_store.currentPage, force: true);
           } else {
             _store.fetch(force: true);
           }
-          },
+        },
         onLoad: _isPaged ? null : _store.fetchNext,
-          childBuilder: (context, physics) => WaterfallFlow.builder(
-            physics: physics,
-            controller: widget.isNested ?? false ? null : _scrollController,
-            padding: EdgeInsets.all(5.0),
-            itemCount: _store.iStores.length,
-            itemBuilder: (context, index) {
-              return _buildItem(index);
-            },
-            gridDelegate: _buildGridDelegate(),
-          ),
+        childBuilder: (context, physics) => WaterfallFlow.builder(
+          physics: physics,
+          controller: widget.isNested ?? false ? null : _scrollController,
+          padding: EdgeInsets.all(5.0),
+          itemCount: _store.iStores.length,
+          itemBuilder: (context, index) {
+            return _buildItem(index);
+          },
+          gridDelegate: _buildGridDelegate(),
+        ),
       ),
     );
   }
@@ -315,12 +316,12 @@ class _LightingListState extends State<LightingList> {
     return _store.errorMessage != null
         ? _buildErrorContent(context)
         : _store.iStores.isNotEmpty
-            ? (widget.header != null
-                ? _buildWithHeader(context)
-                : _buildWithoutHeader(context))
-            : Container(
-                child: _store.refreshing ? WaterFallLoading() : Container(),
-              );
+        ? (widget.header != null
+              ? _buildWithHeader(context)
+              : _buildWithoutHeader(context))
+        : Container(
+            child: _store.refreshing ? WaterFallLoading() : Container(),
+          );
   }
 
   Widget _buildErrorContent(context) {
@@ -340,13 +341,13 @@ class _LightingListState extends State<LightingList> {
             ),
           ),
           TextButton(
-              onPressed: () {
+            onPressed: () {
               if (_isPaged) {
                 _store.fetchPage(_store.currentPage, force: true);
               } else {
                 _store.fetch(force: true);
               }
-              },
+            },
             child: Text(I18n.of(context).retry),
           ),
           Padding(padding: const EdgeInsets.all(16.0), child: Text(errorText)),
@@ -385,7 +386,7 @@ class _LightingListState extends State<LightingList> {
           if (_isPaged) {
             _store.fetchPage(_store.currentPage, force: true);
           } else {
-          _store.fetch(force: true);
+            _store.fetch(force: true);
           }
         },
         onLoad: _isPaged ? null : _store.fetchNext,

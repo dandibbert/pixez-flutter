@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 enum SearchDatePreset {
   none,
@@ -72,7 +73,7 @@ class SearchDateFilterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<SearchDatePreset>(
       tooltip: I18n.of(context).date_duration,
-      icon: Icon(
+      icon: WcIcon(
         Icons.date_range,
         color: value != null ? Theme.of(context).colorScheme.primary : null,
       ),

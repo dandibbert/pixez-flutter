@@ -19,6 +19,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/about/last_release.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class UpdatePage extends StatefulWidget {
   @override
@@ -100,7 +101,7 @@ class _UpdatePageState extends State<UpdatePage> {
           });
           initData();
         },
-        child: Icon(Icons.refresh),
+        child: WcIcon(Icons.refresh),
       ),
     );
   }

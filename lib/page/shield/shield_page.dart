@@ -29,6 +29,7 @@ import 'package:pixez/models/show_ai_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/shield/user_show_ai_setting.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class ShieldPage extends StatefulWidget {
   @override
@@ -64,9 +65,9 @@ class _ShieldPageState extends State<ShieldPage> {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: Icon(Icons.smart_toy_outlined),
+                        leading: WcIcon(Icons.smart_toy_outlined),
                         title: Text(I18n.of(context).ai_work_display_settings),
-                        trailing: Icon(Icons.chevron_right),
+                        trailing: WcIcon(Icons.chevron_right),
                         onTap: () async {
                           try {
                             BotToast.showLoading();
@@ -86,7 +87,7 @@ class _ShieldPageState extends State<ShieldPage> {
                         },
                       ),
                       SwitchListTile(
-                        secondary: Icon(Icons.visibility_off_outlined),
+                        secondary: WcIcon(Icons.visibility_off_outlined),
                         title: Text(
                           I18n.of(
                             context,
@@ -176,7 +177,7 @@ class _ShieldPageState extends State<ShieldPage> {
             title: Text(title),
             trailing: onAdd == null
                 ? null
-                : IconButton(onPressed: onAdd, icon: Icon(Icons.add)),
+                : IconButton(onPressed: onAdd, icon: WcIcon(Icons.add)),
           ),
           if (children.isNotEmpty)
             Padding(

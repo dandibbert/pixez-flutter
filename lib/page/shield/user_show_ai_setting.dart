@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/models/show_ai_response.dart';
 import 'package:pixez/network/api_client.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class UserShowAISetting extends StatefulWidget {
   final bool showAI;
@@ -44,14 +45,12 @@ class _UserShowAISettingState extends State<UserShowAISetting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(I18n.of(context).ai_work_display_settings),
-      ),
+      appBar: AppBar(title: Text(I18n.of(context).ai_work_display_settings)),
       body: ListView(
         children: [
           ListTile(
             title: Text(I18n.of(context).show),
-            trailing: !_showAI ? null : Icon(Icons.check),
+            trailing: !_showAI ? null : WcIcon(Icons.check),
             onTap: () {
               if (!_showAI) {
                 _changeShowAI(true);
@@ -60,7 +59,7 @@ class _UserShowAISettingState extends State<UserShowAISetting> {
           ),
           ListTile(
             title: Text(I18n.of(context).partially_hidden),
-            trailing: _showAI ? null : Icon(Icons.check),
+            trailing: _showAI ? null : WcIcon(Icons.check),
             onTap: () {
               if (_showAI) {
                 _changeShowAI(false);

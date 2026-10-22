@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key pixivImageLoadingKey = Key('pixiv-image-loading');
 const Key pixivImageErrorKey = Key('pixiv-image-error');
@@ -233,7 +234,7 @@ class PixivImageErrorPlaceholder extends StatelessWidget {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
+                                WcIcon(
                                   Icons.broken_image_outlined,
                                   color: scheme.error,
                                   size: _spinnerSize(width, height),

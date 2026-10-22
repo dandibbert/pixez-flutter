@@ -17,6 +17,7 @@
 import 'dart:ui';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/component/pixiv_image.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class ZoomPage extends StatefulWidget {
   final String url;
@@ -35,10 +36,7 @@ class _ZoomPageState extends State<ZoomPage> {
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       body: Center(
         child: PinchZoomImage(
           image: PixivImage(widget.url),
@@ -59,7 +57,7 @@ class _ZoomPageState extends State<ZoomPage> {
       floatingActionButton: Visibility(
         visible: fabvisible,
         child: FloatingActionButton(
-          child: Icon(Icons.flip_to_back),
+          child: WcIcon(Icons.flip_to_back),
           onPressed: () {
             Navigator.of(context).pop();
           },
@@ -107,18 +105,16 @@ class _PinchZoomImageState extends State<PinchZoomImage> {
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: <Widget>[
-            Opacity(
-              opacity: zooming ? 0.0 : 1.0,
-              child: widget.image,
-            ),
+            Opacity(opacity: zooming ? 0.0 : 1.0, child: widget.image),
             Positioned(
               top: 0.0,
               left: 0.0,
               right: 0.0,
               bottom: 0.0,
               child: Container(
-                color:
-                    zooming ? widget.zoomedBackgroundColor : Colors.transparent,
+                color: zooming
+                    ? widget.zoomedBackgroundColor
+                    : Colors.transparent,
               ),
             ),
           ],
@@ -136,8 +132,9 @@ class _PinchZoomImageState extends State<PinchZoomImage> {
     OverlayState overlayState = Overlay.of(context);
     double width = context.size!.width;
     double height = context.size!.height;
-    origin = (context.findRenderObject() as RenderBox)
-        .localToGlobal(Offset(0.0, 0.0));
+    origin = (context.findRenderObject() as RenderBox).localToGlobal(
+      Offset(0.0, 0.0),
+    );
     scaleStartPosition = details.focalPoint;
 
     overlayEntry = OverlayEntry(
@@ -158,8 +155,9 @@ class _PinchZoomImageState extends State<PinchZoomImage> {
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
     if (reversing || numPointers < 2) return;
-    overlayKey.currentState
-        ?.updatePosition(origin! - (scaleStartPosition! - details.focalPoint));
+    overlayKey.currentState?.updatePosition(
+      origin! - (scaleStartPosition! - details.focalPoint),
+    );
     if (details.scale >= 1.0)
       overlayKey.currentState?.updateScale(details.scale);
   }
@@ -222,22 +220,19 @@ class PinchZoomOverlayImageState extends State<PinchZoomOverlayImage>
     return Stack(
       children: <Widget>[
         Opacity(
-          opacity: ((scale - 1.0) /
-                  ((MediaQuery.of(context).size.height / widget.height) - 1.0))
-              .clamp(0.0, 1.0),
-          child: Container(
-            color: Colors.black,
-          ),
+          opacity:
+              ((scale - 1.0) /
+                      ((MediaQuery.of(context).size.height / widget.height) -
+                          1.0))
+                  .clamp(0.0, 1.0),
+          child: Container(color: Colors.black),
         ),
         Positioned(
           top: position!.dy,
           left: position!.dx,
           width: widget.width,
           height: widget.height,
-          child: Transform.scale(
-            scale: scale,
-            child: widget.image,
-          ),
+          child: Transform.scale(scale: scale, child: widget.image),
         ),
       ],
     );
@@ -260,24 +255,23 @@ class PinchZoomOverlayImageState extends State<PinchZoomOverlayImage>
     Offset reverseStartPosition = position!;
     double reverseStartScale = scale;
 
-    reverseAnimationController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 200),
-    )..addListener(() {
-        setState(() {
-          position = Offset.lerp(
-            reverseStartPosition,
-            origin,
-            Curves.easeInOut.transform(reverseAnimationController!.value),
-          );
+    reverseAnimationController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 200))
+          ..addListener(() {
+            setState(() {
+              position = Offset.lerp(
+                reverseStartPosition,
+                origin,
+                Curves.easeInOut.transform(reverseAnimationController!.value),
+              );
 
-          scale = lerpDouble(
-            reverseStartScale,
-            1.0,
-            Curves.easeInOut.transform(reverseAnimationController!.value),
-          )!;
-        });
-      });
+              scale = lerpDouble(
+                reverseStartScale,
+                1.0,
+                Curves.easeInOut.transform(reverseAnimationController!.value),
+              )!;
+            });
+          });
 
     return reverseAnimationController!.forward(from: 0.0);
   }

@@ -20,6 +20,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 part 'sauce_notifier.freezed.dart';
 part 'sauce_notifier.g.dart';
@@ -31,11 +32,7 @@ abstract class SauceState with _$SauceState {
 
 @riverpod
 class Sauce extends _$Sauce {
-  Dio dio = Dio(
-    BaseOptions(
-      baseUrl: "https://saucenao.com",
-    ),
-  );
+  Dio dio = Dio(BaseOptions(baseUrl: "https://saucenao.com"));
   List<int> results = [];
   late StreamController _streamController;
   late ObservableStream observableStream;
@@ -75,7 +72,7 @@ class Sauce extends _$Sauce {
                   Observer(
                     builder: (context) {
                       return SwitchListTile(
-                        secondary: Icon(Icons.photo_album),
+                        secondary: WcIcon(Icons.photo_album),
                         onChanged: (bool value) async {
                           await userSetting.setImagePickerType(value ? 1 : 0);
                         },

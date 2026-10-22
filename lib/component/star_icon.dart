@@ -15,14 +15,12 @@
  */
 
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class StarIcon extends StatefulWidget {
   final int state;
 
-  const StarIcon({
-    Key? key,
-    required this.state,
-  }) : super(key: key);
+  const StarIcon({Key? key, required this.state}) : super(key: key);
 
   @override
   _StarIconState createState() => _StarIconState();
@@ -60,18 +58,17 @@ class _StarIconState extends State<StarIcon> {
   Widget _buildData(int state) {
     switch (state) {
       case 0:
-        return Icon(
+        return WcIcon(
           Icons.favorite_border,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         );
       case 1:
-        return Icon(Icons.favorite,
-            color: Theme.of(context).colorScheme.onSurfaceVariant);
-      default:
-        return Icon(
+        return WcIcon(
           Icons.favorite,
-          color: Colors.red,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         );
+      default:
+        return WcIcon(Icons.favorite, color: Colors.red);
     }
   }
 }

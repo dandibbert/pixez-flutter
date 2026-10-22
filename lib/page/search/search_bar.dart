@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/watercolor/watercolor_paper.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SearchBar extends StatefulWidget {
   final VoidCallback? onSaucenao;
@@ -40,7 +41,7 @@ class _SearchBarState extends State<SearchBar> {
           children: [
             Container(
               margin: const EdgeInsets.only(left: 8, right: 2),
-              child: IconButton(icon: Icon(Icons.search), onPressed: () {}),
+              child: IconButton(icon: WcIcon(Icons.search), onPressed: () {}),
             ),
             Expanded(
               child: InkWell(
@@ -67,7 +68,7 @@ class _SearchBarState extends State<SearchBar> {
             Container(
               margin: const EdgeInsets.only(right: 8, left: 4),
               child: IconButton(
-                icon: Icon(Icons.image_search),
+                icon: WcIcon(Icons.image_search),
                 onPressed: () {
                   if (widget.onSaucenao != null) widget.onSaucenao!();
                 },

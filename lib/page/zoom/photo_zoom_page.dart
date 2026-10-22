@@ -21,6 +21,7 @@ import 'package:pixez/models/illust.dart';
 import 'package:pixez/page/picture/illust_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class PhotoZoomPage extends StatefulWidget {
   final int index;
@@ -202,7 +203,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                 child: IconButton(
                   key: const ValueKey('photo_back_button'),
                   tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  icon: const WcIcon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
@@ -383,7 +384,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                   overlays: SystemUiOverlay.values,
                 );
               },
-              icon: Icon(
+              icon: WcIcon(
                 Icons.fullscreen_exit,
                 color: Colors.white.withValues(alpha: 0.5),
               ),
@@ -412,7 +413,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                         if (Platform.isMacOS || Platform.isLinux)
                           IconButton(
                             tooltip: I18n.of(context).pre,
-                            icon: const Icon(
+                            icon: const WcIcon(
                               Icons.navigate_before,
                               color: Colors.white,
                             ),
@@ -422,7 +423,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                           ),
                         IconButton(
                           iconSize: 16,
-                          icon: Icon(
+                          icon: WcIcon(
                             Icons.photo_library_outlined,
                             color: Colors.white,
                           ),
@@ -437,7 +438,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                         if (Platform.isMacOS || Platform.isLinux)
                           IconButton(
                             tooltip: I18n.of(context).next,
-                            icon: const Icon(
+                            icon: const WcIcon(
                               Icons.navigate_next,
                               color: Colors.white,
                             ),
@@ -451,7 +452,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.fullscreen, color: Colors.white),
+                          icon: WcIcon(Icons.fullscreen, color: Colors.white),
                           onPressed: () {
                             setState(() {
                               _fullScreen = true;
@@ -465,13 +466,13 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                         _buildFitWidthButton(context),
                         if (ClipboardPlugin.supported)
                           IconButton(
-                            icon: Icon(Icons.copy, color: Colors.white),
+                            icon: WcIcon(Icons.copy, color: Colors.white),
                             onPressed: () =>
                                 ClipboardPlugin.copy(context, _illusts, _index),
                           ),
                         GestureDetector(
                           child: IconButton(
-                            icon: Icon(Icons.save_alt, color: Colors.white),
+                            icon: WcIcon(Icons.save_alt, color: Colors.white),
                             onPressed: () {
                               if (_illusts.metaPages.isNotEmpty)
                                 saveStore.saveImage(
@@ -507,7 +508,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                           child: Builder(
                             builder: (context) {
                               return IconButton(
-                                icon: Icon(Icons.share, color: Colors.white),
+                                icon: WcIcon(Icons.share, color: Colors.white),
                                 onPressed: () async {
                                   var file = await pixivCacheManager!
                                       .getFileFromCache(_sourceUrl(nowUrl));
@@ -582,7 +583,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                 color: Colors.white,
               ),
             )
-          : const Icon(Icons.width_full, color: Colors.white),
+          : const WcIcon(Icons.width_full, color: Colors.white),
     );
   }
 
