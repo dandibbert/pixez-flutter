@@ -574,54 +574,61 @@ class _WatercolorPageButton extends StatelessWidget {
     required this.leading,
   });
 
-  /// Back and forward are a matching pair: a soft pigment wash while they
-  /// can be used, a faint paper-edged pill with faded text when they cannot.
-  /// [leading] only decides which side the arrow sits on.
+  /// Back and forward are the same paper pill. A usable button has ink text
+  /// and its arrow on a dab of pigment, like the palette bar and list icons;
+  /// an unusable one keeps the shape and fades. [leading] only decides which
+  /// side the arrow sits on.
   @override
   Widget build(BuildContext context) {
     final tokens = WatercolorTokens.of(context)!;
     final color = enabled ? tokens.ink : tokens.ink.withValues(alpha: 0.3);
-    final arrow = WcIcon(icon, size: 18, color: color);
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (leading) arrow,
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: color,
+    final arrow = SizedBox(
+      width: 26,
+      height: 26,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: AnimatedOpacity(
+              opacity: enabled ? 1 : 0,
+              duration: WcMotion.medium,
+              curve: WcMotion.standard,
+              child: PigmentWash(
+                color: tokens.pigment(0),
+                opacity: 0.8,
+                shape: PigmentShape.dot,
+              ),
+            ),
           ),
-        ),
-        if (!leading) arrow,
-      ],
+          WcIcon(icon, size: 18, color: enabled ? tokens.onPigment : color),
+        ],
+      ),
+    );
+    final label = Text(
+      this.label,
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
     );
     return GestureDetector(
       onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
       child: PressScale(
         enabled: enabled,
-        child: SizedBox(
+        child: Container(
           height: 40,
-          child: PigmentBackdrop(
-            color: tokens.pigment(0),
-            visible: enabled,
-            opacity: 0.55,
-            bleed: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-            child: AnimatedContainer(
-              duration: WcMotion.medium,
-              curve: WcMotion.standard,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: enabled ? Colors.transparent : tokens.line,
-                ),
-              ),
-              child: content,
-            ),
+          padding: EdgeInsets.only(
+            left: leading ? 7 : 14,
+            right: leading ? 14 : 7,
+          ),
+          decoration: BoxDecoration(
+            color: tokens.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: tokens.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: leading
+                ? [arrow, const SizedBox(width: 4), label]
+                : [label, const SizedBox(width: 4), arrow],
           ),
         ),
       ),
