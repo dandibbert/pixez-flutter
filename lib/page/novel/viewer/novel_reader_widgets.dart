@@ -574,50 +574,55 @@ class _WatercolorPageButton extends StatelessWidget {
     required this.leading,
   });
 
+  /// Back and forward are a matching pair: a soft pigment wash while they
+  /// can be used, a faint paper-edged pill with faded text when they cannot.
+  /// [leading] only decides which side the arrow sits on.
   @override
   Widget build(BuildContext context) {
     final tokens = WatercolorTokens.of(context)!;
     final color = enabled ? tokens.ink : tokens.ink.withValues(alpha: 0.3);
+    final arrow = WcIcon(icon, size: 18, color: color);
     final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (leading) WcIcon(icon, size: 18, color: color),
+        if (leading) arrow,
         Text(
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: leading ? FontWeight.w400 : FontWeight.w700,
-            color: leading ? color : (enabled ? tokens.onPigment : color),
+            fontWeight: FontWeight.w600,
+            color: color,
           ),
         ),
-        if (!leading)
-          WcIcon(icon, size: 18, color: enabled ? tokens.onPigment : color),
+        if (!leading) arrow,
       ],
     );
     return GestureDetector(
       onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
       child: PressScale(
+        enabled: enabled,
         child: SizedBox(
           height: 40,
-          child: leading
-              ? Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color, width: 1.5),
-                  ),
-                  child: content,
-                )
-              : PigmentBackdrop(
-                  color: tokens.pigment(0),
-                  visible: enabled,
-                  bleed: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: content,
-                  ),
+          child: PigmentBackdrop(
+            color: tokens.pigment(0),
+            visible: enabled,
+            opacity: 0.55,
+            bleed: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+            child: AnimatedContainer(
+              duration: WcMotion.medium,
+              curve: WcMotion.standard,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: enabled ? Colors.transparent : tokens.line,
                 ),
+              ),
+              child: content,
+            ),
+          ),
         ),
       ),
     );
@@ -638,18 +643,19 @@ class _WatercolorDock extends StatelessWidget {
       minimum: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-        child: Material(
-          color: tokens.card,
-          shape: RoundedRectangleBorder(
+        // The shadow sits behind an opaque card; drawn inside the card it
+        // would grey the whole bar.
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: tokens.card,
             borderRadius: BorderRadius.circular(26),
-            side: BorderSide(color: tokens.line),
+            border: Border.all(color: tokens.line),
+            boxShadow: tokens.cardShadow,
           ),
-          elevation: 0,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: tokens.cardShadow,
-            ),
+          child: Material(
+            type: MaterialType.transparency,
+            borderRadius: BorderRadius.circular(26),
+            clipBehavior: Clip.antiAlias,
             child: MediaQuery.removePadding(
               context: context,
               removeBottom: true,
