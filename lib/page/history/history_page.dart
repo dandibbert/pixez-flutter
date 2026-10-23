@@ -28,6 +28,8 @@ import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/page/picture/illust_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/search/result_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 enum _HistoryAction { delete, openSourceSearch }
 
@@ -35,55 +37,63 @@ class HistoryPage extends HookConsumerWidget {
   const HistoryPage({super.key});
 
   Widget buildAppBarUI(context) => Container(
-        child: Padding(
-          child: Text(
-            I18n.of(context).history,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0),
-          ),
-          padding: EdgeInsets.only(left: 20.0, top: 30.0, bottom: 30.0),
-        ),
-      );
+    child: Padding(
+      child: Text(
+        I18n.of(context).history,
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30.0),
+      ),
+      padding: EdgeInsets.only(left: 20.0, top: 30.0, bottom: 30.0),
+    ),
+  );
 
   Widget buildBody(List<IllustPersist> data, WidgetRef ref) {
     final reIllust = data.reversed.toList();
     if (reIllust.isNotEmpty) {
-      return LayoutBuilder(builder: (context, snapshot) {
-        final rowCount = max(2, (snapshot.maxWidth / 200).floor());
-        return GridView.builder(
+      return LayoutBuilder(
+        builder: (context, snapshot) {
+          final rowCount = max(2, (snapshot.maxWidth / 200).floor());
+          return GridView.builder(
             itemCount: reIllust.length,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: rowCount),
+              crossAxisCount: rowCount,
+            ),
             itemBuilder: (context, index) {
               final history = reIllust[index];
               return GestureDetector(
-                  onTap: () {
-                    HapticUtil.selectionClick();
-                    Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(builder: (BuildContext context) {
-                      return IllustLightingPage(
+                onTap: () {
+                  HapticUtil.selectionClick();
+                  Navigator.of(context, rootNavigator: true).push(
+                    MaterialPageRoute(
+                      builder: (BuildContext context) {
+                        return IllustLightingPage(
                           id: history.illustId,
                           store: IllustStore(history.illustId, null)
                             ..setSearchOrigin(
                               queryJson: history.sourceQueryJson,
                               page: history.sourcePage,
-                            ));
-                    }));
-                  },
-                  onLongPress: () {
-                    HapticUtil.heavy();
-                    _showHistoryActions(context, ref, history);
-                  },
-                  onSecondaryTap: () =>
-                      _showHistoryActions(context, ref, history),
-                  child: Card(
-                      margin: EdgeInsets.all(8),
-                      child: PixivImage(history.pictureUrl)));
-            });
-      });
+                            ),
+                        );
+                      },
+                    ),
+                  );
+                },
+                onLongPress: () {
+                  HapticUtil.heavy();
+                  _showHistoryActions(context, ref, history);
+                },
+                onSecondaryTap: () =>
+                    _showHistoryActions(context, ref, history),
+                child: Card(
+                  margin: EdgeInsets.all(8),
+                  child: PixivImage(history.pictureUrl),
+                ),
+              );
+            },
+          );
+        },
+      );
     }
-    return Center(
-      child: Container(),
-    );
+    return Center(child: Container());
   }
 
   Future<void> _showHistoryActions(
@@ -92,7 +102,7 @@ class HistoryPage extends HookConsumerWidget {
     IllustPersist history,
   ) async {
     final sourceQuery = restoreIllustHistoryOrigin(history);
-    final action = await showDialog<_HistoryAction>(
+    final action = await showWcDialog<_HistoryAction>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(I18n.of(context).history_item_actions),
@@ -108,12 +118,13 @@ class HistoryPage extends HookConsumerWidget {
           ),
           if (sourceQuery != null)
             TextButton(
-              onPressed: () => Navigator.of(dialogContext)
-                  .pop(_HistoryAction.openSourceSearch),
+              onPressed: () => Navigator.of(
+                dialogContext,
+              ).pop(_HistoryAction.openSourceSearch),
               child: Text(
-                I18n.of(context).jump_to_source_search_page(
-                  sourceQuery.normalizedPage,
-                ),
+                I18n.of(
+                  context,
+                ).jump_to_source_search_page(sourceQuery.normalizedPage),
               ),
             ),
         ],
@@ -154,30 +165,31 @@ class HistoryPage extends HookConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
-            controller: _textEditingController,
-            onChanged: (word) {
-              if (word.trim().isNotEmpty) {
-                ref.read(historyProvider.notifier).search(word.trim());
-              } else {
-                ref.read(historyProvider.notifier).fetch();
-              }
-            },
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: I18n.of(context).search_word_hint,
-            )),
+          controller: _textEditingController,
+          onChanged: (word) {
+            if (word.trim().isNotEmpty) {
+              ref.read(historyProvider.notifier).search(word.trim());
+            } else {
+              ref.read(historyProvider.notifier).fetch();
+            }
+          },
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: I18n.of(context).search_word_hint,
+          ),
+        ),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.close),
+            icon: WcIcon(Icons.close),
             onPressed: () {
               _textEditingController.clear();
               ref.read(historyProvider.notifier).fetch();
             },
-          )
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.delete),
+        child: WcIcon(Icons.delete),
         onPressed: () {
           _cleanAll(context, ref);
         },
@@ -187,27 +199,28 @@ class HistoryPage extends HookConsumerWidget {
   }
 
   Future<void> _cleanAll(BuildContext context, WidgetRef ref) async {
-    final result = await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text("${I18n.of(context).delete} ${I18n.of(context).all}?"),
-            actions: <Widget>[
-              TextButton(
-                child: Text(I18n.of(context).cancel),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: Text(I18n.of(context).ok),
-                onPressed: () {
-                  Navigator.of(context).pop("OK");
-                },
-              ),
-            ],
-          );
-        });
+    final result = await showWcDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("${I18n.of(context).delete} ${I18n.of(context).all}?"),
+          actions: <Widget>[
+            TextButton(
+              child: Text(I18n.of(context).cancel),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text(I18n.of(context).ok),
+              onPressed: () {
+                Navigator.of(context).pop("OK");
+              },
+            ),
+          ],
+        );
+      },
+    );
     if (result == "OK") {
       ref.read(historyProvider.notifier).deleteAll();
     }

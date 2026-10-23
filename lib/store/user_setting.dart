@@ -38,9 +38,20 @@ import 'package:pixez/secure_plugin.dart';
 import 'package:pixez/store/welcome_page_type.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/utils/tray_manager_helper.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'user_setting.g.dart';
+
+/// The value stored as [index], or [fallback] when nothing, or something
+/// out of range, was stored.
+T enumFromIndex<T>(List<T> values, int? index, T fallback) {
+  if (index == null || index < 0 || index >= values.length) return fallback;
+  return values[index];
+}
+
+/// Overall look of the app: the watercolor redesign or the original Material UI.
+enum UiStyle { watercolor, classic }
 
 class UserSetting = _UserSetting with _$UserSetting;
 
@@ -101,6 +112,8 @@ abstract class _UserSetting with Store {
   static const String LONG_PRESS_SAVE_CONFIRM_KEY = "long_press_save_confirm";
   static const String USE_DYNAMIC_COLOR_KEY = "use_dynamic_color";
   static const String SEED_COLOR_KEY = "seed_color";
+  static const String UI_STYLE_KEY = "ui_style";
+  static const String PALETTE_MODE_KEY = "palette_mode";
   static const String SWIPE_CHANGE_ARTWORK_KEY = "swipe_change_artwork";
   static const String USE_SAUNCE_NAO_WEBVIEW = "use_sauce_nao_webview";
   static const String FEED_AI_BADGE_KEY = "feed_ai_badge";
@@ -343,6 +356,27 @@ abstract class _UserSetting with Store {
   @observable
   ThemeMode themeMode = ThemeMode.system;
 
+  @observable
+  UiStyle uiStyle = UiStyle.watercolor;
+
+  @observable
+  WatercolorPaletteMode paletteMode = WatercolorPaletteMode.multi;
+
+  @action
+  setUiStyle(UiStyle value) async {
+    await prefs.setInt(UI_STYLE_KEY, value.index);
+    uiStyle = value;
+  }
+
+  /// Dynamic mode reuses the classic `useDynamicColor` switch, so both styles
+  /// agree on whether the wallpaper color is in use.
+  @action
+  setPaletteMode(WatercolorPaletteMode value) async {
+    await prefs.setInt(PALETTE_MODE_KEY, value.index);
+    paletteMode = value;
+    await setUseDynamicColor(value == WatercolorPaletteMode.dynamic);
+  }
+
   @action
   setUseDynamicColor(bool value) async {
     await prefs.setBool(USE_DYNAMIC_COLOR_KEY, value);
@@ -506,6 +540,16 @@ abstract class _UserSetting with Store {
       }
     }
     useDynamicColor = prefs.getBool(USE_DYNAMIC_COLOR_KEY) ?? true;
+    uiStyle = enumFromIndex(
+      UiStyle.values,
+      prefs.getInt(UI_STYLE_KEY),
+      UiStyle.watercolor,
+    );
+    paletteMode = enumFromIndex(
+      WatercolorPaletteMode.values,
+      prefs.getInt(PALETTE_MODE_KEY),
+      WatercolorPaletteMode.multi,
+    );
     var colors = prefs.getInt(SEED_COLOR_KEY);
     if (colors != null) {
       try {

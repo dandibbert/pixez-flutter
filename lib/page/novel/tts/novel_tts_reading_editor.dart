@@ -13,6 +13,8 @@ import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_rule.dar
 import 'package:pixez/page/novel/tts/pronunciation/models/pronunciation_scope.dart';
 import 'package:pixez/page/novel/tts/pronunciation/storage/pronunciation_migration.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 const Key novelTtsAddReadingKey = Key('novelTtsAddReading');
 const Key novelTtsBulkReadingKey = Key('novelTtsBulkReading');
@@ -88,7 +90,7 @@ Future<NovelTtsReading?> showNovelTtsReadingDialog(
   String? initialSurface,
   String? previewText,
 }) {
-  return showDialog<NovelTtsReading>(
+  return showWcDialog<NovelTtsReading>(
     context: context,
     builder: (context) => _ReadingDialog(
       initial: initial,
@@ -184,7 +186,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
               controller: _search,
               decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const WcIcon(Icons.search),
                 hintText: i18n.novel_tts_reading_search,
                 border: const OutlineInputBorder(),
               ),
@@ -212,7 +214,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
             FilledButton.tonalIcon(
               key: novelTtsAddReadingKey,
               onPressed: () => _edit(context),
-              icon: const Icon(Icons.add),
+              icon: const WcIcon(Icons.add),
               label: Text(i18n.novel_tts_reading_add),
             ),
             OutlinedButton(
@@ -270,7 +272,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
           IconButton(
             key: novelTtsReadingDeleteKey(id),
             tooltip: i18n.novel_tts_reading_delete,
-            icon: const Icon(Icons.delete_outline),
+            icon: const WcIcon(Icons.delete_outline),
             onPressed: () => _delete(context, reading),
           ),
         ],
@@ -337,7 +339,7 @@ class _NovelTtsReadingsEditorState extends State<NovelTtsReadingsEditor> {
   Future<void> _bulk(BuildContext context) async {
     final i18n = I18n.of(context);
     final messenger = ScaffoldMessenger.maybeOf(context);
-    final raw = await showDialog<String>(
+    final raw = await showWcDialog<String>(
       context: context,
       builder: (context) => const _BulkReadingDialog(),
     );

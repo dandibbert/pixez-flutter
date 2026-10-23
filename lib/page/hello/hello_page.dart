@@ -34,6 +34,10 @@ import 'package:pixez/page/hello/setting/setting_page.dart';
 import 'package:pixez/page/preview/preview_page.dart';
 import 'package:pixez/page/search/search_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/palette_bar.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class HelloPage extends StatefulWidget {
   @override
@@ -140,10 +144,15 @@ class _HelloPageState extends State<HelloPage> {
               : Observer(
                   builder: (context) {
                     return AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
+                      duration: WatercolorTokens.of(context) == null
+                          ? const Duration(milliseconds: 400)
+                          : WcMotion.long,
                       transform: Matrix4.translationValues(
                         0,
-                        fullScreenStore.fullscreen ? bottomNavigatorHeight! : 0,
+                        fullScreenStore.fullscreen
+                            ? bottomNavigatorHeight! +
+                                  _paletteExtraOffset(context)
+                            : 0,
                         0,
                       ),
                       child: _buildNavigationBar(context),
@@ -174,23 +183,23 @@ class _HelloPageState extends State<HelloPage> {
             },
             destinations: <NavigationRailDestination>[
               NavigationRailDestination(
-                icon: Icon(Icons.home),
+                icon: WcIcon(Icons.home),
                 label: Text(I18n.of(context).home),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.leaderboard),
+                icon: WcIcon(Icons.leaderboard),
                 label: Text(I18n.of(context).rank),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.favorite),
+                icon: WcIcon(Icons.favorite),
                 label: Text(I18n.of(context).quick_view),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.search),
+                icon: WcIcon(Icons.search),
                 label: Text(I18n.of(context).search),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.more_horiz),
+                icon: WcIcon(Icons.more_horiz),
                 label: Text(I18n.of(context).more),
               ),
             ],
@@ -231,7 +240,40 @@ class _HelloPageState extends State<HelloPage> {
     ];
   }
 
+  /// The palette bar floats above the bottom edge, so it must travel further
+  /// than the classic bar to hide in fullscreen.
+  double _paletteExtraOffset(BuildContext context) =>
+      WatercolorTokens.of(context) == null ? 0 : PaletteBar.hiddenOffset - 80;
+
   Widget _buildNavigationBar(BuildContext context) {
+    void select(int value) {
+      HapticUtil.selectionClick();
+      if (this.index == value) {
+        topStore.setTop("${value + 1}00");
+      }
+      setState(() {
+        this.index = value;
+      });
+      if (_pageController.hasClients) _pageController.jumpToPage(value);
+    }
+
+    if (WatercolorTokens.of(context) != null) {
+      return PaletteBar(
+        items: [
+          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
+          PaletteBarItem(
+            icon: Icons.favorite,
+            label: I18n.of(context).quick_view,
+          ),
+          PaletteBarItem(icon: Icons.search, label: I18n.of(context).search),
+          PaletteBarItem(icon: Icons.more_horiz, label: I18n.of(context).more),
+        ],
+        selectedIndex: index,
+        onSelected: select,
+      );
+    }
+
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -242,37 +284,28 @@ class _HelloPageState extends State<HelloPage> {
           ).colorScheme.surface.withValues(alpha: 0.9),
           destinations: [
             NavigationDestination(
-              icon: Icon(Icons.home),
+              icon: WcIcon(Icons.home),
               label: I18n.of(context).home,
             ),
             NavigationDestination(
-              icon: Icon(Icons.leaderboard),
+              icon: WcIcon(Icons.leaderboard),
               label: I18n.of(context).rank,
             ),
             NavigationDestination(
-              icon: Icon(Icons.favorite),
+              icon: WcIcon(Icons.favorite),
               label: I18n.of(context).quick_view,
             ),
             NavigationDestination(
-              icon: Icon(Icons.search),
+              icon: WcIcon(Icons.search),
               label: I18n.of(context).search,
             ),
             NavigationDestination(
-              icon: Icon(Icons.more_horiz),
+              icon: WcIcon(Icons.more_horiz),
               label: I18n.of(context).more,
             ),
           ],
           selectedIndex: index,
-          onDestinationSelected: (value) {
-            HapticUtil.selectionClick();
-            if (this.index == value) {
-              topStore.setTop("${value + 1}00");
-            }
-            setState(() {
-              this.index = value;
-            });
-            if (_pageController.hasClients) _pageController.jumpToPage(value);
-          },
+          onDestinationSelected: select,
         ),
       ),
     );

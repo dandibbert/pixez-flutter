@@ -1,10 +1,10 @@
-
-
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_lighting_list.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NovelNewList extends StatefulWidget {
   const NovelNewList({super.key});
@@ -24,50 +24,55 @@ class _NovelNewListState extends State<NovelNewList> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: Column(children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: IconButton(
-              icon: Icon(Icons.list),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              icon: WcIcon(Icons.list),
               onPressed: () {
                 showModalBottomSheet(
-                    context: context,
-                    shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(16.0))),
-                    builder: (context) {
-                      return SafeArea(
-                          child: Column(
+                  sheetAnimationStyle: WcMotion.sheet(context),
+                  context: context,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16.0),
+                    ),
+                  ),
+                  builder: (context) {
+                    return SafeArea(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ListTile(
                             title: Text(I18n.of(context).public),
                             onTap: () {
                               setState(() {
-                                futureGet =
-                                    () => apiClient.getNovelFollow('public');
+                                futureGet = () =>
+                                    apiClient.getNovelFollow('public');
                               });
                             },
                           ),
                           ListTile(
-                              title: Text(I18n.of(context).private),
-                              onTap: () {
-                                setState(() {
-                                  futureGet =
-                                      () => apiClient.getNovelFollow('private');
-                                });
-                              }),
+                            title: Text(I18n.of(context).private),
+                            onTap: () {
+                              setState(() {
+                                futureGet = () =>
+                                    apiClient.getNovelFollow('private');
+                              });
+                            },
+                          ),
                         ],
-                      ));
-                    });
-              }),
-        ),
-        Expanded(
-          child: NovelLightingList(
-            futureGet: futureGet,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      ]),
+          Expanded(child: NovelLightingList(futureGet: futureGet)),
+        ],
+      ),
     );
   }
 }

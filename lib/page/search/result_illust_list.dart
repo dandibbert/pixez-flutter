@@ -16,7 +16,6 @@
 
 import 'dart:async';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:pixez/er/prefer.dart';
@@ -30,6 +29,9 @@ import 'package:pixez/page/search/illust_search_query.dart';
 import 'package:pixez/page/search/result_illust_store.dart';
 import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/store/search_result_mode.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class ResultIllustList extends StatefulWidget {
   final IllustSearchQuery initialQuery;
@@ -231,12 +233,12 @@ class _ResultIllustListState extends State<ResultIllustList> {
                         child: _buildStar(),
                       ),
                       InkWell(
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(Icons.filter_alt_outlined),
-                          ),
-                          onTap: () {
-                            _buildShowBottomSheet(context);
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: WcIcon(Icons.filter_alt_outlined),
+                        ),
+                        onTap: () {
+                          _buildShowBottomSheet(context);
                         },
                       ),
                     ],
@@ -246,18 +248,18 @@ class _ResultIllustListState extends State<ResultIllustList> {
             ],
           ),
           Expanded(
-              child: !inited
-                  ? Container()
-                  : LightingList(
-                      source: futureGet,
-                      scrollController: _scrollController,
-                      filter: (illust) {
-                        return switch (ugoiraFilter) {
-                          UgoiraFilter.all => true,
-                          UgoiraFilter.onlyUgoira => illust.type == 'ugoira',
-                          UgoiraFilter.noUgoira => illust.type != 'ugoira',
-                        };
-                      },
+            child: !inited
+                ? Container()
+                : LightingList(
+                    source: futureGet,
+                    scrollController: _scrollController,
+                    filter: (illust) {
+                      return switch (ugoiraFilter) {
+                        UgoiraFilter.all => true,
+                        UgoiraFilter.onlyUgoira => illust.type == 'ugoira',
+                        UgoiraFilter.noUgoira => illust.type != 'ugoira',
+                      };
+                    },
                     onPageChanged: _onPageChanged,
                   ),
           ),
@@ -276,7 +278,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
       word: _query.word,
       translatedName: _query.translatedName,
       searchTarget: searchTarget,
-              sort: selectSort,
+      sort: selectSort,
       startDate: _dateTimeRange?.start,
       endDate: _dateTimeRange?.end,
       bookmarkRange: List<int>.unmodifiable(_bookmarkNumList),
@@ -352,20 +354,20 @@ class _ResultIllustListState extends State<ResultIllustList> {
 
   void _buildShowBottomSheet(BuildContext context) {
     var resultIllustSortWidget = ResultIllustSortWidget(
-        searchAIType: searchAIType,
-        selectSort: selectSort,
-        searchTarget: searchTarget,
-        ugoiraFilter: ugoiraFilter,
-        onPremium: () {
-          setState(() {
+      searchAIType: searchAIType,
+      selectSort: selectSort,
+      searchTarget: searchTarget,
+      ugoiraFilter: ugoiraFilter,
+      onPremium: () {
+        setState(() {
           _changeQueryParams(source: IllustSearchSource.popularPreview);
-          });
-        },
-        onApply: () {
-          setState(() {
-            _changeQueryParams();
-          });
-        },
+        });
+      },
+      onApply: () {
+        setState(() {
+          _changeQueryParams();
+        });
+      },
       onSateChange:
           ({
             required bool recordRememberCurrentSelection,
@@ -374,28 +376,29 @@ class _ResultIllustListState extends State<ResultIllustList> {
             required String selectSort,
             required UgoiraFilter ugoiraFilter,
           }) {
-          setState(() {
-            this.searchAIType = searchAIType;
-            this.searchTarget = searchTarget;
-            this.selectSort = selectSort;
-            this.ugoiraFilter = ugoiraFilter;
-            this.recordRememberCurrentSelection =
-                recordRememberCurrentSelection;
-          });
-          if (recordRememberCurrentSelection) {
-            record();
-          }
+            setState(() {
+              this.searchAIType = searchAIType;
+              this.searchTarget = searchTarget;
+              this.selectSort = selectSort;
+              this.ugoiraFilter = ugoiraFilter;
+              this.recordRememberCurrentSelection =
+                  recordRememberCurrentSelection;
+            });
+            if (recordRememberCurrentSelection) {
+              record();
+            }
           },
     );
     // showDialog(context: context, builder: (context) => resultIllustSortWidget);
     showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: RoundedRectangleBorder(
+      sheetAnimationStyle: WcMotion.sheet(context),
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
       ),
-        builder: (context) {
-          return resultIllustSortWidget;
+      builder: (context) {
+        return resultIllustSortWidget;
       },
     );
   }
@@ -405,7 +408,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
   Widget _buildPremiumStar() {
     return PopupMenuButton<List<int>>(
       initialValue: _bookmarkNumList,
-      child: Icon(Icons.format_list_numbered),
+      child: WcIcon(Icons.format_list_numbered),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(16.0)),
       ),
@@ -449,7 +452,7 @@ class _ResultIllustListState extends State<ResultIllustList> {
   Widget _buildStar() {
     return PopupMenuButton(
       initialValue: _starValue,
-      child: Icon(Icons.sort),
+      child: WcIcon(Icons.sort),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(16.0)),
       ),
@@ -493,20 +496,20 @@ class ResultIllustSortWidget extends StatefulWidget {
   final Function onApply;
   final Function({
     required String searchTarget,
-      required String selectSort,
-      required int searchAIType,
-      required UgoiraFilter ugoiraFilter,
+    required String selectSort,
+    required int searchAIType,
+    required UgoiraFilter ugoiraFilter,
     required bool recordRememberCurrentSelection,
   })
   onSateChange;
   const ResultIllustSortWidget({
     super.key,
-      required this.searchAIType,
-      required this.selectSort,
-      required this.searchTarget,
-      required this.ugoiraFilter,
-      required this.onPremium,
-      required this.onApply,
+    required this.searchAIType,
+    required this.selectSort,
+    required this.searchTarget,
+    required this.ugoiraFilter,
+    required this.onPremium,
+    required this.onApply,
     required this.onSateChange,
   });
 
@@ -570,122 +573,122 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
     };
     return SafeArea(
       child: Container(
-          width: MediaQuery.of(context).size.width,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    TextButton(
-                        onPressed: () {},
+        width: MediaQuery.of(context).size.width,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  TextButton(
+                    onPressed: () {},
                     child: Text(
                       I18n.of(context).filter,
-                            style: TextStyle(
+                      style: TextStyle(
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
                   ),
-                    TextButton(
-                        onPressed: () {
-                          widget.onSateChange(
-                              searchTarget: searchTarget,
-                              selectSort: selectSort,
-                              searchAIType: searchAIType,
-                              ugoiraFilter: ugoiraFilter,
-                              recordRememberCurrentSelection:
+                  TextButton(
+                    onPressed: () {
+                      widget.onSateChange(
+                        searchTarget: searchTarget,
+                        selectSort: selectSort,
+                        searchAIType: searchAIType,
+                        ugoiraFilter: ugoiraFilter,
+                        recordRememberCurrentSelection:
                             recordRememberCurrentSelection,
                       );
-                          widget.onApply();
-                          Navigator.of(context).pop();
-                        },
+                      widget.onApply();
+                      Navigator.of(context).pop();
+                    },
                     child: Text(
                       I18n.of(context).apply,
-                            style: TextStyle(
+                      style: TextStyle(
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
                   ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final (index, data) in searchTargetMap.entries.indexed)
+                      _buildTargetItem(index, data, context),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                    for (final (index, data) in searchTargetMap.entries.indexed)
-                        _buildTargetItem(index, data, context),
-                    ],
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final (index, data) in selectSortMap.entries.indexed)
+                      _buildSortItem(index, context, data),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final (index, data) in selectSortMap.entries.indexed)
-                        _buildSortItem(index, context, data),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      for (final entry in ugoiraFilterMap.entries)
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                ugoiraFilter = entry.key;
-                              });
-                            },
-                            child: Container(
-                              margin: EdgeInsets.symmetric(horizontal: 4.0),
-                              padding: EdgeInsets.symmetric(vertical: 8.0),
-                              decoration: ugoiraFilter == entry.key
-                                  ? BoxDecoration(
+              ),
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    for (final entry in ugoiraFilterMap.entries)
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              ugoiraFilter = entry.key;
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 4.0),
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            decoration: ugoiraFilter == entry.key
+                                ? BoxDecoration(
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.secondaryContainer,
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    )
-                                  : null,
-                              child: Text(
-                                entry.value,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12),
-                              ),
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  )
+                                : null,
+                            child: Text(
+                              entry.value,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12),
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-                SwitchListTile(
-                  value: searchAIType != 1,
-                  onChanged: (v) {
-                    setState(() {
-                      searchAIType = !v ? 1 : 0;
-                    });
-                  },
-                  title: Text(I18n.of(context).ai_generated),
-                ),
-                SwitchListTile(
-                  value: recordRememberCurrentSelection,
-                  onChanged: (v) async {
-                    await Prefer.setBool(rememberKey, v);
-                    setState(() {
-                      recordRememberCurrentSelection = v;
-                    });
-                  },
-                  title: Text(I18n.of(context).remember_current_selections),
-                ),
+              ),
+              SwitchListTile(
+                value: searchAIType != 1,
+                onChanged: (v) {
+                  setState(() {
+                    searchAIType = !v ? 1 : 0;
+                  });
+                },
+                title: Text(I18n.of(context).ai_generated),
+              ),
+              SwitchListTile(
+                value: recordRememberCurrentSelection,
+                onChanged: (v) async {
+                  await Prefer.setBool(rememberKey, v);
+                  setState(() {
+                    recordRememberCurrentSelection = v;
+                  });
+                },
+                title: Text(I18n.of(context).remember_current_selections),
+              ),
               Container(height: 16),
-              ],
-            ),
+            ],
+          ),
         ),
       ),
     );
@@ -700,7 +703,7 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
       onTap: () {
         if (accountStore.now != null && index == 2) {
           if (accountStore.now!.isPremium == 0) {
-            BotToast.showText(text: 'not premium');
+            wcToast(text: 'not premium');
             widget.onPremium();
             Navigator.of(context).pop();
             return;

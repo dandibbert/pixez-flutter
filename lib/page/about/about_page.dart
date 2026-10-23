@@ -17,8 +17,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/component/selected_text.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -33,6 +33,10 @@ import 'package:pixez/page/about/thanks_list.dart';
 import 'package:pixez/page/about/update_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class AboutPage extends StatefulWidget {
   final bool? newVersion;
@@ -95,7 +99,7 @@ class _AboutPageState extends State<AboutPage> {
         if (purchaseDetails.status == PurchaseStatus.error) {
         } else if (purchaseDetails.status == PurchaseStatus.purchased ||
             purchaseDetails.status == PurchaseStatus.restored) {
-          BotToast.showText(text: "Thanks");
+          wcToast(text: "Thanks");
         }
         if (purchaseDetails.pendingCompletePurchase) {
           await InAppPurchase.instance.completePurchase(purchaseDetails);
@@ -107,6 +111,27 @@ class _AboutPageState extends State<AboutPage> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _showMingCuteLicense(BuildContext context) async {
+    final text = await rootBundle.loadString(
+      'assets/icons/mingcute/LICENSE.txt',
+    );
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('MingCute Icon')),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: SelectableText(
+              text,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -135,6 +160,7 @@ class _AboutPageState extends State<AboutPage> {
               subtitle: Text(I18n.of(context).perol_message),
               onTap: () {
                 showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(
@@ -170,6 +196,7 @@ class _AboutPageState extends State<AboutPage> {
               subtitle: Text(I18n.of(context).right_now_message),
               onTap: () {
                 showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   builder: (BuildContext context) {
                     return Container(
@@ -241,7 +268,7 @@ class _AboutPageState extends State<AboutPage> {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.rate_review),
+              leading: WcIcon(Icons.rate_review),
               title: Text(I18n.of(context).rate_title),
               subtitle: Text(I18n.of(context).rate_message),
               onTap: () async {
@@ -255,7 +282,7 @@ class _AboutPageState extends State<AboutPage> {
             ),
             if (Platform.isAndroid || kDebugMode) ...[
               ListTile(
-                leading: Icon(Icons.device_hub),
+                leading: WcIcon(Icons.device_hub),
                 title: Text(I18n.of(context).repo_address),
                 subtitle: Text('github.com/Notsfsssf/pixez-flutter'),
                 trailing: Visibility(
@@ -265,6 +292,7 @@ class _AboutPageState extends State<AboutPage> {
                 onTap: () {
                   if (!Constants.isGooglePlay)
                     showModalBottomSheet(
+                      sheetAnimationStyle: WcMotion.sheet(context),
                       context: context,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(
@@ -289,7 +317,7 @@ class _AboutPageState extends State<AboutPage> {
                                   } catch (e) {}
                                 },
                                 trailing: IconButton(
-                                  icon: Icon(Icons.link),
+                                  icon: WcIcon(Icons.link),
                                   onPressed: () {
                                     try {
                                       launchUrlString(
@@ -308,7 +336,7 @@ class _AboutPageState extends State<AboutPage> {
                                     ),
                                   );
                                 },
-                                trailing: Icon(Icons.update),
+                                trailing: WcIcon(Icons.update),
                               ),
                               ListTile(
                                 leading: CircleAvatar(
@@ -332,24 +360,24 @@ class _AboutPageState extends State<AboutPage> {
             Visibility(
               visible: false,
               child: ListTile(
-                leading: Icon(Icons.home),
+                leading: WcIcon(Icons.home),
                 title: Text('GitHub Page'),
                 subtitle: Text('https://github.com/Notsfsssf'),
                 onTap: () async {},
               ),
             ),
             ListTile(
-              leading: Icon(Icons.email),
+              leading: WcIcon(Icons.email),
               title: Text(I18n.of(context).feedback),
               subtitle: Text('PxezFeedBack@outlook.com'),
             ),
             ListTile(
-              leading: Icon(Icons.stars),
+              leading: WcIcon(Icons.stars),
               title: Text(I18n.of(context).support),
               subtitle: Text(I18n.of(context).support_message),
             ),
             ListTile(
-              leading: Icon(Icons.favorite),
+              leading: WcIcon(Icons.favorite),
               title: Text(I18n.of(context).thanks),
               subtitle: Text('感谢帮助我测试的弹幕委员会群友们\n感谢 pixiv cat 站主提供的图床'),
               onTap: () {
@@ -363,7 +391,7 @@ class _AboutPageState extends State<AboutPage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.share),
+              leading: WcIcon(Icons.share),
               title: Text(I18n.of(context).share),
               subtitle: Text(I18n.of(context).share_this_app_link),
               onTap: () {
@@ -380,6 +408,15 @@ class _AboutPageState extends State<AboutPage> {
               leading: FaIcon(FontAwesomeIcons.telegram),
               title: Text("Group"),
               subtitle: Text('t.me/PixEzChannel'),
+            ),
+            ListTile(
+              leading: WcIcon(Icons.palette),
+              title: Text('MingCute Icon'),
+              subtitle: Text(
+                'Watercolor style icons · Apache License 2.0\n'
+                'Copyright MingCute Design · mingcute.com',
+              ),
+              onTap: () => _showMingCuteLicense(context),
             ),
             if (Platform.isAndroid && !Constants.isGooglePlay) ...[
               ListTile(
@@ -400,7 +437,7 @@ class _AboutPageState extends State<AboutPage> {
                   title: Text('Wechat Pay'),
                   subtitle: Text('tap'),
                   onTap: () async {
-                    showDialog(
+                    showWcDialog(
                       context: context,
                       builder: (_) {
                         return AlertDialog(
@@ -423,7 +460,7 @@ class _AboutPageState extends State<AboutPage> {
                   title: Text('支持开发者工作'),
                   trailing: Text('12￥'),
                   onTap: () async {
-                    BotToast.showText(text: 'try to Purchase');
+                    wcToast(text: 'try to Purchase');
                     for (var p in products) {
                       if (p.id == "support") {
                         final PurchaseParam purchaseParam = PurchaseParam(
@@ -444,7 +481,7 @@ class _AboutPageState extends State<AboutPage> {
                   title: Text('支持开发者工作'),
                   trailing: Text('25￥'),
                   onTap: () async {
-                    BotToast.showText(text: 'try to Purchase');
+                    wcToast(text: 'try to Purchase');
                     for (var p in products) {
                       if (p.id == "support1") {
                         final PurchaseParam purchaseParam = PurchaseParam(
@@ -472,7 +509,7 @@ class _AboutPageState extends State<AboutPage> {
                     title: Text(i.description),
                     subtitle: Text(i.price),
                     onTap: () {
-                      BotToast.showText(text: 'try to Purchase');
+                      wcToast(text: 'try to Purchase');
                       final PurchaseParam purchaseParam = PurchaseParam(
                         productDetails: i,
                       );

@@ -29,6 +29,9 @@ import 'package:pixez/models/show_ai_response.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/shield/user_show_ai_setting.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class ShieldPage extends StatefulWidget {
   @override
@@ -64,9 +67,9 @@ class _ShieldPageState extends State<ShieldPage> {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: Icon(Icons.smart_toy_outlined),
+                        leading: WcIcon(Icons.smart_toy_outlined),
                         title: Text(I18n.of(context).ai_work_display_settings),
-                        trailing: Icon(Icons.chevron_right),
+                        trailing: WcIcon(Icons.chevron_right),
                         onTap: () async {
                           try {
                             BotToast.showLoading();
@@ -86,7 +89,7 @@ class _ShieldPageState extends State<ShieldPage> {
                         },
                       ),
                       SwitchListTile(
-                        secondary: Icon(Icons.visibility_off_outlined),
+                        secondary: WcIcon(Icons.visibility_off_outlined),
                         title: Text(
                           I18n.of(
                             context,
@@ -112,9 +115,7 @@ class _ShieldPageState extends State<ShieldPage> {
                           onLongPress: () {
                             HapticUtil.heavy();
                             Clipboard.setData(ClipboardData(text: f.name));
-                            BotToast.showText(
-                              text: I18n.of(context).copied_to_clipboard,
-                            );
+                            wcToast(text: I18n.of(context).copied_to_clipboard);
                           },
                           child: ActionChip(
                             onPressed: () => deleteTag(context, f),
@@ -176,7 +177,7 @@ class _ShieldPageState extends State<ShieldPage> {
             title: Text(title),
             trailing: onAdd == null
                 ? null
-                : IconButton(onPressed: onAdd, icon: Icon(Icons.add)),
+                : IconButton(onPressed: onAdd, icon: WcIcon(Icons.add)),
           ),
           if (children.isNotEmpty)
             Padding(
@@ -191,7 +192,7 @@ class _ShieldPageState extends State<ShieldPage> {
   }
 
   Future deleteTag(BuildContext context, BanTagPersist f) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -225,7 +226,7 @@ class _ShieldPageState extends State<ShieldPage> {
 
   _showBanTagAddDialog(BuildContext context) async {
     final controller = TextEditingController();
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -272,7 +273,7 @@ class _ShieldPageState extends State<ShieldPage> {
   }
 
   Future _deleteIllust(BuildContext context, BanIllustIdPersist f) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -305,7 +306,7 @@ class _ShieldPageState extends State<ShieldPage> {
   }
 
   Future _deleteUserIdTag(BuildContext context, BanUserIdPersist f) async {
-    final result = await showDialog(
+    final result = await showWcDialog(
       context: context,
       builder: (context) {
         return AlertDialog(

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 const Key novelIntroButtonKey = Key('novelIntroButton');
 const Key novelIntroCaptionKey = Key('novelIntroCaption');
@@ -48,7 +49,7 @@ Future<void> showNovelIntroDialog({
   required String caption,
 }) {
   final text = novelCaptionPlainText(caption);
-  return showDialog<void>(
+  return showWcDialog<void>(
     context: context,
     builder: (context) {
       return AlertDialog(

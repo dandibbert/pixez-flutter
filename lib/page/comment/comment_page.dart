@@ -35,6 +35,8 @@ import 'package:pixez/page/comment/comment_store.dart';
 import 'package:pixez/page/report/report_items_page.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 enum CommentArtWorkType { ILLUST, NOVEL }
 
@@ -401,7 +403,7 @@ class _CommentPageState extends State<CommentPage> {
                       child: Row(
                         children: <Widget>[
                           IconButton(
-                            icon: Icon(Icons.book),
+                            icon: WcIcon(Icons.book),
                             onPressed: () {
                               if (widget.isReplay) return;
                               setState(() {
@@ -411,7 +413,7 @@ class _CommentPageState extends State<CommentPage> {
                             },
                           ),
                           IconButton(
-                            icon: Icon(Icons.emoji_emotions_outlined),
+                            icon: WcIcon(Icons.emoji_emotions_outlined),
                             onPressed: () {
                               setState(() {
                                 _emojiPanelShow = !_emojiPanelShow;
@@ -448,7 +450,7 @@ class _CommentPageState extends State<CommentPage> {
                                     labelText:
                                         "${I18n.of(context).reply_to} ${parentCommentName == null ? "illust" : parentCommentName}",
                                     suffixIcon: IconButton(
-                                      icon: Icon(Icons.send),
+                                      icon: WcIcon(Icons.send),
                                       onPressed: () async {
                                         final client = apiClient;
                                         String txt = _editController.text
@@ -549,6 +551,7 @@ class _CommentPageState extends State<CommentPage> {
             child: InkWell(
               onTap: () {
                 showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(
@@ -585,7 +588,7 @@ class _CommentPageState extends State<CommentPage> {
                   },
                 );
               },
-              child: Icon(
+              child: WcIcon(
                 Icons.more_horiz,
                 color: Theme.of(context).colorScheme.secondary,
               ),

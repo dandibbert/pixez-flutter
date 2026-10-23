@@ -5,6 +5,7 @@ import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/novel/component/novel_lighting_list.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class NovelRankPage extends StatefulWidget {
   @override
@@ -22,7 +23,7 @@ class _NovelRankPageState extends State<NovelRankPage>
     "week_ai_r18",
     "day_r18",
     "week_r18",
-    "week_r18g"
+    "week_r18g",
   ];
   late FutureGet futureGet;
 
@@ -50,29 +51,26 @@ class _NovelRankPageState extends State<NovelRankPage>
       child: Scaffold(
         appBar: AppBar(
           title: TabBar(
-              onTap: (i) {
-                HapticUtil.selectionClick();
-              },
-              indicatorSize: TabBarIndicatorSize.label,
-              isScrollable: true,
-              tabs: [
-                for (var i in w)
-                  Tab(
-                    text: i,
-                  )
-              ]),
+            onTap: (i) {
+              HapticUtil.selectionClick();
+            },
+            indicatorSize: TabBarIndicatorSize.label,
+            isScrollable: true,
+            tabs: [for (var i in w) Tab(text: i)],
+          ),
           actions: [
             IconButton(
-              icon: Icon(Icons.date_range),
+              icon: WcIcon(Icons.date_range),
               onPressed: () async {
                 var nowdate = DateTime.now();
                 var date = await showDatePicker(
-                    context: context,
-                    initialDate: nowDateTime,
-                    locale: userSetting.locale,
-                    firstDate: DateTime(2007, 8),
-                    //pixiv于2007年9月10日由上谷隆宏等人首次推出第一个测试版...
-                    lastDate: nowdate);
+                  context: context,
+                  initialDate: nowDateTime,
+                  locale: userSetting.locale,
+                  firstDate: DateTime(2007, 8),
+                  //pixiv于2007年9月10日由上谷隆宏等人首次推出第一个测试版...
+                  lastDate: nowdate,
+                );
                 if (date != null && mounted) {
                   nowDateTime = date;
                   setState(() {
@@ -83,12 +81,14 @@ class _NovelRankPageState extends State<NovelRankPage>
             ),
           ],
         ),
-        body: TabBarView(children: [
-          for (var i in modeList)
-            NovelLightingList(
-              futureGet: () => apiClient.getNovelRanking(i, dateTime),
-            )
-        ]),
+        body: TabBarView(
+          children: [
+            for (var i in modeList)
+              NovelLightingList(
+                futureGet: () => apiClient.getNovelRanking(i, dateTime),
+              ),
+          ],
+        ),
       ),
     );
   }

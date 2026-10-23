@@ -1,4 +1,3 @@
-import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/leader.dart';
@@ -12,6 +11,8 @@ import 'package:pixez/page/novel/search/novel_search_filter_sheet.dart';
 import 'package:pixez/page/novel/search/novel_search_page.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/store/search_result_mode.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class NovelResultList extends StatefulWidget {
   final NovelSearchQuery initialQuery;
@@ -37,10 +38,7 @@ class _NovelResultListState extends State<NovelResultList> {
   void initState() {
     super.initState();
     _query = widget.initialQuery;
-    _applyQuery(
-      _query,
-      page: widget.restoreQuery ? _query.normalizedPage : 1,
-    );
+    _applyQuery(_query, page: widget.restoreQuery ? _query.normalizedPage : 1);
   }
 
   @override
@@ -84,14 +82,14 @@ class _NovelResultListState extends State<NovelResultList> {
                   ),
                   _buildBookmarkMenu(),
                   IconButton(
-                    icon: const Icon(Icons.filter_alt_outlined),
+                    icon: const WcIcon(Icons.filter_alt_outlined),
                     onPressed: () {
                       _openFilterSheet();
                     },
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
         Expanded(
@@ -131,12 +129,15 @@ class _NovelResultListState extends State<NovelResultList> {
         sort: pageQuery.sort,
         start_date: pageQuery.startDate,
         end_date: pageQuery.endDate,
-        bookmark_num_min:
-            pageQuery.bookmarkNumMin > 0 ? pageQuery.bookmarkNumMin : null,
-        bookmark_num_max:
-            pageQuery.bookmarkNumMax > 0 ? pageQuery.bookmarkNumMax : null,
-        text_length_min:
-            pageQuery.textLengthMin > 0 ? pageQuery.textLengthMin : null,
+        bookmark_num_min: pageQuery.bookmarkNumMin > 0
+            ? pageQuery.bookmarkNumMin
+            : null,
+        bookmark_num_max: pageQuery.bookmarkNumMax > 0
+            ? pageQuery.bookmarkNumMax
+            : null,
+        text_length_min: pageQuery.textLengthMin > 0
+            ? pageQuery.textLengthMin
+            : null,
         offset: pageQuery.offset,
         lang: pageQuery.lang.isEmpty ? null : pageQuery.lang,
         include_potential_violation_works:
@@ -169,7 +170,7 @@ class _NovelResultListState extends State<NovelResultList> {
   bool _canUsePopular() {
     final now = accountStore.now;
     if (now != null && now.isPremium == 0) {
-      BotToast.showText(text: 'not premium');
+      wcToast(text: 'not premium');
       return false;
     }
     return true;
@@ -191,7 +192,7 @@ class _NovelResultListState extends State<NovelResultList> {
   Widget _buildBookmarkMenu() {
     return PopupMenuButton<int>(
       initialValue: _query.bookmarkNumMin,
-      child: const Icon(Icons.sort),
+      child: const WcIcon(Icons.sort),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(16.0)),
       ),
@@ -205,10 +206,7 @@ class _NovelResultListState extends State<NovelResultList> {
             onTap: () {
               setState(() {
                 _applyQuery(
-                  _query.copyWith(
-                    bookmarkNumMin: value,
-                    bookmarkNumMax: 0,
-                  ),
+                  _query.copyWith(bookmarkNumMin: value, bookmarkNumMax: 0),
                 );
               });
             },

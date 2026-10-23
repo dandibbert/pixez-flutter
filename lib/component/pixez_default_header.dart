@@ -1,6 +1,7 @@
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class PixezDefault {
   static Header header(
@@ -12,7 +13,9 @@ class PixezDefault {
       position: position,
       safeArea: safeArea,
       color: Theme.of(context).colorScheme.primary,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor:
+          WatercolorTokens.of(context)?.card ??
+          Theme.of(context).scaffoldBackgroundColor,
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/Init/init_page.dart';
 import 'package:pixez/page/about/languages.dart';
 import 'package:pixez/page/network/network_page.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class GuidePage extends StatefulWidget {
   @override
@@ -36,24 +37,30 @@ class _GuidePageState extends State<GuidePage> {
               child: PageTransitionSwitcher(
                 duration: const Duration(milliseconds: 300),
                 reverse: !isNext,
-                transitionBuilder: (
-                  Widget child,
-                  Animation<double> animation,
-                  Animation<double> secondaryAnimation,
-                ) {
-                  return SharedAxisTransition(
-                    child: child,
-                    animation: animation,
-                    secondaryAnimation: secondaryAnimation,
-                    transitionType: SharedAxisTransitionType.horizontal,
-                  );
-                },
+                transitionBuilder:
+                    (
+                      Widget child,
+                      Animation<double> animation,
+                      Animation<double> secondaryAnimation,
+                    ) {
+                      return SharedAxisTransition(
+                        // The animations package reads Flutter's own Theme, not
+                        // this app's, so pass the paper explicitly.
+                        fillColor: WatercolorTokens.of(context)?.paper,
+                        child: child,
+                        animation: animation,
+                        secondaryAnimation: secondaryAnimation,
+                        transitionType: SharedAxisTransitionType.horizontal,
+                      );
+                    },
                 child: _pageList[index],
               ),
             ),
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 15.0,
+                vertical: 10,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
@@ -78,14 +85,17 @@ class _GuidePageState extends State<GuidePage> {
                       int nextValue = index + 1;
                       if (nextValue == 1) {
                         await Prefer.setInt(
-                            'language_num', userSetting.languageNum);
+                          'language_num',
+                          userSetting.languageNum,
+                        );
                         //有可能用户啥都没选
-                        final languageList =
-                            Languages.map((e) => e.language).toList();
+                        final languageList = Languages.map(
+                          (e) => e.language,
+                        ).toList();
                         ApiClient.Accept_Language =
                             languageList[userSetting.languageNum];
-                        apiClient.httpClient.options
-                                .headers[HttpHeaders.acceptLanguageHeader] =
+                        apiClient.httpClient.options.headers[HttpHeaders
+                                .acceptLanguageHeader] =
                             ApiClient.Accept_Language;
                         setState(() {
                           index = nextValue;

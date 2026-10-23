@@ -19,6 +19,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/models/create_user_response.dart';
 import 'package:pixez/network/account_client.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class CreateUserPage extends StatefulWidget {
   @override
@@ -43,38 +44,37 @@ class _CreateUserPageState extends State<CreateUserPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(I18n.of(context).input_nickname),
-      ),
+      appBar: AppBar(title: Text(I18n.of(context).input_nickname)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Builder(builder: (context) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                    icon: Icon(Icons.supervised_user_circle),
-                    hintText: I18n.of(context).nickname,
-                    labelText: '${I18n.of(context).nickname} *',
+          child: Builder(
+            builder: (context) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  TextFormField(
+                    maxLines: 1,
+                    decoration: InputDecoration(
+                      icon: WcIcon(Icons.supervised_user_circle),
+                      hintText: I18n.of(context).nickname,
+                      labelText: '${I18n.of(context).nickname} *',
+                    ),
+                    controller: _userNameController,
                   ),
-                  controller: _userNameController,
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final name = _userNameController.text.trim();
-                      if (name.isEmpty) return;
-                      final response =
-                          await AccountClient().createProvisionalAccount(name);
-                      print(response.data);
-                      var createUserResponseFromJson2 =
-                          CreateUserResponse.fromJson(response.data);
-                      Navigator.of(context).pop(createUserResponseFromJson2);
-/*                AccountProvider accountProvider = new AccountProvider();
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final name = _userNameController.text.trim();
+                        if (name.isEmpty) return;
+                        final response = await AccountClient()
+                            .createProvisionalAccount(name);
+                        print(response.data);
+                        var createUserResponseFromJson2 =
+                            CreateUserResponse.fromJson(response.data);
+                        Navigator.of(context).pop(createUserResponseFromJson2);
+                        /*                AccountProvider accountProvider = new AccountProvider();
                         await accountProvider.open();
                         var accountResponse = createUserResponseFromJson2.body;
 
@@ -91,30 +91,32 @@ class _CreateUserPageState extends State<CreateUserPage> {
                           ..mailAddress = user.mailAddress
                           ..account = user.account
                           ..xRestrict = user.xRestrict);*/
-                    } catch (e) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: Text("创建次数过多")));
-                    }
-                  },
-                  child: Text("Start"),
-                ),
-                Center(
-                  child: Text(I18n.of(context).nickname_can_be_change_anytime),
-                ),
-                TextButton(
-                  child: Text(
-                    I18n.of(context).terms,
+                      } catch (e) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("创建次数过多")));
+                      }
+                    },
+                    child: Text("Start"),
                   ),
-                  onPressed: () async {
-                    final url = 'https://www.pixiv.net/terms/?page=term';
-                    try {
-                      await launchUrlString(url);
-                    } catch (e) {}
-                  },
-                ),
-              ],
-            );
-          }),
+                  Center(
+                    child: Text(
+                      I18n.of(context).nickname_can_be_change_anytime,
+                    ),
+                  ),
+                  TextButton(
+                    child: Text(I18n.of(context).terms),
+                    onPressed: () async {
+                      final url = 'https://www.pixiv.net/terms/?page=term';
+                      try {
+                        await launchUrlString(url);
+                      } catch (e) {}
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

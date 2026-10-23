@@ -21,6 +21,8 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/material.dart' as legacy_material show ColorScheme;
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart'
+    show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -47,11 +49,16 @@ import 'package:pixez/store/save_store.dart';
 import 'package:pixez/store/tag_history_store.dart';
 import 'package:pixez/store/top_store.dart';
 import 'package:pixez/store/user_setting.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_theme.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/win32_plugin.dart';
 import 'package:rhttp/rhttp.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:pixez/utils/tray_manager_helper.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -72,6 +79,11 @@ main(List<String> args) async {
   await Rhttp.init();
   await MmapCache.init();
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const [
+      'MingCute Icon',
+    ], await rootBundle.loadString('assets/icons/mingcute/LICENSE.txt'));
+  });
 
   if (Platform.isWindows || Platform.isLinux) {
     // sqflite ffi init
@@ -209,6 +221,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     ),
                   );
                 }
+                final watercolor = userSetting.uiStyle == UiStyle.watercolor;
                 return MaterialApp(
                   navigatorKey: rootNavigatorKey,
                   navigatorObservers: [
@@ -238,6 +251,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     if (userSetting.perfProbe) {
                       child = PerfProbe(child: child);
                     }
+                    // Paints nothing in the classic style; always present so
+                    // switching styles keeps the navigator below it.
+                    child = WatercolorEffectsHost(child: child);
                     return AppKeyboardShortcuts(
                       onEscape: Platform.isMacOS
                           ? () {
@@ -251,45 +267,63 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     );
                   },
                   themeMode: userSetting.themeMode,
-                  theme: ThemeData(
-                    brightness: Brightness.light,
-                    useMaterial3: true,
-                    primaryColor: lightColorScheme.primary,
-                    colorScheme: lightColorScheme,
-                    scaffoldBackgroundColor: lightColorScheme.surface,
-                    cardColor: lightColorScheme.surfaceContainer,
-                    chipTheme: ChipThemeData(
-                      backgroundColor: lightColorScheme.surface,
-                    ),
-                    canvasColor: lightColorScheme.surfaceContainer,
-                    dialogTheme: DialogThemeData(
-                      backgroundColor: lightColorScheme.surfaceContainer,
-                    ),
-                    pageTransitionsTheme: PageTransitionsTheme(
-                      builders: {
-                        TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                      },
-                    ),
-                  ),
-                  darkTheme: ThemeData(
-                    brightness: Brightness.dark,
-                    useMaterial3: true,
-                    scaffoldBackgroundColor: userSetting.isAMOLED
-                        ? Colors.black
-                        : null,
-                    pageTransitionsTheme: PageTransitionsTheme(
-                      builders: {
-                        TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                      },
-                    ),
-                    // tabBarTheme: TabBarTheme(dividerColor: Colors.transparent),
-                    tabBarTheme: TabBarThemeData(
-                      dividerColor: Colors.transparent,
-                    ),
-                    colorScheme: darkColorScheme,
-                  ),
+                  themeAnimationDuration: watercolor
+                      ? WcMotion.long
+                      : kThemeAnimationDuration,
+                  themeAnimationCurve: watercolor
+                      ? WcMotion.standard
+                      : Curves.linear,
+                  theme: watercolor
+                      ? buildWatercolorTheme(
+                          _watercolorTokens(Brightness.light, lightDynamic),
+                        )
+                      : ThemeData(
+                          brightness: Brightness.light,
+                          useMaterial3: true,
+                          primaryColor: lightColorScheme.primary,
+                          colorScheme: lightColorScheme,
+                          scaffoldBackgroundColor: lightColorScheme.surface,
+                          cardColor: lightColorScheme.surfaceContainer,
+                          chipTheme: ChipThemeData(
+                            backgroundColor: lightColorScheme.surface,
+                          ),
+                          canvasColor: lightColorScheme.surfaceContainer,
+                          dialogTheme: DialogThemeData(
+                            backgroundColor: lightColorScheme.surfaceContainer,
+                          ),
+                          pageTransitionsTheme: PageTransitionsTheme(
+                            builders: {
+                              TargetPlatform.android:
+                                  ZoomPageTransitionsBuilder(),
+                              TargetPlatform.iOS:
+                                  CupertinoPageTransitionsBuilder(),
+                            },
+                          ),
+                        ),
+                  darkTheme: watercolor
+                      ? buildWatercolorTheme(
+                          _watercolorTokens(Brightness.dark, lightDynamic),
+                        )
+                      : ThemeData(
+                          brightness: Brightness.dark,
+                          useMaterial3: true,
+                          scaffoldBackgroundColor: userSetting.isAMOLED
+                              ? Colors.black
+                              : null,
+                          pageTransitionsTheme: PageTransitionsTheme(
+                            builders: {
+                              TargetPlatform.android:
+                                  ZoomPageTransitionsBuilder(),
+                              TargetPlatform.iOS:
+                                  CupertinoPageTransitionsBuilder(),
+                            },
+                          ),
+                          // tabBarTheme: TabBarTheme(dividerColor: Colors.transparent),
+                          tabBarTheme: TabBarThemeData(
+                            dividerColor: Colors.transparent,
+                          ),
+                          colorScheme: darkColorScheme,
+                        ),
                   localizationsDelegates: [
                     AppLocalizations.delegate,
                     ...GlobalMaterialLocalizations.delegates,
@@ -299,6 +333,25 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               },
             );
           },
+    );
+  }
+
+  WatercolorTokens _watercolorTokens(
+    Brightness brightness,
+    legacy_material.ColorScheme? dynamicScheme,
+  ) {
+    final mode = userSetting.paletteMode;
+    final seed = switch (mode) {
+      WatercolorPaletteMode.multi => null,
+      WatercolorPaletteMode.seed => userSetting.seedColor,
+      WatercolorPaletteMode.dynamic =>
+        dynamicScheme?.primary ?? userSetting.seedColor,
+    };
+    return WatercolorTokens.resolve(
+      brightness: brightness,
+      amoled: userSetting.isAMOLED,
+      mode: mode,
+      seed: seed,
     );
   }
 
@@ -314,7 +367,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               ? Container(
                   key: const ValueKey('recent_screen_mask'),
                   color: Theme.of(context).canvasColor,
-                  child: const Center(child: Icon(Icons.privacy_tip_outlined)),
+                  child: const Center(
+                    child: WcIcon(Icons.privacy_tip_outlined),
+                  ),
                 )
               : const SizedBox.shrink(key: ValueKey('recent_screen_unmask')),
         ),

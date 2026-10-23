@@ -32,6 +32,10 @@ import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tag_tile.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class NovelSearchPage extends StatefulWidget {
   final String? initialQuery;
@@ -49,8 +53,9 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
   @override
   void initState() {
     tagHistoryStore.fetch();
-    _textEditingController =
-        TextEditingController(text: widget.initialQuery ?? '');
+    _textEditingController = TextEditingController(
+      text: widget.initialQuery ?? '',
+    );
     super.initState();
     fetch();
   }
@@ -77,203 +82,251 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) {
-      return Container(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              title: TextField(
-                cursorColor: Theme.of(context).iconTheme.color,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium!
-                    .copyWith(color: Theme.of(context).iconTheme.color),
-                controller: _textEditingController,
-                onChanged: (v) {
-                  final i = int.tryParse(v);
-                  if (i == null) {
-                    setState(() {
-                      _id = null;
-                    });
-                  } else {
-                    setState(() {
-                      _id = i;
-                    });
-                  }
-                },
-                onSubmitted: (v) {
-                  if (v.trim().isEmpty) return;
-                  String value = v.trim();
-                  Leader.push(
-                      context,
-                      NovelResultPage(
-                        word: value,
-                      ));
-                },
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.search),
-                  onPressed: () {
-                    if (_textEditingController.text.isNotEmpty) {
-                      Leader.push(
-                          context,
-                          NovelResultPage(
-                            word: _textEditingController.text,
-                          ));
+    return Observer(
+      builder: (context) {
+        return Container(
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                title: TextField(
+                  decoration: WatercolorTokens.of(context) == null
+                      ? const InputDecoration()
+                      : _watercolorSearchDecoration(
+                          WatercolorTokens.of(context)!,
+                        ),
+                  cursorColor: Theme.of(context).iconTheme.color,
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                    color: Theme.of(context).iconTheme.color,
+                  ),
+                  controller: _textEditingController,
+                  onChanged: (v) {
+                    final i = int.tryParse(v);
+                    if (i == null) {
+                      setState(() {
+                        _id = null;
+                      });
+                    } else {
+                      setState(() {
+                        _id = i;
+                      });
                     }
                   },
-                )
-              ],
-            ),
-            if (_id != null)
-              SliverList(
-                  delegate: SliverChildListDelegate([
-                InkWell(
-                    onTap: () {
-                      Leader.push(context, NovelViewerPage(id: _id!));
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("$_id"),
-                          Text(
-                            "Novel Id",
-                            style: Theme.of(context).textTheme.bodySmall,
-                          )
-                        ],
-                      ),
-                    )),
-                Divider(
-                  height: 1,
+                  onSubmitted: (v) {
+                    if (v.trim().isEmpty) return;
+                    String value = v.trim();
+                    Leader.push(context, NovelResultPage(word: value));
+                  },
                 ),
-                InkWell(
-                    onTap: () {
-                      Leader.push(context, NovelSeriesPage(_id!));
+                actions: [
+                  IconButton(
+                    icon: WcIcon(Icons.search),
+                    onPressed: () {
+                      if (_textEditingController.text.isNotEmpty) {
+                        Leader.push(
+                          context,
+                          NovelResultPage(word: _textEditingController.text),
+                        );
+                      }
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("$_id"),
-                          Text(
-                            "Series Id",
-                            style: Theme.of(context).textTheme.bodySmall,
-                          )
-                        ],
-                      ),
-                    )),
-                Divider(
-                  height: 1,
-                ),
-                InkWell(
-                    onTap: () {
-                      Leader.push(context, NovelUsersPage(id: _id!));
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("$_id"),
-                          Text(
-                            "Author Id",
-                            style: Theme.of(context).textTheme.bodySmall,
-                          )
-                        ],
-                      ),
-                    )),
-              ])),
-            SliverToBoxAdapter(
-                child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Wrap(
-                children: [
-                  for (var f in tagHistoryStore.tags
-                      .where((element) => element.type == 1))
-                    buildActionChip(f, context),
+                  ),
                 ],
-                runSpacing: 0.0,
-                spacing: 3.0,
               ),
-            )),
-            SliverToBoxAdapter(
-              child: Observer(builder: (context) {
-                if (tagHistoryStore.tags
-                    .where((element) => element.type == 1)
-                    .isNotEmpty)
-                  return InkWell(
-                    onTap: () {
-                      tagHistoryStore.deleteAll();
-                    },
-                    child: Center(
+              if (_id != null)
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    InkWell(
+                      onTap: () {
+                        Leader.push(context, NovelViewerPage(id: _id!));
+                      },
                       child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.delete_outline,
-                              size: 18.0,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall!.color,
-                            ),
+                            Text("$_id"),
                             Text(
-                              I18n.of(context).clear_search_tag_history,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium!
-                                  .copyWith(
-                                      color: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall!
-                                          .color),
-                            )
+                              "Novel Id",
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  );
-                return Container();
-              }),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
-                child: Text(
-                  I18n.of(context).recommand_tag,
-                  style: TextStyle(
-                      fontSize: 16.0,
-                      color: Theme.of(context).textTheme.titleLarge!.color),
+                    Divider(height: 1),
+                    InkWell(
+                      onTap: () {
+                        Leader.push(context, NovelSeriesPage(_id!));
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("$_id"),
+                            Text(
+                              "Series Id",
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Divider(height: 1),
+                    InkWell(
+                      onTap: () {
+                        Leader.push(context, NovelUsersPage(id: _id!));
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("$_id"),
+                            Text(
+                              "Author Id",
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Wrap(
+                    children: [
+                      for (var f in tagHistoryStore.tags.where(
+                        (element) => element.type == 1,
+                      ))
+                        buildActionChip(f, context),
+                    ],
+                    runSpacing: 0.0,
+                    spacing: 3.0,
+                  ),
                 ),
               ),
-            ),
-            if (_tags.isNotEmpty)
-              SliverPadding(
-                padding: EdgeInsets.all(2.0),
-                sliver: SliverGrid(
+              SliverToBoxAdapter(
+                child: Observer(
+                  builder: (context) {
+                    if (tagHistoryStore.tags
+                        .where((element) => element.type == 1)
+                        .isNotEmpty)
+                      return InkWell(
+                        onTap: () {
+                          tagHistoryStore.deleteAll();
+                        },
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                WcIcon(
+                                  Icons.delete_outline,
+                                  size: 18.0,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall!.color,
+                                ),
+                                Text(
+                                  I18n.of(context).clear_search_tag_history,
+                                  style: Theme.of(context).textTheme.bodyMedium!
+                                      .copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall!.color,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    return Container();
+                  },
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    I18n.of(context).recommand_tag,
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      color: Theme.of(context).textTheme.titleLarge!.color,
+                    ),
+                  ),
+                ),
+              ),
+              if (_tags.isNotEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.all(2.0),
+                  sliver: SliverGrid(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final tag = _tags[index];
                       return _buildTagItem(context, tag);
                     }, childCount: _tags.length),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3)),
-              )
-          ],
-        ),
-      );
-    });
+                      crossAxisCount: 3,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// A paper pill with an ink edge, like the illust search box.
+  InputDecoration _watercolorSearchDecoration(WatercolorTokens tokens) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: BorderSide(color: tokens.ink, width: 1.5),
+    );
+    return InputDecoration(
+      isDense: true,
+      filled: true,
+      fillColor: tokens.card,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: border,
+    );
   }
 
   Widget _buildTagItem(BuildContext context, TrendTags tag) {
+    if (WatercolorTokens.of(context) != null) {
+      return GestureDetector(
+        onLongPress: () {
+          Leader.push(context, IllustLightingPage(id: tag.illust.id));
+        },
+        onTap: () {
+          Leader.push(context, NovelResultPage(word: (tag.tag)));
+        },
+        child: WatercolorTagTile(
+          imageUrl: tag.illust.imageUrls.squareMedium,
+          tag: tag.tag,
+          translatedName: tag.translatedName,
+          index: _tags.indexOf(tag),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.all(1.0),
       child: GestureDetector(
@@ -287,9 +340,7 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
           child: Stack(
             children: [
               PixivImage(tag.illust.imageUrls.squareMedium),
-              Container(
-                color: Colors.black.withValues(alpha: 0.3),
-              ),
+              Container(color: Colors.black.withValues(alpha: 0.3)),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
@@ -312,7 +363,7 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
                     ],
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -324,7 +375,7 @@ class _NovelSearchPageState extends State<NovelSearchPage> {
     return GestureDetector(
       onLongPress: () {
         HapticUtil.heavy();
-        showDialog(
+        showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(

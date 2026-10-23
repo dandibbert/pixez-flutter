@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 /// Reading background, chosen independently of the app theme.
 ///
@@ -127,9 +128,34 @@ ThemeData applyNovelReaderTheme(
   if (identical(scheme, base.colorScheme)) {
     return base;
   }
+  final tokens = base.extension<WatercolorTokens>();
   return base.copyWith(
     brightness: scheme.brightness,
     colorScheme: scheme,
+    extensions: tokens == null
+        ? null
+        : [
+            WatercolorTokens.resolve(
+              brightness: scheme.brightness,
+              amoled: background == NovelReaderBackground.black,
+              mode: WatercolorPaletteMode.multi,
+            ).copyWith(
+              paper: scheme.surface,
+              card: scheme.surfaceContainer,
+              ink: scheme.onSurface,
+              sub: scheme.onSurfaceVariant,
+              line: scheme.outlineVariant,
+              pigments: tokens.brightness == scheme.brightness
+                  ? tokens.pigments
+                  : null,
+              accent: tokens.brightness == scheme.brightness
+                  ? tokens.accent
+                  : null,
+              grainOpacity: scheme.brightness == Brightness.dark
+                  ? 0
+                  : tokens.grainOpacity,
+            ),
+          ],
     scaffoldBackgroundColor: scheme.surface,
     canvasColor: scheme.surface,
     cardColor: scheme.surfaceContainer,

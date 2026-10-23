@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
@@ -48,6 +47,10 @@ import 'package:pixez/page/user/detail/user_detail.dart';
 import 'package:pixez/page/user/user_store.dart';
 import 'package:pixez/page/user/works/works_page.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 /*
 🎵 Lyn-The Whims of Fate🎵
@@ -191,7 +194,15 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: MaterialButton(
-                        color: Theme.of(context).colorScheme.primary,
+                        color:
+                            WatercolorTokens.of(context)?.pigment(0) ??
+                            Theme.of(context).colorScheme.primary,
+                        shape: WatercolorTokens.of(context) == null
+                            ? null
+                            : const StadiumBorder(),
+                        elevation: WatercolorTokens.of(context) == null
+                            ? null
+                            : 0,
                         onPressed: () {
                           userStore.errorMessage = null;
                           userStore.firstFetch();
@@ -279,7 +290,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           leading: CommonBackArea(),
           actions: <Widget>[
             IconButton(
-              icon: Icon(Icons.people_outline),
+              icon: WcIcon(Icons.people_outline),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -300,7 +311,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
             Builder(
               builder: (context) {
                 return IconButton(
-                  icon: Icon(Icons.share),
+                  icon: WcIcon(Icons.share),
                   onPressed: () {
                     final box = context.findRenderObject() as RenderBox?;
                     final pos = box != null
@@ -453,7 +464,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           ? userStore.userDetail!.profile.background_image_url != null
                 ? InkWell(
                     onLongPress: () {
-                      showDialog(
+                      showWcDialog(
                         context: context,
                         builder: (context) {
                           return AlertDialog(
@@ -523,7 +534,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
             break;
           case 1:
             {
-              final result = await showDialog(
+              final result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   return AlertDialog(
@@ -562,7 +573,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
                       'painter:${userStore.userDetail?.user.name ?? ''}\npid:${widget.id}',
                 ),
               );
-              BotToast.showText(text: I18n.of(context).copied_to_clipboard);
+              wcToast(text: I18n.of(context).copied_to_clipboard);
               break;
             }
           case 3:
@@ -738,7 +749,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
                   url: userStore.user!.profileImageUrls.medium,
                   size: Size(80, 80),
                   onTap: () {
-                    showDialog(
+                    showWcDialog(
                       context: context,
                       builder: (context) {
                         return AlertDialog(
@@ -818,7 +829,7 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
       );
       final bytes = await result.file.readAsBytes();
       await DocumentPlugin.save(bytes, "${widget.id}_bg.jpg");
-      BotToast.showText(text: I18n.of(context).saved);
+      wcToast(text: I18n.of(context).saved);
     } catch (e) {
       print(e);
     }
@@ -890,9 +901,9 @@ class _UsersPageState extends State<UsersPage> with TickerProviderStateMixin {
           ),
           fileName,
         );
-        BotToast.showText(text: I18n.of(context).complete);
+        wcToast(text: I18n.of(context).complete);
       } else
-        BotToast.showText(text: I18n.of(context).failed);
+        wcToast(text: I18n.of(context).failed);
     } catch (e) {
       print(e);
     }

@@ -27,11 +27,15 @@ import 'package:pixez/page/novel/rank/novel_rank_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/page/novel/recom/novel_recom_page.dart';
 import 'package:pixez/page/novel/search/novel_search_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/palette_bar.dart';
 
 void openNovelRail(BuildContext context) {
-  Navigator.of(context, rootNavigator: true).pushReplacement(
-    MaterialPageRoute(builder: (context) => NovelRail()),
-  );
+  Navigator.of(
+    context,
+    rootNavigator: true,
+  ).pushReplacement(MaterialPageRoute(builder: (context) => NovelRail()));
 }
 
 class NovelRail extends StatefulWidget {
@@ -122,24 +126,30 @@ class _NovelRailState extends State<NovelRail> {
           setState(() {
             _preTime = DateTime.now();
           });
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            duration: Duration(seconds: 1),
-            content: Text(I18n.of(context).return_again_to_exit),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: Duration(seconds: 1),
+              content: Text(I18n.of(context).return_again_to_exit),
+            ),
+          );
         }
       },
-      canPop: !userSetting.isReturnAgainToExit ||
+      canPop:
+          !userSetting.isReturnAgainToExit ||
           _preTime != null &&
               DateTime.now().difference(_preTime!) <= Duration(seconds: 2),
       child: Scaffold(
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            Navigator.of(context).pushReplacement(MaterialPageRoute(
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
                 builder: (context) => Platform.isIOS || Platform.isMacOS
                     ? HelloPage()
-                    : AndroidHelloPage()));
+                    : AndroidHelloPage(),
+              ),
+            );
           },
-          child: Icon(Icons.picture_in_picture),
+          child: WcIcon(Icons.picture_in_picture),
         ),
         bottomNavigationBar: _buildNavigationBar(context),
         body: _buildPages(),
@@ -147,36 +157,59 @@ class _NovelRailState extends State<NovelRail> {
     );
   }
 
-  NavigationBar _buildNavigationBar(BuildContext context) {
+  Widget _buildNavigationBar(BuildContext context) {
+    void select(int index) {
+      HapticUtil.selectionClick();
+      if (this.selectedIndex == index) {
+        topStore.setTop("${index + 1}00");
+      }
+      setState(() {
+        this.selectedIndex = index;
+      });
+      if (_pageController?.hasClients == true) {
+        _pageController!.jumpToPage(index);
+      }
+    }
+
+    if (WatercolorTokens.of(context) != null) {
+      return PaletteBar(
+        items: [
+          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
+          PaletteBarItem(icon: Icons.favorite, label: I18n.of(context).news),
+          PaletteBarItem(icon: Icons.search, label: I18n.of(context).search),
+          PaletteBarItem(icon: Icons.settings, label: I18n.of(context).setting),
+        ],
+        selectedIndex: selectedIndex,
+        onSelected: select,
+      );
+    }
+
     return NavigationBar(
       destinations: [
         NavigationDestination(
-            icon: Icon(Icons.home), label: I18n.of(context).home),
+          icon: WcIcon(Icons.home),
+          label: I18n.of(context).home,
+        ),
         NavigationDestination(
-            icon: Icon(
-              Icons.leaderboard,
-            ),
-            label: I18n.of(context).rank),
+          icon: WcIcon(Icons.leaderboard),
+          label: I18n.of(context).rank,
+        ),
         NavigationDestination(
-            icon: Icon(Icons.favorite), label: I18n.of(context).news),
+          icon: WcIcon(Icons.favorite),
+          label: I18n.of(context).news,
+        ),
         NavigationDestination(
-            icon: Icon(Icons.search), label: I18n.of(context).search),
+          icon: WcIcon(Icons.search),
+          label: I18n.of(context).search,
+        ),
         NavigationDestination(
-            icon: Icon(Icons.settings), label: I18n.of(context).setting)
+          icon: WcIcon(Icons.settings),
+          label: I18n.of(context).setting,
+        ),
       ],
       selectedIndex: selectedIndex,
-      onDestinationSelected: (index) {
-        HapticUtil.selectionClick();
-        if (this.selectedIndex == index) {
-          topStore.setTop("${index + 1}00");
-        }
-        setState(() {
-          this.selectedIndex = index;
-        });
-        if (_pageController?.hasClients == true) {
-          _pageController!.jumpToPage(index);
-        }
-      },
+      onDestinationSelected: select,
     );
   }
 }

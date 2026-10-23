@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_template.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const novelTtsAddVariableKey = Key('novelTtsAddVariable');
 
@@ -118,7 +119,7 @@ class _NovelTtsVariablesEditorState extends State<NovelTtsVariablesEditor> {
                         'novelTtsRemoveVariable_${_rows.indexOf(row)}',
                       ),
                       tooltip: i18n.novel_tts_variable_remove,
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const WcIcon(Icons.delete_outline),
                       onPressed: () {
                         setState(() => _rows.remove(row));
                         WidgetsBinding.instance.addPostFrameCallback(
@@ -152,7 +153,7 @@ class _NovelTtsVariablesEditorState extends State<NovelTtsVariablesEditor> {
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
             key: novelTtsAddVariableKey,
-            icon: const Icon(Icons.add),
+            icon: const WcIcon(Icons.add),
             label: Text(i18n.novel_tts_variable_add),
             onPressed: () {
               setState(() => _rows.add(_VariableRow('', '')));

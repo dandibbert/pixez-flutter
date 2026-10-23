@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/i18n.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key novelSearchPagerKey = Key('novelSearchPager');
 
@@ -38,7 +39,7 @@ class NovelSearchPagerBar extends StatelessWidget {
             children: [
               TextButton.icon(
                 onPressed: loading || !hasPrevious ? null : onPrevious,
-                icon: const Icon(Icons.chevron_left),
+                icon: const WcIcon(Icons.chevron_left),
                 label: Text(I18n.of(context).pre),
               ),
               Expanded(
@@ -57,7 +58,7 @@ class NovelSearchPagerBar extends StatelessWidget {
               TextButton.icon(
                 onPressed: loading || !hasNext ? null : onNext,
                 label: Text(I18n.of(context).next),
-                icon: const Icon(Icons.chevron_right),
+                icon: const WcIcon(Icons.chevron_right),
               ),
             ],
           ),

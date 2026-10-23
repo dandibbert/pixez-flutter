@@ -4,6 +4,9 @@ import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 const Key novelTtsQuickVoiceKey = Key('novelTtsQuickVoice');
 const Key novelTtsBarKey = Key('novelTtsBar');
@@ -49,9 +52,16 @@ class NovelTtsBar extends StatelessWidget {
             : i18n.novel_tts_error,
       NovelTtsStatus.idle => '',
     };
-    return Material(
+    final tokens = WatercolorTokens.of(context);
+    final bar = Material(
       key: novelTtsBarKey,
-      color: scheme.surfaceContainerHigh,
+      color: tokens?.card ?? scheme.surfaceContainerHigh,
+      shape: tokens == null
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+              side: BorderSide(color: tokens.line),
+            ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
         child: Column(
@@ -90,7 +100,8 @@ class NovelTtsBar extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: controller.status == NovelTtsStatus.error
                         ? scheme.error
-                        : scheme.primary,
+                        : tokens?.accent ?? scheme.primary,
+                    fontWeight: tokens == null ? null : FontWeight.w700,
                   ),
                 ),
               ),
@@ -101,56 +112,72 @@ class NovelTtsBar extends StatelessWidget {
                   key: novelTtsPrevButtonKey,
                   tooltip: i18n.novel_tts_prev,
                   onPressed: () => controller.skip(direction: 'prev'),
-                  icon: const Icon(Icons.skip_previous),
+                  icon: const WcIcon(Icons.skip_previous),
                 ),
                 if (controller.status == NovelTtsStatus.playing ||
                     controller.status == NovelTtsStatus.synthesizing)
-                  IconButton(
-                    key: novelTtsPauseButtonKey,
-                    tooltip: i18n.novel_tts_pause,
-                    onPressed: controller.pause,
-                    icon: const Icon(Icons.pause_circle_filled),
+                  _wellButton(
+                    tokens,
+                    IconButton(
+                      key: novelTtsPauseButtonKey,
+                      tooltip: i18n.novel_tts_pause,
+                      onPressed: controller.pause,
+                      icon: WcIcon(
+                        tokens == null
+                            ? Icons.pause_circle_filled
+                            : Icons.pause,
+                        color: tokens?.onPigment,
+                      ),
+                    ),
                   )
                 else
-                  IconButton(
-                    key: novelTtsPlayButtonKey,
-                    tooltip: controller.status == NovelTtsStatus.paused
-                        ? i18n.novel_tts_resume
-                        : i18n.novel_tts_play,
-                    onPressed: controller.status == NovelTtsStatus.paused
-                        ? controller.resume
-                        : null,
-                    icon: const Icon(Icons.play_circle_filled),
+                  _wellButton(
+                    tokens,
+                    IconButton(
+                      key: novelTtsPlayButtonKey,
+                      tooltip: controller.status == NovelTtsStatus.paused
+                          ? i18n.novel_tts_resume
+                          : i18n.novel_tts_play,
+                      onPressed: controller.status == NovelTtsStatus.paused
+                          ? controller.resume
+                          : null,
+                      icon: WcIcon(
+                        tokens == null
+                            ? Icons.play_circle_filled
+                            : Icons.play_arrow,
+                        color: tokens?.onPigment,
+                      ),
+                    ),
                   ),
                 IconButton(
                   key: novelTtsNextButtonKey,
                   tooltip: i18n.novel_tts_next,
                   onPressed: () => controller.skip(direction: 'next'),
-                  icon: const Icon(Icons.skip_next),
+                  icon: const WcIcon(Icons.skip_next),
                 ),
                 IconButton(
                   key: novelTtsStopButtonKey,
                   tooltip: i18n.novel_tts_stop,
                   onPressed: controller.stop,
-                  icon: const Icon(Icons.stop),
+                  icon: const WcIcon(Icons.stop),
                 ),
                 IconButton(
                   key: novelTtsQuickVoiceKey,
                   tooltip: i18n.novel_tts_quick_voice,
                   onPressed: () => _selectVoice(context),
-                  icon: const Icon(Icons.record_voice_over_outlined),
+                  icon: const WcIcon(Icons.record_voice_over_outlined),
                 ),
                 if (onAddReading != null && controller.currentClip != null)
                   IconButton(
                     key: novelTtsAddReadingFromBarKey,
                     tooltip: i18n.novel_tts_reading_add_current,
                     onPressed: onAddReading,
-                    icon: const Icon(Icons.spellcheck),
+                    icon: const WcIcon(Icons.spellcheck),
                   ),
                 IconButton(
                   tooltip: i18n.novel_tts_settings,
                   onPressed: onOpenSettings,
-                  icon: const Icon(Icons.tune),
+                  icon: const WcIcon(Icons.tune),
                 ),
               ],
             ),
@@ -158,12 +185,39 @@ class NovelTtsBar extends StatelessWidget {
         ),
       ),
     );
+    if (tokens == null) return bar;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: tokens.cardShadow,
+        ),
+        child: bar,
+      ),
+    );
+  }
+
+  /// In the watercolor style the play button sits in a pigment-filled well.
+  Widget _wellButton(WatercolorTokens? tokens, Widget button) {
+    if (tokens == null) return button;
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: tokens.pigment(0).withValues(alpha: 0.85),
+        border: Border.all(color: tokens.ink, width: 1.5),
+      ),
+      child: Center(child: button),
+    );
   }
 
   Future<void> _selectVoice(BuildContext context) async {
     final settings = controller.settings;
     final i18n = I18n.of(context);
     final selected = await showModalBottomSheet<NovelTtsVoicePreset>(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
@@ -200,7 +254,7 @@ class NovelTtsBar extends StatelessWidget {
                   Navigator.pop(context);
                   onOpenSettings();
                 },
-                icon: const Icon(Icons.tune),
+                icon: const WcIcon(Icons.tune),
                 label: Text(i18n.novel_tts_settings),
               ),
             ],

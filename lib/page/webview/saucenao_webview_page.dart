@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -9,6 +8,8 @@ import 'package:image/image.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pixez/custom_tab_plugin.dart';
 import 'package:pixez/er/leader.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class SauncenaoWebview extends StatefulWidget {
   final String? path;
@@ -97,7 +98,7 @@ class _SauncenaoWebviewState extends State<SauncenaoWebview> {
       String html = response.data;
       _webViewController.loadHtmlString(html, baseUrl: "https://saucenao.com/");
     } catch (e) {
-      BotToast.showText(text: e.toString());
+      wcToast(text: e.toString());
       print(e);
     }
   }
@@ -109,17 +110,17 @@ class _SauncenaoWebviewState extends State<SauncenaoWebview> {
         title: Text(""),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.open_in_browser),
+            icon: WcIcon(Icons.open_in_browser),
             onPressed: () {
               try {
                 CustomTabPlugin.launch(_url);
               } catch (e) {
-                BotToast.showText(text: e.toString());
+                wcToast(text: e.toString());
               }
             },
           ),
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: WcIcon(Icons.refresh),
             onPressed: () => _webViewController.reload(),
           ),
         ],

@@ -22,6 +22,11 @@ import 'package:pixez/component/picker/utils.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/page/theme/watercolor_theme_settings.dart';
+import 'package:pixez/store/user_setting.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class ColorPickPage extends StatefulWidget {
   final Color initialColor;
@@ -43,31 +48,38 @@ class _ColorPickPageState extends State<ColorPickPage> {
   final skinList = [
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.cyan[500], tabBarTheme: TabBarThemeData(indicatorColor: Colors.cyan[500]),
+      primaryColor: Colors.cyan[500],
+      tabBarTheme: TabBarThemeData(indicatorColor: Colors.cyan[500]),
     ),
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.pink[500], tabBarTheme: TabBarThemeData(indicatorColor: Colors.pink[500]),
+      primaryColor: Colors.pink[500],
+      tabBarTheme: TabBarThemeData(indicatorColor: Colors.pink[500]),
     ),
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.green[500], tabBarTheme: TabBarThemeData(indicatorColor: Colors.green[600]),
+      primaryColor: Colors.green[500],
+      tabBarTheme: TabBarThemeData(indicatorColor: Colors.green[600]),
     ),
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.brown[500], tabBarTheme: TabBarThemeData(indicatorColor: Colors.brown[600]),
+      primaryColor: Colors.brown[500],
+      tabBarTheme: TabBarThemeData(indicatorColor: Colors.brown[600]),
     ),
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.purple[500], tabBarTheme: TabBarThemeData(indicatorColor: Colors.purple[600]),
+      primaryColor: Colors.purple[500],
+      tabBarTheme: TabBarThemeData(indicatorColor: Colors.purple[600]),
     ),
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.blue[500], tabBarTheme: TabBarThemeData(indicatorColor: Colors.blue[500]),
+      primaryColor: Colors.blue[500],
+      tabBarTheme: TabBarThemeData(indicatorColor: Colors.blue[500]),
     ),
     ThemeData(
       brightness: Brightness.light,
-      primaryColor: Color(0xFFFB7299), tabBarTheme: TabBarThemeData(indicatorColor: Color(0xFFFB7299)),
+      primaryColor: Color(0xFFFB7299),
+      tabBarTheme: TabBarThemeData(indicatorColor: Color(0xFFFB7299)),
     ),
   ];
 
@@ -78,110 +90,121 @@ class _ColorPickPageState extends State<ColorPickPage> {
         title: Text(I18n.of(context).pick_a_color),
         actions: <Widget>[
           IconButton(
-              icon: Icon(Icons.edit),
-              onPressed: () async {
-                final TextEditingController textEditingController =
-                    TextEditingController(
-                        text: pickerColor.toHexString(
-                            includeHashSign: true,
-                            enableAlpha: false,
-                            toUpperCase: false));
+            icon: WcIcon(Icons.edit),
+            onPressed: () async {
+              final TextEditingController textEditingController =
+                  TextEditingController(
+                    text: pickerColor.toHexString(
+                      includeHashSign: true,
+                      enableAlpha: false,
+                      toUpperCase: false,
+                    ),
+                  );
 
-                String result = await showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text("16 radix RGB"),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        content: TextField(
-                          controller: textEditingController,
-                          maxLength: 6,
-                          decoration: InputDecoration(
-                              prefix: Text("color(0xff"), suffix: Text(")")),
-                        ),
-                        actions: <Widget>[
-                          TextButton(
-                              onPressed: () {
-                                final result = textEditingController.text
-                                    .trim()
-                                    .toLowerCase();
-                                if (result.length != 6) {
-                                  return;
-                                }
-                                Navigator.of(context)
-                                    .pop("color(0xff${result})");
-                              },
-                              child: Text(I18n.of(context).ok)),
-                          TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: Text(I18n.of(context).cancel)),
-                        ],
-                      );
-                    });
-                Color color = _stringToColor(result); //迅速throw出来
-                setState(() {
-                  pickerColor = color;
-                });
-              }),
-          IconButton(
-              icon: Icon(Icons.save),
-              onPressed: () {
-                Navigator.of(context).pop(pickerColor);
-              })
-        ],
-      ),
-      body: LayoutBuilder(builder: (context, snapshot) {
-        final rowCount = max(3, (snapshot.maxWidth / 200).floor());
-        return CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ColorPicker(
-                  enableAlpha: false,
-                  pickerColor: pickerColor,
-                  onColorChanged: (Color color) {
-                    setState(() {
-                      pickerColor = color;
-                    });
-                  },
-                  pickerAreaHeightPercent: 0.8,
-                ),
-              ),
-            ),
-            SliverGrid.count(
-              crossAxisCount: rowCount,
-              children: [
-                for (final i in skinList)
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        pickerColor = i.primaryColor;
-                      });
-                    },
-                    child: Container(
-                      margin: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: i.primaryColor,
+              String result = await showWcDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text("16 radix RGB"),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    content: TextField(
+                      controller: textEditingController,
+                      maxLength: 6,
+                      decoration: InputDecoration(
+                        prefix: Text("color(0xff"),
+                        suffix: Text(")"),
                       ),
                     ),
-                  )
-              ],
-            )
-          ],
-        );
-      }),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          final result = textEditingController.text
+                              .trim()
+                              .toLowerCase();
+                          if (result.length != 6) {
+                            return;
+                          }
+                          Navigator.of(context).pop("color(0xff${result})");
+                        },
+                        child: Text(I18n.of(context).ok),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Text(I18n.of(context).cancel),
+                      ),
+                    ],
+                  );
+                },
+              );
+              Color color = _stringToColor(result); //迅速throw出来
+              setState(() {
+                pickerColor = color;
+              });
+            },
+          ),
+          IconButton(
+            icon: WcIcon(Icons.save),
+            onPressed: () {
+              Navigator.of(context).pop(pickerColor);
+            },
+          ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, snapshot) {
+          final rowCount = max(3, (snapshot.maxWidth / 200).floor());
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ColorPicker(
+                    enableAlpha: false,
+                    pickerColor: pickerColor,
+                    onColorChanged: (Color color) {
+                      setState(() {
+                        pickerColor = color;
+                      });
+                    },
+                    pickerAreaHeightPercent: 0.8,
+                  ),
+                ),
+              ),
+              SliverGrid.count(
+                crossAxisCount: rowCount,
+                children: [
+                  for (final i in skinList)
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          pickerColor = i.primaryColor;
+                        });
+                      },
+                      child: Container(
+                        margin: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: i.primaryColor,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   Color _stringToColor(String colorString) {
-    String valueString =
-        colorString.split('(0x')[1].split(')')[0]; // kind of hacky..
+    String valueString = colorString
+        .split('(0x')[1]
+        .split(')')[0]; // kind of hacky..
     int value = int.parse(valueString, radix: 16);
     Color otherColor = new Color(value);
     return otherColor;
@@ -201,86 +224,122 @@ class _ThemePageState extends State<ThemePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) {
+    if (WatercolorTokens.of(context) != null) {
       return Scaffold(
         appBar: AppBar(
+          title: Text(
+            I18n.of(context).theme,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+        ),
+        body: const WatercolorThemeSettings(),
+      );
+    }
+    return Observer(
+      builder: (context) {
+        return Scaffold(
+          appBar: AppBar(
             title: Text(I18n.of(context).theme),
             bottom: TabBar(
-                controller: TabController(
-                  length: 3,
-                  initialIndex: ThemeMode.values.indexOf(userSetting.themeMode),
-                  vsync: this,
-                ),
-                onTap: (i) {
-                  HapticUtil.selectionClick();
-                  userSetting.setThemeMode(i);
-                },
-                tabs: [
-                  Tab(
-                    text: I18n.of(context).system,
-                  ),
-                  Tab(
-                    text: I18n.of(context).light,
-                  ),
-                  Tab(text: I18n.of(context).dark)
-                ])),
-        body: Observer(builder: (_) {
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Card(
-                    child: SwitchListTile(
-                  value: userSetting.isAMOLED,
-                  onChanged: (v) {
-                    HapticUtil.light();
-                    userSetting.setIsAMOLED(v);
-                  },
-                  title: Text("AMOLED"),
-                )),
+              controller: TabController(
+                length: 3,
+                initialIndex: ThemeMode.values.indexOf(userSetting.themeMode),
+                vsync: this,
               ),
-              SliverToBoxAdapter(
-                child: Card(
-                    child: SwitchListTile(
-                  value: userSetting.useDynamicColor,
-                  onChanged: (v) async {
-                    HapticUtil.light();
-                    await userSetting.setUseDynamicColor(v);
-                    topStore.setTop("main");
-                  },
-                  title: Text(I18n.of(context).dynamic_color),
-                )),
-              ),
-              if (!userSetting.useDynamicColor)
-                SliverToBoxAdapter(
-                  child: Card(
-                    child: ListTile(
-                      leading: SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: Container(
-                          decoration: BoxDecoration(
-                              color: userSetting.seedColor,
-                              borderRadius: BorderRadius.circular(10)),
+              onTap: (i) {
+                HapticUtil.selectionClick();
+                userSetting.setThemeMode(i);
+              },
+              tabs: [
+                Tab(text: I18n.of(context).system),
+                Tab(text: I18n.of(context).light),
+                Tab(text: I18n.of(context).dark),
+              ],
+            ),
+          ),
+          body: Observer(
+            builder: (_) {
+              return CustomScrollView(
+                slivers: [
+                  // The only way back to the watercolor style once the
+                  // classic one is picked.
+                  SliverToBoxAdapter(
+                    child: Card(
+                      child: SwitchListTile(
+                        value: false,
+                        onChanged: (_) {
+                          HapticUtil.light();
+                          userSetting.setUiStyle(UiStyle.watercolor);
+                        },
+                        title: Text(I18n.of(context).ui_style_watercolor),
+                        subtitle: Text(
+                          I18n.of(context).ui_style_watercolor_desc,
                         ),
                       ),
-                      title: Text(I18n.of(context).seed_color),
-                      onTap: () {
-                        _pickColor();
-                      },
                     ),
                   ),
-                )
-            ],
-          );
-        }),
-      );
-    });
+                  SliverToBoxAdapter(
+                    child: Card(
+                      child: SwitchListTile(
+                        value: userSetting.isAMOLED,
+                        onChanged: (v) {
+                          HapticUtil.light();
+                          userSetting.setIsAMOLED(v);
+                        },
+                        title: Text("AMOLED"),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Card(
+                      child: SwitchListTile(
+                        value: userSetting.useDynamicColor,
+                        onChanged: (v) async {
+                          HapticUtil.light();
+                          await userSetting.setUseDynamicColor(v);
+                          topStore.setTop("main");
+                        },
+                        title: Text(I18n.of(context).dynamic_color),
+                      ),
+                    ),
+                  ),
+                  if (!userSetting.useDynamicColor)
+                    SliverToBoxAdapter(
+                      child: Card(
+                        child: ListTile(
+                          leading: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: userSetting.seedColor,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                          title: Text(I18n.of(context).seed_color),
+                          onTap: () {
+                            _pickColor();
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   _pickColor() async {
-    Color? result = await Navigator.of(context).push(MaterialPageRoute(
+    Color? result = await Navigator.of(context).push(
+      MaterialPageRoute(
         builder: (context) =>
-            ColorPickPage(initialColor: userSetting.seedColor)));
+            ColorPickPage(initialColor: userSetting.seedColor),
+      ),
+    );
     if (result != null) {
       await userSetting.setThemeData(result);
       topStore.setTop("main");

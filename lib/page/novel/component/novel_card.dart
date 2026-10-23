@@ -23,7 +23,7 @@ class NovelCard extends StatefulWidget {
   final Novel novel;
 
   const NovelCard({Key? key, required this.id, required this.novel})
-      : super(key: key);
+    : super(key: key);
 
   @override
   _NovelCardState createState() => _NovelCardState();
@@ -39,7 +39,7 @@ class _NovelCardState extends State<NovelCard> {
             mainAxisSize: MainAxisSize.max,
             children: <Widget>[
               PixivImage(widget.novel.imageUrls.squareMedium),
-              Text(widget.novel.totalView.toString())
+              Text(widget.novel.totalView.toString()),
             ],
           ),
           Column(
@@ -47,9 +47,9 @@ class _NovelCardState extends State<NovelCard> {
             children: <Widget>[
               Text(widget.novel.title),
               Text('by ${widget.novel.user.name}'),
-              Text(widget.novel.caption)
+              Text(widget.novel.caption),
             ],
-          )
+          ),
         ],
       ),
     );

@@ -19,6 +19,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/about/languages.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class InitPage extends StatefulWidget {
   @override
@@ -76,14 +77,13 @@ class _InitPageState extends State<InitPage> {
                                 await userSetting.setLanguageNum(index);
                                 setState(() {});
                               },
-                              trailing: Icon(
+                              trailing: WcIcon(
                                 Icons.check,
-                                color:
-                                    userSetting.languageNum == index
-                                        ? Theme.of(
-                                          context,
-                                        ).textTheme.bodyLarge!.color
-                                        : Colors.transparent,
+                                color: userSetting.languageNum == index
+                                    ? Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge!.color
+                                    : Colors.transparent,
                               ),
                             ),
                           );

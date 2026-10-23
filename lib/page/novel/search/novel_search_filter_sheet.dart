@@ -3,16 +3,14 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/store/search_result_mode.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 const Key novelSearchFilterSheetKey = Key('novelSearchFilterSheet');
 const Key novelSearchFilterApplyKey = Key('novelSearchFilterApply');
 const Key novelSearchFilterResetKey = Key('novelSearchFilterReset');
-const Key novelSearchFilterBookmarkMinKey = Key(
-  'novelSearchFilterBookmarkMin',
-);
-const Key novelSearchFilterBookmarkMaxKey = Key(
-  'novelSearchFilterBookmarkMax',
-);
+const Key novelSearchFilterBookmarkMinKey = Key('novelSearchFilterBookmarkMin');
+const Key novelSearchFilterBookmarkMaxKey = Key('novelSearchFilterBookmarkMax');
 
 class NovelSearchFilterSheet extends StatefulWidget {
   final NovelSearchQuery initial;
@@ -33,6 +31,7 @@ class NovelSearchFilterSheet extends StatefulWidget {
     bool Function()? canUsePopular,
   }) {
     return showModalBottomSheet<void>(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -285,7 +284,7 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
                 ),
                 IconButton(
                   tooltip: i18n.cancel,
-                  icon: const Icon(Icons.close),
+                  icon: const WcIcon(Icons.close),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -538,10 +537,7 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (_error != null) ...[
-                      Text(
-                        _error!,
-                        style: TextStyle(color: scheme.error),
-                      ),
+                      Text(_error!, style: TextStyle(color: scheme.error)),
                       const SizedBox(height: 8),
                     ],
                     Row(
@@ -652,7 +648,7 @@ class _NovelSearchFilterSheetState extends State<NovelSearchFilterSheet> {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
-          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+          suffixIcon: const WcIcon(Icons.calendar_today_outlined, size: 18),
           border: const OutlineInputBorder(),
           isDense: true,
         ),

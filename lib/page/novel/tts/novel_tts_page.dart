@@ -15,6 +15,8 @@ import 'package:pixez/page/novel/tts/novel_tts_form.dart';
 import 'package:pixez/page/novel/tts/novel_tts_readings.dart';
 import 'package:pixez/page/novel/tts/novel_tts_settings.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 export 'package:pixez/page/novel/tts/novel_tts_reading_editor.dart'
     show
@@ -207,7 +209,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
 
   Future<void> _saveVoice() async {
     final draft = _draft();
-    final name = await showDialog<String>(
+    final name = await showWcDialog<String>(
       context: context,
       builder: (_) => _VoiceNameDialog(initial: draft.activeVoice),
     );
@@ -411,7 +413,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
                             child: OutlinedButton.icon(
                               key: novelTtsSaveVoiceKey,
                               onPressed: _variablesValid ? _saveVoice : null,
-                              icon: const Icon(Icons.add),
+                              icon: const WcIcon(Icons.add),
                               label: Text(i18n.novel_tts_save_voice),
                             ),
                           ),
@@ -817,7 +819,7 @@ class _NovelTtsPageState extends State<NovelTtsPage> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            icon: const Icon(Icons.copy_outlined),
+            icon: const WcIcon(Icons.copy_outlined),
             label: Text(I18n.of(context).novel_tts_copy_details),
             onPressed: () => Clipboard.setData(ClipboardData(text: details)),
           ),

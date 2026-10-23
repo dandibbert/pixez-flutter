@@ -3,6 +3,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/viewer/installed_fonts.dart';
 import 'package:pixez/page/novel/viewer/novel_custom_font.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 const Key novelFontPickerKey = Key('novelFontPicker');
 const Key novelFontSearchKey = Key('novelFontSearch');
@@ -90,14 +91,12 @@ class _NovelFontPickerPageState extends State<NovelFontPickerPage> {
 
   Future<void> _import() async {
     try {
-      final imported = await (widget.importFont ??
-          NovelCustomFont.importPickedFile)();
+      final imported =
+          await (widget.importFont ?? NovelCustomFont.importPickedFile)();
       if (!mounted || imported == null) {
         return;
       }
-      _select(
-        NovelFontChoice(imported.family, filePath: imported.filePath),
-      );
+      _select(NovelFontChoice(imported.family, filePath: imported.filePath));
     } catch (_) {
       if (!mounted) {
         return;
@@ -114,9 +113,7 @@ class _NovelFontPickerPageState extends State<NovelFontPickerPage> {
     final visible = InstalledFonts.filterFamilies(_families, _search.text);
     return Scaffold(
       key: novelFontPickerKey,
-      appBar: AppBar(
-        title: Text(i18n.novel_font),
-      ),
+      appBar: AppBar(title: Text(i18n.novel_font)),
       body: Column(
         children: [
           Padding(
@@ -126,7 +123,7 @@ class _NovelFontPickerPageState extends State<NovelFontPickerPage> {
               controller: _search,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const WcIcon(Icons.search),
                 hintText: i18n.novel_font_search,
                 border: const OutlineInputBorder(),
                 isDense: true,
@@ -145,7 +142,7 @@ class _NovelFontPickerPageState extends State<NovelFontPickerPage> {
           ),
           ListTile(
             key: novelFontImportKey,
-            leading: const Icon(Icons.file_open_outlined),
+            leading: const WcIcon(Icons.file_open_outlined),
             title: Text(i18n.novel_font_import),
             onTap: _import,
           ),

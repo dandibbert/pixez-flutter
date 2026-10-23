@@ -43,6 +43,10 @@ import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/page/webview/saucenao_webview_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/palette_bar.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class AndroidHelloPage extends StatefulWidget {
   const AndroidHelloPage({Key? key}) : super(key: key);
@@ -120,11 +124,14 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
                 : Observer(
                     builder: (context) {
                       return AnimatedContainer(
-                        duration: const Duration(milliseconds: 400),
+                        duration: WatercolorTokens.of(context) == null
+                            ? const Duration(milliseconds: 400)
+                            : WcMotion.long,
                         transform: Matrix4.translationValues(
                           0,
                           fullScreenStore.fullscreen
-                              ? bottomNavigatorHeight!
+                              ? bottomNavigatorHeight! +
+                                    _paletteExtraOffset(context)
                               : 0,
                           0,
                         ),
@@ -158,7 +165,40 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
     );
   }
 
+  /// The palette bar floats above the bottom edge, so it must travel further
+  /// than the classic bar to hide in fullscreen.
+  double _paletteExtraOffset(BuildContext context) =>
+      WatercolorTokens.of(context) == null ? 0 : PaletteBar.hiddenOffset - 80;
+
   Widget _buildNavigationBar(BuildContext context) {
+    void select(int index) {
+      HapticUtil.selectionClick();
+      if (this.index == index) {
+        topStore.setTop("${index + 1}00");
+      }
+      setState(() {
+        this.index = index;
+      });
+      if (_pageController.hasClients) _pageController.jumpToPage(index);
+    }
+
+    if (WatercolorTokens.of(context) != null) {
+      return PaletteBar(
+        items: [
+          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
+          PaletteBarItem(
+            icon: Icons.favorite,
+            label: I18n.of(context).quick_view,
+          ),
+          PaletteBarItem(icon: Icons.search, label: I18n.of(context).search),
+          PaletteBarItem(icon: Icons.more_horiz, label: I18n.of(context).more),
+        ],
+        selectedIndex: index,
+        onSelected: select,
+      );
+    }
+
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -169,37 +209,28 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
           ).colorScheme.surface.withValues(alpha: 0.9),
           destinations: [
             NavigationDestination(
-              icon: Icon(Icons.home),
+              icon: WcIcon(Icons.home),
               label: I18n.of(context).home,
             ),
             NavigationDestination(
-              icon: Icon(Icons.leaderboard),
+              icon: WcIcon(Icons.leaderboard),
               label: I18n.of(context).rank,
             ),
             NavigationDestination(
-              icon: Icon(Icons.favorite),
+              icon: WcIcon(Icons.favorite),
               label: I18n.of(context).quick_view,
             ),
             NavigationDestination(
-              icon: Icon(Icons.search),
+              icon: WcIcon(Icons.search),
               label: I18n.of(context).search,
             ),
             NavigationDestination(
-              icon: Icon(Icons.more_horiz),
+              icon: WcIcon(Icons.more_horiz),
               label: I18n.of(context).more,
             ),
           ],
           selectedIndex: index,
-          onDestinationSelected: (index) {
-            HapticUtil.selectionClick();
-            if (this.index == index) {
-              topStore.setTop("${index + 1}00");
-            }
-            setState(() {
-              this.index = index;
-            });
-            if (_pageController.hasClients) _pageController.jumpToPage(index);
-          },
+          onDestinationSelected: select,
         ),
       ),
     );
@@ -240,23 +271,23 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
             },
             destinations: <NavigationRailDestination>[
               NavigationRailDestination(
-                icon: Icon(Icons.home),
+                icon: WcIcon(Icons.home),
                 label: Text(I18n.of(context).home),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.leaderboard),
+                icon: WcIcon(Icons.leaderboard),
                 label: Text(I18n.of(context).rank),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.favorite),
+                icon: WcIcon(Icons.favorite),
                 label: Text(I18n.of(context).quick_view),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.search),
+                icon: WcIcon(Icons.search),
                 label: Text(I18n.of(context).search),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.more_horiz),
+                icon: WcIcon(Icons.more_horiz),
                 label: Text(I18n.of(context).more),
               ),
             ],
@@ -413,7 +444,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8.0),
                     child: IconButton(
-                      icon: Icon(Icons.copy),
+                      icon: WcIcon(Icons.copy),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: link));
                         if (_LinkCloser != null) {
@@ -424,7 +455,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Icon(Icons.link_rounded),
+                    child: WcIcon(Icons.link_rounded),
                   ),
                 ],
               ),
@@ -563,7 +594,7 @@ class _AnimatedToggleFullscreenFABState
             onPressed: () {
               widget.toggleFullscreen();
             },
-            child: Container(child: Icon(Icons.close_fullscreen)),
+            child: Container(child: WcIcon(Icons.close_fullscreen)),
           ),
         ),
       ),

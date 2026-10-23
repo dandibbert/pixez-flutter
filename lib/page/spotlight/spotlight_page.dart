@@ -25,29 +25,36 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/hello/recom/spotlight_store.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class SpotLightPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ScrollController _controller = ScrollController();
     final EasyRefreshController _refreshController = EasyRefreshController(
-        controlFinishLoad: true, controlFinishRefresh: true);
+      controlFinishLoad: true,
+      controlFinishRefresh: true,
+    );
     final SpotlightStore _spotlightStore = SpotlightStore(_refreshController);
-    return Observer(builder: (_) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(I18n.of(context).spotlight),
-          actions: <Widget>[
-            IconButton(
-              icon: Icon(Icons.arrow_upward),
-              onPressed: () {
-                _controller.animateTo(0,
-                    duration: Duration(seconds: 1), curve: Curves.ease);
-              },
-            )
-          ],
-        ),
-        body: EasyRefresh(
+    return Observer(
+      builder: (_) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(I18n.of(context).spotlight),
+            actions: <Widget>[
+              IconButton(
+                icon: WcIcon(Icons.arrow_upward),
+                onPressed: () {
+                  _controller.animateTo(
+                    0,
+                    duration: Duration(seconds: 1),
+                    curve: Curves.ease,
+                  );
+                },
+              ),
+            ],
+          ),
+          body: EasyRefresh(
             onLoad: () => _spotlightStore.next(),
             onRefresh: () => _spotlightStore.fetch(),
             header: PixezDefault.header(context),
@@ -58,12 +65,15 @@ class SpotLightPage extends StatelessWidget {
               controller: _controller,
               itemBuilder: (BuildContext context, int index) {
                 return SpotlightCard(
-                    spotlight: _spotlightStore.articles[index]);
+                  spotlight: _spotlightStore.articles[index],
+                );
               },
               itemCount: _spotlightStore.articles.length,
-            )),
-      );
-    });
+            ),
+          ),
+        );
+      },
+    );
   }
 
   SliverWaterfallFlowDelegate _buildGridDelegate(BuildContext context) {

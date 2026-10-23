@@ -16,10 +16,10 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:mobx/mobx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pixez/er/prefer.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 part 'directory_store.g.dart';
 
@@ -41,11 +41,11 @@ abstract class _DirectoryStoreBase with Store {
       list = ObservableList.of(fileSystemEntity.listSync());
     } on Exception catch (e) {
       print('Exception details:\n $e');
-      BotToast.showText(text: e.toString());
+      wcToast(text: e.toString());
     } catch (e, s) {
       print('Exception details:\n $e');
       print('Stack trace:\n $s');
-      BotToast.showText(text: s.toString());
+      wcToast(text: s.toString());
     }
   }
 
@@ -75,11 +75,11 @@ abstract class _DirectoryStoreBase with Store {
       list = ObservableList.of(fileSystemEntity.listSync());
     } on Exception catch (e) {
       print('Exception details:\n $e');
-      BotToast.showText(text: e.toString());
+      wcToast(text: e.toString());
     } catch (e, s) {
       print('Exception details:\n $e');
       print('Stack trace:\n $s');
-      BotToast.showText(text: s.toString());
+      wcToast(text: s.toString());
     }
   }
 
@@ -91,7 +91,8 @@ abstract class _DirectoryStoreBase with Store {
   @action
   Future<void> init(String? initPath) async {
     try {
-      path = initPath ??
+      path =
+          initPath ??
           Prefer.getString("store_path") ??
           (await getExternalStorageDirectory())!.path; //绝了
       final directory = Directory(path!);
@@ -101,11 +102,11 @@ abstract class _DirectoryStoreBase with Store {
       list = ObservableList.of(Directory(path!).listSync());
     } on Exception catch (e) {
       print('Exception details:\n $e');
-      BotToast.showText(text: e.toString());
+      wcToast(text: e.toString());
     } catch (e, s) {
       print('Exception details:\n $e');
       print('Stack trace:\n $s');
-      BotToast.showText(text: s.toString());
+      wcToast(text: s.toString());
     }
   }
 }

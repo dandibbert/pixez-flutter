@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:pixez/component/pixiv_image.dart';
@@ -10,6 +9,7 @@ import 'package:pixez/er/pixiv_image_source.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class ClipboardPlugin {
   static final supported = Platform.isWindows || Platform.isLinux;
@@ -27,16 +27,16 @@ class ClipboardPlugin {
     assert(url != null);
 
     // TODO: i18n
-    BotToast.showText(text: 'Copying to clipboard...');
+    wcToast(text: 'Copying to clipboard...');
     try {
       final image = await _downloadImage(url!);
 
       await copyImageFromByteArray(image);
 
-      BotToast.showText(text: I18n.of(context).copied_to_clipboard);
+      wcToast(text: I18n.of(context).copied_to_clipboard);
     } catch (e) {
       debugPrint(e.toString());
-      BotToast.showText(text: e.toString());
+      wcToast(text: e.toString());
     }
   }
 

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
@@ -20,6 +19,9 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 part 'sauce_notifier.freezed.dart';
 part 'sauce_notifier.g.dart';
@@ -31,11 +33,7 @@ abstract class SauceState with _$SauceState {
 
 @riverpod
 class Sauce extends _$Sauce {
-  Dio dio = Dio(
-    BaseOptions(
-      baseUrl: "https://saucenao.com",
-    ),
-  );
+  Dio dio = Dio(BaseOptions(baseUrl: "https://saucenao.com"));
   List<int> results = [];
   late StreamController _streamController;
   late ObservableStream observableStream;
@@ -64,7 +62,7 @@ class Sauce extends _$Sauce {
     if (Platform.isAndroid && context != null) {
       final skipAlert = Prefer.getBool("photo_picker_type_selected") ?? false;
       if (!skipAlert) {
-        await showDialog(
+        await showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -75,7 +73,7 @@ class Sauce extends _$Sauce {
                   Observer(
                     builder: (context) {
                       return SwitchListTile(
-                        secondary: Icon(Icons.photo_album),
+                        secondary: WcIcon(Icons.photo_album),
                         onChanged: (bool value) async {
                           await userSetting.setImagePickerType(value ? 1 : 0);
                         },
@@ -138,9 +136,9 @@ class Sauce extends _$Sauce {
       MapEntry("file", await MultipartFile.fromFile(path)),
     ]);
     try {
-      BotToast.showText(text: I18n.ofContext().uploading);
+      wcToast(text: I18n.ofContext().uploading);
       Response response = await dio.post('/search.php', data: formData);
-      BotToast.showText(text: I18n.ofContext().parsing);
+      wcToast(text: I18n.ofContext().parsing);
       var document = parse(response.data);
       document.querySelectorAll('a').forEach((element) {
         var link = element.attributes['href'];
@@ -160,7 +158,7 @@ class Sauce extends _$Sauce {
       });
       _streamController.add(1);
     } catch (e) {
-      BotToast.showText(text: "error${e}");
+      wcToast(text: "error${e}");
     }
   }
 

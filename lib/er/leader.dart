@@ -16,7 +16,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/constants.dart';
@@ -37,6 +36,7 @@ import 'package:pixez/page/soup/soup_page.dart';
 import 'package:pixez/page/user/users_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class Leader {
   static Future<void> pushUntilHome(BuildContext context) async {
@@ -111,7 +111,7 @@ class Leader {
     }
     if (link.host == "pixiv.me") {
       try {
-        BotToast.showText(text: "Pixiv me...");
+        wcToast(text: "Pixiv me...");
         var dio = Dio();
         Response response = await dio.getUri(link);
         if (response.isRedirect == true) {
@@ -139,7 +139,7 @@ class Leader {
     if (link.scheme == "pixiv") {
       if (link.host.contains("account")) {
         try {
-          BotToast.showText(text: "working....");
+          wcToast(text: "working....");
           String code = link.queryParameters['code']!;
           LPrinter.d("here we go:" + code);
           Response response = await oAuthClient.code2Token(code);
@@ -165,11 +165,11 @@ class Leader {
           );
           await accountProvider.insert(accountPersist);
           await accountStore.fetch();
-          BotToast.showText(text: "Login Success");
+          wcToast(text: "Login Success");
           if (Platform.isIOS || Platform.isLinux) pushUntilHome(context);
         } catch (e) {
           LPrinter.d(e);
-          BotToast.showText(text: e.toString());
+          wcToast(text: e.toString());
         }
       } else if (link.host.contains("illusts") ||
           link.host.contains("user") ||
@@ -272,7 +272,7 @@ class Leader {
         if (link.pathSegments.length == 1 &&
             link.pathSegments[0] == "info.php") {
           try {
-            BotToast.showText(text: "info.php not supported yet");
+            wcToast(text: "info.php not supported yet");
             SharePlus.instance.share(
               ShareParams(
                 text: link.toString(),

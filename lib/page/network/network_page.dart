@@ -4,6 +4,8 @@ import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/network_mode.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NetworkPage extends StatefulWidget {
   final bool? automaticallyImplyLeading;
@@ -87,7 +89,7 @@ class _NetworkPageState extends State<NetworkPage> {
                             ),
                           ),
                           trailing: IconButton(
-                            icon: Icon(Icons.refresh_outlined),
+                            icon: WcIcon(Icons.refresh_outlined),
                             onPressed: () async {
                               userSetting.setPictureSource(ImageHost);
                               splashStore.setHost(ImageHost);
@@ -106,9 +108,11 @@ class _NetworkPageState extends State<NetworkPage> {
                             ),
                           ),
                           selected: userSetting.pictureSource == ImageHost,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
+                          selectedTileColor:
+                              WatercolorTokens.of(
+                                context,
+                              )?.pigment(0).withValues(alpha: 0.45) ??
+                              Theme.of(context).colorScheme.secondary,
                           onTap: () async {
                             userSetting.setPictureSource(ImageHost);
                             splashStore.setHost(ImageHost);
@@ -126,9 +130,11 @@ class _NetworkPageState extends State<NetworkPage> {
                             ),
                           ),
                           selected: userSetting.pictureSource == ImageCatHost,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
+                          selectedTileColor:
+                              WatercolorTokens.of(
+                                context,
+                              )?.pigment(0).withValues(alpha: 0.45) ??
+                              Theme.of(context).colorScheme.secondary,
                           onTap: () async {
                             userSetting.setPictureSource(ImageCatHost);
                             splashStore.setHost(ImageCatHost);
@@ -138,9 +144,11 @@ class _NetworkPageState extends State<NetworkPage> {
                           selected:
                               userSetting.pictureSource != ImageHost &&
                               userSetting.pictureSource != ImageCatHost,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
+                          selectedTileColor:
+                              WatercolorTokens.of(
+                                context,
+                              )?.pigment(0).withValues(alpha: 0.45) ??
+                              Theme.of(context).colorScheme.secondary,
                           title: Theme(
                             data: Theme.of(context).copyWith(
                               primaryColor: Theme.of(
@@ -176,7 +184,10 @@ class _NetworkPageState extends State<NetworkPage> {
                                       context,
                                     ).requestFocus(FocusNode());
                                   },
-                                  icon: Icon(Icons.check, color: Colors.black),
+                                  icon: WcIcon(
+                                    Icons.check,
+                                    color: Colors.black,
+                                  ),
                                 ),
                                 labelText: I18n.of(context).custom_host,
                               ),

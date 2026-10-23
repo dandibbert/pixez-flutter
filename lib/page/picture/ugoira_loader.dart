@@ -22,6 +22,8 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:pixez/page/picture/ugoira_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class UgoiraLoader extends StatefulWidget {
   final int id;
@@ -59,6 +61,7 @@ class _UgoiraLoaderState extends State<UgoiraLoader> {
                 onLongPress: () async {
                   HapticUtil.heavy();
                   final result = await showModalBottomSheet(
+                    sheetAnimationStyle: WcMotion.sheet(context),
                     context: context,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.vertical(
@@ -158,7 +161,7 @@ class _UgoiraLoaderState extends State<UgoiraLoader> {
                       child: Container(
                         height: 72.0,
                         width: 72.0,
-                        child: Icon(Icons.play_arrow),
+                        child: WcIcon(Icons.play_arrow),
                       ),
                     ),
                   ),

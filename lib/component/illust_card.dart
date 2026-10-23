@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/null_hero.dart';
@@ -35,6 +34,11 @@ import 'package:pixez/page/picture/picture_list_page.dart';
 import 'package:pixez/page/picture/tag_for_illust_page.dart';
 import 'package:pixez/page/series/illust_series_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class IllustCard extends StatefulWidget {
   final IllustStore store;
@@ -104,7 +108,7 @@ class _IllustCardState extends State<IllustCard> {
   _onLongPressSave() async {
     HapticUtil.heavy();
     if (userSetting.longPressSaveConfirm) {
-      final result = await showDialog(
+      final result = await showWcDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
@@ -144,7 +148,7 @@ class _IllustCardState extends State<IllustCard> {
 
   Future _buildTap(BuildContext context) {
     return Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
+      WetPaperPageRoute(
         builder: (_) {
           return PictureListPage(
             iStores: iStores!,
@@ -210,6 +214,14 @@ class _IllustCardState extends State<IllustCard> {
     var radio = (tooLong)
         ? 1.0
         : store.illusts!.width.toDouble() / store.illusts!.height.toDouble();
+    final tokens = WatercolorTokens.of(context);
+    if (tokens != null) {
+      return WcEntrance(
+        token: store,
+        index: iStores?.take(8).toList().indexOf(store) ?? -1,
+        child: _buildWatercolorCard(context, tokens, tooLong, radio),
+      );
+    }
     return Card(
       margin: EdgeInsets.all(8.0),
       clipBehavior: Clip.antiAlias,
@@ -279,6 +291,89 @@ class _IllustCardState extends State<IllustCard> {
     );
   }
 
+  /// Card on paper: a 6px mat around the picture, which keeps its own
+  /// smaller radius.
+  Widget _buildWatercolorCard(
+    BuildContext context,
+    WatercolorTokens tokens,
+    bool tooLong,
+    double radio,
+  ) {
+    return DropletPress(
+      borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+      child: Container(
+        margin: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: tokens.card,
+          borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+          border: Border.all(color: tokens.line),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+          clipBehavior: Clip.antiAlias,
+          child: _buildAnimationWraper(
+            context,
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(
+                      WatercolorTokens.radiusSmall,
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: radio,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: _buildPic(tag, tooLong)),
+                          Positioned(
+                            top: 5.0,
+                            right: 5.0,
+                            child: Row(
+                              children: [
+                                if (userSetting.feedAIBadge &&
+                                    store.illusts!.illustAIType == 2)
+                                  _buildAIBadge(),
+                                _buildVisibility(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildBottom(context),
+                  if (store.illusts?.series != null)
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                IllustSeriesPage(id: store.illusts!.series!.id),
+                          ),
+                        );
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 4, bottom: 2),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${store.illusts?.series?.title ?? ''}',
+                          style: TextStyle(fontSize: 11, color: tokens.sub),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAIBadge() {
     return Container(
       decoration: BoxDecoration(
@@ -309,7 +404,7 @@ class _IllustCardState extends State<IllustCard> {
       final firstLongPress = await Prefer.getBool("first_long_press") ?? true;
       if (firstLongPress) {
         await Prefer.setBool("first_long_press", false);
-        await showDialog(
+        await showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -334,7 +429,7 @@ class _IllustCardState extends State<IllustCard> {
   Future<void> _buildInkTap(BuildContext context, String heroTag) async {
     HapticUtil.selectionClick();
     await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
+      WetPaperPageRoute(
         builder: (_) {
           if (iStores != null) {
             return PictureListPage(
@@ -355,15 +450,16 @@ class _IllustCardState extends State<IllustCard> {
   }
 
   Widget _buildBottom(BuildContext context) {
+    final tokens = WatercolorTokens.of(context);
     return Container(
       child: Stack(
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.only(
-              left: 8.0,
+            padding: EdgeInsets.only(
+              left: tokens == null ? 8.0 : 4.0,
               right: 36.0,
-              top: 4,
-              bottom: 4,
+              top: tokens == null ? 4 : 8,
+              bottom: tokens == null ? 4 : 2,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,14 +468,23 @@ class _IllustCardState extends State<IllustCard> {
                   store.illusts!.title,
                   maxLines: 1,
                   overflow: TextOverflow.clip,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: tokens == null
+                      ? Theme.of(context).textTheme.bodyMedium
+                      : TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: tokens.ink,
+                        ),
                   strutStyle: StrutStyle(forceStrutHeight: true, leading: 0),
                 ),
+                if (tokens != null) const SizedBox(height: 2),
                 Text(
                   store.illusts!.user.name,
                   maxLines: 1,
                   overflow: TextOverflow.clip,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: tokens == null
+                      ? Theme.of(context).textTheme.bodySmall
+                      : TextStyle(fontSize: 11, color: tokens.accent),
                   strutStyle: StrutStyle(forceStrutHeight: true, leading: 0),
                 ),
               ],
@@ -419,7 +524,7 @@ class _IllustCardState extends State<IllustCard> {
                 if (success && userSetting.followAfterStar) {
                   bool followSuccess = await store.followAfterStar();
                   if (followSuccess) {
-                    BotToast.showText(
+                    wcToast(
                       text:
                           "${store.illusts!.user.name} ${I18n.of(context).followed}",
                     );
@@ -429,6 +534,7 @@ class _IllustCardState extends State<IllustCard> {
               onLongPress: () async {
                 HapticUtil.heavy();
                 final result = await showModalBottomSheet(
+                  sheetAnimationStyle: WcMotion.sheet(context),
                   context: context,
                   clipBehavior: Clip.hardEdge,
                   shape: RoundedRectangleBorder(

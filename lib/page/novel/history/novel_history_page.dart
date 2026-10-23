@@ -19,6 +19,8 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class NovelHistory extends StatefulWidget {
   @override
@@ -34,21 +36,21 @@ class _NovelHistoryState extends State<NovelHistory> {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (_) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(I18n.of(context).history),
-        ),
-        floatingActionButton: FloatingActionButton(
-          child: Icon(Icons.delete_forever),
-          onPressed: () async {
-            HapticUtil.selectionClick();
-            final result = await showDialog(
+    return Observer(
+      builder: (_) {
+        return Scaffold(
+          appBar: AppBar(title: Text(I18n.of(context).history)),
+          floatingActionButton: FloatingActionButton(
+            child: WcIcon(Icons.delete_forever),
+            onPressed: () async {
+              HapticUtil.selectionClick();
+              final result = await showWcDialog(
                 context: context,
                 builder: (context) {
                   return AlertDialog(
                     title: Text(
-                        "${I18n.of(context).delete} ${I18n.of(context).all}?"),
+                      "${I18n.of(context).delete} ${I18n.of(context).all}?",
+                    ),
                     actions: <Widget>[
                       TextButton(
                         child: Text(I18n.of(context).cancel),
@@ -64,35 +66,41 @@ class _NovelHistoryState extends State<NovelHistory> {
                       ),
                     ],
                   );
-                });
-            if (result == "OK") {
-              novelHistoryStore.deleteAll();
-            }
-          },
-        ),
-        body: novelHistoryStore.data.isNotEmpty
-            ? ListView.builder(
-                itemBuilder: (context, index) {
-                  final novel = novelHistoryStore.data[index];
-                  return ListTile(
-                    title: Text(novel.title),
-                    subtitle: Text(novel.userName),
-                    onTap: () {
-                      HapticUtil.selectionClick();
-                      Leader.push(context, NovelViewerPage(id: novel.novelId));
-                    },
-                    trailing: IconButton(
-                        icon: Icon(Icons.delete),
+                },
+              );
+              if (result == "OK") {
+                novelHistoryStore.deleteAll();
+              }
+            },
+          ),
+          body: novelHistoryStore.data.isNotEmpty
+              ? ListView.builder(
+                  itemBuilder: (context, index) {
+                    final novel = novelHistoryStore.data[index];
+                    return ListTile(
+                      title: Text(novel.title),
+                      subtitle: Text(novel.userName),
+                      onTap: () {
+                        HapticUtil.selectionClick();
+                        Leader.push(
+                          context,
+                          NovelViewerPage(id: novel.novelId),
+                        );
+                      },
+                      trailing: IconButton(
+                        icon: WcIcon(Icons.delete),
                         onPressed: () {
                           HapticUtil.selectionClick();
                           novelHistoryStore.delete(novel.novelId);
-                        }),
-                  );
-                },
-                itemCount: novelHistoryStore.data.length,
-              )
-            : Container(),
-      );
-    });
+                        },
+                      ),
+                    );
+                  },
+                  itemCount: novelHistoryStore.data.length,
+                )
+              : Container(),
+        );
+      },
+    );
   }
 }

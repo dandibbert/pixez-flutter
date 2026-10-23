@@ -16,13 +16,15 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/page/directory/directory_store.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class DirectoryPage extends StatefulWidget {
   final String? initPath;
@@ -48,10 +50,9 @@ class _DirectoryPageState extends State<DirectoryPage> {
   }
 
   Future<void> _initMethod() async {
-    PermissionStatus statuses =
-        await Permission.storage.request();
+    PermissionStatus statuses = await Permission.storage.request();
     if (statuses == PermissionStatus.denied) {
-      BotToast.showText(text: I18n.of(context).permission_denied);
+      wcToast(text: I18n.of(context).permission_denied);
       Navigator.of(context).pop();
     }
     directoryStore.init(widget.initPath);
@@ -67,117 +68,124 @@ class _DirectoryPageState extends State<DirectoryPage> {
           Navigator.of(context).pop(directoryStore.path);
         },
         label: Text(I18n.of(context).ok),
-        icon: Icon(Icons.check),
+        icon: WcIcon(Icons.check),
       ),
       appBar: AppBar(
         title: Text(I18n.of(context).choose_directory),
         actions: <Widget>[
           IconButton(
-              icon: Icon(Icons.undo),
-              onPressed: () {
-                directoryStore.undo();
-              }),
+            icon: WcIcon(Icons.undo),
+            onPressed: () {
+              directoryStore.undo();
+            },
+          ),
           IconButton(
-              icon: Icon(Icons.create_new_folder_outlined),
-              onPressed: () async {
-                final result = await showDialog(
-                    context: context,
-                    builder: (context) {
-                      final controller = TextEditingController();
-                      return AlertDialog(
-                        title: Text(I18n.of(context).create_folder),
-                        content: TextFormField(
-                          controller: controller,
-                          decoration: InputDecoration(),
-                        ),
-                        actions: [
-                          TextButton(
-                            child: Text(I18n.of(context).cancel),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                          TextButton(
-                            child: Text(I18n.of(context).ok),
-                            onPressed: () {
-                              Navigator.of(context).pop(controller.text);
-                            },
-                          ),
-                        ],
-                      );
-                    });
-                if (result != null) {
-                  String folderName = result
-                      .replaceAll("/", "")
-                      .replaceAll("\\", "")
-                      .replaceAll(":", "")
-                      .replaceAll("*", "")
-                      .replaceAll("?", "")
-                      .replaceAll(">", "")
-                      .replaceAll("|", "")
-                      .replaceAll(".", "")
-                      .replaceAll("<", "");
-                  if (folderName.isEmpty) {
-                    return;
-                  }
-                  Directory directory =
-                      Directory('${directoryStore.path}/$result');
-                  if (!directory.existsSync()) {
-                    directory.createSync(recursive: true);
-                    directoryStore.enterFolder(directory);
-                  }
+            icon: WcIcon(Icons.create_new_folder_outlined),
+            onPressed: () async {
+              final result = await showWcDialog(
+                context: context,
+                builder: (context) {
+                  final controller = TextEditingController();
+                  return AlertDialog(
+                    title: Text(I18n.of(context).create_folder),
+                    content: TextFormField(
+                      controller: controller,
+                      decoration: InputDecoration(),
+                    ),
+                    actions: [
+                      TextButton(
+                        child: Text(I18n.of(context).cancel),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      TextButton(
+                        child: Text(I18n.of(context).ok),
+                        onPressed: () {
+                          Navigator.of(context).pop(controller.text);
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (result != null) {
+                String folderName = result
+                    .replaceAll("/", "")
+                    .replaceAll("\\", "")
+                    .replaceAll(":", "")
+                    .replaceAll("*", "")
+                    .replaceAll("?", "")
+                    .replaceAll(">", "")
+                    .replaceAll("|", "")
+                    .replaceAll(".", "")
+                    .replaceAll("<", "");
+                if (folderName.isEmpty) {
+                  return;
                 }
-              })
+                Directory directory = Directory(
+                  '${directoryStore.path}/$result',
+                );
+                if (!directory.existsSync()) {
+                  directory.createSync(recursive: true);
+                  directoryStore.enterFolder(directory);
+                }
+              }
+            },
+          ),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.max,
         children: <Widget>[
-          Observer(builder: (_) {
-            return ListTile(
-              title: Text(directoryStore.path ?? ""),
-            );
-          }),
+          Observer(
+            builder: (_) {
+              return ListTile(title: Text(directoryStore.path ?? ""));
+            },
+          ),
           ListTile(
-            leading: Icon(Icons.arrow_upward),
+            leading: WcIcon(Icons.arrow_upward),
             title: Text("..."),
             onTap: () {
               directoryStore.backFolder();
             },
           ),
           Expanded(
-            child: Observer(builder: (_) {
-              final list = directoryStore.list;
-              list.sort((a, b) => a.path.compareTo(b.path));
-              if (list.isNotEmpty)
-                return Container(
+            child: Observer(
+              builder: (_) {
+                final list = directoryStore.list;
+                list.sort((a, b) => a.path.compareTo(b.path));
+                if (list.isNotEmpty)
+                  return Container(
                     child: ListView.builder(
-                        itemCount: list.length,
-                        itemBuilder: (context, index) {
-                          FileSystemEntity fileSystemEntity = list[index];
-                          return Visibility(
-                            visible: !(fileSystemEntity.path
-                                    .split("/")
-                                    .last
-                                    .startsWith(".")),
-                            child: ListTile(
-                              leading: fileSystemEntity is Directory
-                                  ? Icon(Icons.folder)
-                                  : Icon(Icons.attach_file),
-                              title:
-                                  Text(fileSystemEntity.path.split("/").last),
-                              onTap: () {
-                                if (fileSystemEntity is Directory) {
-                                  directoryStore.enterFolder(fileSystemEntity);
-                                }
-                              },
-                            ),
-                          );
-                        }));
-              else
-                return Container();
-            }),
+                      itemCount: list.length,
+                      itemBuilder: (context, index) {
+                        FileSystemEntity fileSystemEntity = list[index];
+                        return Visibility(
+                          visible: !(fileSystemEntity.path
+                              .split("/")
+                              .last
+                              .startsWith(".")),
+                          child: ListTile(
+                            leading: fileSystemEntity is Directory
+                                ? WcIcon(Icons.folder)
+                                : WcIcon(Icons.attach_file),
+                            title: Text(fileSystemEntity.path.split("/").last),
+                            onTap: () {
+                              if (fileSystemEntity is Directory) {
+                                directoryStore.enterFolder(fileSystemEntity);
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                else
+                  return Container();
+              },
+            ),
           ),
         ],
       ),

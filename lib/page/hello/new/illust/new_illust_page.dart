@@ -23,6 +23,8 @@ import 'package:pixez/lighting/lighting_page.dart';
 import 'package:pixez/lighting/lighting_store.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/api_client.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NewIllustPage extends StatefulWidget {
   final String restrict;
@@ -42,8 +44,9 @@ class _NewIllustPageState extends State<NewIllustPage> {
   void initState() {
     _scrollController = ScrollController();
     futureGet = ApiForceSource(
-        futureGet: (e) => apiClient.getFollowIllusts(widget.restrict, force: e),
-        glanceKey: "follow_illust");
+      futureGet: (e) => apiClient.getFollowIllusts(widget.restrict, force: e),
+      glanceKey: "follow_illust",
+    );
     super.initState();
     subscription = topStore.topStream.listen((event) {
       if (event == "301") {
@@ -66,9 +69,7 @@ class _NewIllustPageState extends State<NewIllustPage> {
         LightingList(
           source: futureGet,
           scrollController: _scrollController,
-          header: Container(
-            height: 45.0,
-          ),
+          header: Container(height: 45.0),
           portal: "new",
         ),
         Align(
@@ -79,95 +80,103 @@ class _NewIllustPageState extends State<NewIllustPage> {
                 if (index == 0)
                   setState(() {
                     futureGet = ApiForceSource(
-                        futureGet: (e) =>
-                            apiClient.getFollowIllusts('all', force: e),
-                        glanceKey: "follow_illust");
+                      futureGet: (e) =>
+                          apiClient.getFollowIllusts('all', force: e),
+                      glanceKey: "follow_illust",
+                    );
                   });
                 if (index == 1)
                   setState(() {
                     futureGet = ApiForceSource(
-                        futureGet: (e) =>
-                            apiClient.getFollowIllusts('public', force: e),
-                        glanceKey: "follow_illust");
+                      futureGet: (e) =>
+                          apiClient.getFollowIllusts('public', force: e),
+                      glanceKey: "follow_illust",
+                    );
                   });
                 if (index == 2)
                   setState(() {
                     futureGet = ApiForceSource(
-                        futureGet: (e) =>
-                            apiClient.getFollowIllusts('private', force: e),
-                        glanceKey: "follow_illust");
+                      futureGet: (e) =>
+                          apiClient.getFollowIllusts('private', force: e),
+                      glanceKey: "follow_illust",
+                    );
                   });
               },
               children: [
                 I18n.of(context).all,
                 I18n.of(context).public,
-                I18n.of(context).private
+                I18n.of(context).private,
               ],
             ),
           ),
-        )
+        ),
       ],
     );
   }
 
   Container buildContainer(BuildContext context) {
     return Container(
-        child: Align(
-      alignment: Alignment.centerRight,
-      child: IconButton(
-          icon: Icon(Icons.list),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: IconButton(
+          icon: WcIcon(Icons.list),
           onPressed: () {
             showModalBottomSheet(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
+              sheetAnimationStyle: WcMotion.sheet(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              context: context,
+              builder: (context) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    ListTile(
+                      title: Text(I18n.of(context).all),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          futureGet = ApiForceSource(
+                            futureGet: (e) =>
+                                apiClient.getFollowIllusts('all', force: e),
+                            glanceKey: "follow_illust",
+                          );
+                        });
+                      },
+                    ),
+                    ListTile(
+                      title: Text(I18n.of(context).public),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          futureGet = ApiForceSource(
+                            futureGet: (e) =>
+                                apiClient.getFollowIllusts('public', force: e),
+                            glanceKey: "follow_illust",
+                          );
+                        });
+                      },
+                    ),
+                    ListTile(
+                      title: Text(I18n.of(context).private),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          futureGet = ApiForceSource(
+                            futureGet: (e) =>
+                                apiClient.getFollowIllusts('private', force: e),
+                            glanceKey: "follow_illust",
+                          );
+                        });
+                      },
+                    ),
+                  ],
                 ),
-                context: context,
-                builder: (context) => SafeArea(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          ListTile(
-                            title: Text(I18n.of(context).all),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              setState(() {
-                                futureGet = ApiForceSource(
-                                    futureGet: (e) => apiClient
-                                        .getFollowIllusts('all', force: e),
-                                    glanceKey: "follow_illust");
-                              });
-                            },
-                          ),
-                          ListTile(
-                            title: Text(I18n.of(context).public),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              setState(() {
-                                futureGet = ApiForceSource(
-                                    futureGet: (e) => apiClient
-                                        .getFollowIllusts('public', force: e),
-                                    glanceKey: "follow_illust");
-                              });
-                            },
-                          ),
-                          ListTile(
-                            title: Text(I18n.of(context).private),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              setState(() {
-                                futureGet = ApiForceSource(
-                                    futureGet: (e) => apiClient
-                                        .getFollowIllusts('private', force: e),
-                                    glanceKey: "follow_illust");
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ));
-          }),
-    ));
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }

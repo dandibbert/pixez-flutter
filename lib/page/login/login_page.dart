@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/custom_tab_plugin.dart';
 import 'package:pixez/er/leader.dart';
@@ -29,6 +28,9 @@ import 'package:pixez/page/login/token_page.dart';
 import 'package:pixez/page/webview/webview_page.dart';
 import 'package:pixez/weiss_plugin.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -59,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: <Widget>[
             IconButton(
-              icon: Icon(Icons.settings),
+              icon: WcIcon(Icons.settings),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => SettingQualityPage()),
@@ -67,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
               },
             ),
             IconButton(
-              icon: Icon(Icons.message),
+              icon: WcIcon(Icons.message),
               onPressed: () {
                 Navigator.of(
                   context,
@@ -132,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(height: 4),
                         OutlinedButton(
                           onPressed: () async {
-                            await showDialog(
+                            await showWcDialog(
                               context: context,
                               builder: (context) => TokenPage(),
                             );
@@ -176,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         CustomTabPlugin.launch(url);
       } catch (e) {
-        BotToast.showText(text: e.toString());
+        wcToast(text: e.toString());
       }
       return;
     }
@@ -189,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         CustomTabPlugin.launch(url);
       } catch (e) {
-        BotToast.showText(text: e.toString());
+        wcToast(text: e.toString());
       }
     }
   }

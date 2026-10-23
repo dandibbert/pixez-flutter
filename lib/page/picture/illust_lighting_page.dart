@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
@@ -55,6 +54,11 @@ import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/page/zoom/photo_zoom_page.dart';
 import 'package:pixez/supportor_plugin.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class IllustLightingPage extends StatefulWidget {
   final int id;
@@ -214,6 +218,22 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
     super.dispose();
   }
 
+  /// In the watercolor style the buttons over the picture sit on small
+  /// paper discs so they stay legible on any artwork.
+  Widget _paperDisc(Widget button) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens == null) return button;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: tokens.card.withValues(alpha: 0.85),
+        boxShadow: tokens.cardShadow,
+      ),
+      child: button,
+    );
+  }
+
   Widget _buildAppbar() {
     return Column(
       children: [
@@ -224,25 +244,29 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CommonBackArea(),
+              _paperDisc(CommonBackArea()),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DetailJumpButton(
-                    anchorKey: _detailKey,
-                    scrollController: _scrollController,
+                  _paperDisc(
+                    DetailJumpButton(
+                      anchorKey: _detailKey,
+                      scrollController: _scrollController,
+                    ),
                   ),
                   Builder(
                     builder: (buttonContext) {
-                      return IconButton(
-                        icon: Icon(Icons.more_vert),
-                        onPressed: () {
-                          HapticUtil.selectionClick();
-                          buildShowModalBottomSheet(
-                            buttonContext,
-                            _illustStore.illusts!,
-                          );
-                        },
+                      return _paperDisc(
+                        IconButton(
+                          icon: WcIcon(Icons.more_vert),
+                          onPressed: () {
+                            HapticUtil.selectionClick();
+                            buildShowModalBottomSheet(
+                              buttonContext,
+                              _illustStore.illusts!,
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -318,7 +342,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                             .followAfterStar();
                         if (followSuccess) {
                           userStore?.isFollow = true;
-                          BotToast.showText(
+                          wcToast(
                             text:
                                 "${_illustStore.illusts!.user.name} ${I18n.of(context).followed}",
                           );
@@ -461,9 +485,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               child: Container(height: MediaQuery.of(context).padding.top),
             ),
           ..._buildPhotoList(data),
-          SliverToBoxAdapter(
-            child: SizedBox.shrink(key: _detailKey),
-          ),
+          SliverToBoxAdapter(child: SizedBox.shrink(key: _detailKey)),
           SliverToBoxAdapter(
             child: IllustDetailContent(
               illusts: data,
@@ -500,7 +522,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                 onLongPress: () async {
                   HapticUtil.heavy();
                   if (userSetting.longPressSaveConfirm) {
-                    final result = await showDialog(
+                    final result = await showWcDialog(
                       context: context,
                       builder: (context) {
                         return AlertDialog(
@@ -770,7 +792,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
   }
 
   Future _longPressTag(BuildContext context, Tags f) async {
-    switch (await showDialog(
+    switch (await showWcDialog(
       context: context,
       builder: (BuildContext context) {
         return SimpleDialog(
@@ -1009,6 +1031,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       return;
     }
     showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -1021,7 +1044,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
               illust.metaPages.isNotEmpty
                   ? ListTile(
                       title: Text(I18n.of(context).muti_choice_save),
-                      leading: Icon(Icons.save),
+                      leading: WcIcon(Icons.save),
                       onTap: () async {
                         Navigator.of(context).pop();
                         _showMutiChoiceDialog(illust, context);
@@ -1029,7 +1052,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                     )
                   : Container(),
               ListTile(
-                leading: Icon(Icons.save_alt),
+                leading: WcIcon(Icons.save_alt),
                 onTap: () async {
                   Navigator.of(context).pop();
                   saveStore.saveImage(illust, index: index);
@@ -1042,7 +1065,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                 title: Text(I18n.of(context).save),
               ),
               ListTile(
-                leading: Icon(Icons.cancel),
+                leading: WcIcon(Icons.cancel),
                 onTap: () => Navigator.of(context).pop(),
                 title: Text(I18n.of(context).cancel),
               ),
@@ -1061,6 +1084,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
       indexs.add(false);
     }
     final result = await showModalBottomSheet(
+      sheetAnimationStyle: WcMotion.sheet(context),
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
@@ -1119,7 +1143,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                         visible: indexs[index],
                                         child: Padding(
                                           padding: const EdgeInsets.all(4.0),
-                                          child: Icon(
+                                          child: WcIcon(
                                             Icons.check_circle,
                                             color: Colors.green,
                                           ),
@@ -1154,7 +1178,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                       },
                     ),
                     ListTile(
-                      leading: Icon(Icons.save),
+                      leading: WcIcon(Icons.save),
                       title: Text(I18n.of(context).save),
                       onTap: () async {
                         Navigator.of(context).pop("OK");
@@ -1231,7 +1255,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                             title: Text(
                               I18n.of(dialogContext).muti_choice_save,
                             ),
-                            leading: Icon(Icons.save),
+                            leading: WcIcon(Icons.save),
                             onTap: () async {
                               Navigator.of(dialogContext).pop();
                               _showMutiChoiceDialog(illusts, context);
@@ -1239,13 +1263,13 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                           ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).copymessage),
-                          leading: Icon(Icons.local_library),
+                          leading: WcIcon(Icons.local_library),
                           onTap: () async {
                             final str = userSetting.illustToShareInfoText(
                               illusts,
                             );
                             await Clipboard.setData(ClipboardData(text: str));
-                            BotToast.showText(
+                            wcToast(
                               text: I18n.of(dialogContext).copied_to_clipboard,
                             );
                             Navigator.of(dialogContext).pop();
@@ -1253,7 +1277,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).share),
-                          leading: Icon(Icons.share),
+                          leading: WcIcon(Icons.share),
                           onTap: () {
                             Navigator.of(dialogContext).pop();
                             SharePlus.instance.share(
@@ -1266,7 +1290,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                           },
                         ),
                         ListTile(
-                          leading: Icon(Icons.link),
+                          leading: WcIcon(Icons.link),
                           title: Text(I18n.of(dialogContext).link),
                           onTap: () async {
                             await Clipboard.setData(
@@ -1275,7 +1299,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                     "https://www.pixiv.net/artworks/${widget.id}",
                               ),
                             );
-                            BotToast.showText(
+                            wcToast(
                               text: I18n.of(dialogContext).copied_to_clipboard,
                             );
                             Navigator.of(dialogContext).pop();
@@ -1283,7 +1307,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).ban),
-                          leading: Icon(Icons.brightness_auto),
+                          leading: WcIcon(Icons.brightness_auto),
                           onTap: () {
                             muteStore.insertBanIllusts(
                               BanIllustIdPersist(
@@ -1296,7 +1320,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                         ),
                         ListTile(
                           title: Text(I18n.of(dialogContext).report),
-                          leading: Icon(Icons.report),
+                          leading: WcIcon(Icons.report),
                           onTap: () async {
                             if (Platform.isAndroid) {
                               Navigator.of(dialogContext).pop();
@@ -1310,7 +1334,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                 ),
                               );
                             } else {
-                              await showDialog(
+                              await showWcDialog(
                                 context: dialogContext,
                                 builder: (context) {
                                   return AlertDialog(

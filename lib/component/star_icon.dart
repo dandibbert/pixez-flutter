@@ -15,14 +15,14 @@
  */
 
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
 
 class StarIcon extends StatefulWidget {
   final int state;
 
-  const StarIcon({
-    Key? key,
-    required this.state,
-  }) : super(key: key);
+  const StarIcon({Key? key, required this.state}) : super(key: key);
 
   @override
   _StarIconState createState() => _StarIconState();
@@ -58,20 +58,48 @@ class _StarIconState extends State<StarIcon> {
   }
 
   Widget _buildData(int state) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens != null) return _buildWatercolor(tokens, state);
     switch (state) {
       case 0:
-        return Icon(
+        return WcIcon(
           Icons.favorite_border,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         );
       case 1:
-        return Icon(Icons.favorite,
-            color: Theme.of(context).colorScheme.onSurfaceVariant);
-      default:
-        return Icon(
+        return WcIcon(
           Icons.favorite,
-          color: Colors.red,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         );
+      default:
+        return WcIcon(Icons.favorite, color: Colors.red);
     }
+  }
+
+  /// Line heart in ink; a liked heart is filled and sits on a pigment bloom.
+  Widget _buildWatercolor(WatercolorTokens tokens, int state) {
+    final liked = state == 2;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        PigmentBackdrop(
+          color: tokens.pigment(0),
+          visible: liked,
+          opacity: 0.6,
+          shape: PigmentShape.dot,
+          bleed: const EdgeInsets.all(7),
+          child: const SizedBox(width: 20, height: 20),
+        ),
+        WcIcon(
+          state == 0 ? Icons.favorite_border : Icons.favorite,
+          size: 20,
+          color: switch (state) {
+            0 => tokens.ink,
+            1 => tokens.sub,
+            _ => tokens.liked,
+          },
+        ),
+      ],
+    );
   }
 }

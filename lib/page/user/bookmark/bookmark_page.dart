@@ -32,6 +32,7 @@ import 'package:pixez/network/api_client.dart';
 import 'package:pixez/page/user/bookmark/tag/user_bookmark_tag_page.dart';
 import 'package:pixez/page/user/works/works_page.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class BookmarkPage extends StatefulWidget {
   final int id;
@@ -164,7 +165,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
               child: Chip(
                 label: Row(
                   children: [
-                    Icon(Icons.tag, size: 18),
+                    WcIcon(Icons.tag, size: 18),
                     if (currentTag != null)
                       Padding(
                         padding: const EdgeInsets.only(left: 8.0),
@@ -459,7 +460,7 @@ class _BookMarkNestedPageState extends State<BookMarkNestedPage> {
               child: Chip(
                 label: Row(
                   children: [
-                    Icon(Icons.sort),
+                    WcIcon(Icons.sort),
                     Text(currentTag ?? I18n.of(context).all),
                   ],
                 ),

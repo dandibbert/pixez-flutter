@@ -28,6 +28,11 @@ import 'package:pixez/page/novel/component/novel_lighting_store.dart';
 import 'package:pixez/page/novel/search/novel_search_pager.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/exts.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 class NovelLightingList extends StatefulWidget {
   final FutureGet? futureGet;
@@ -75,7 +80,9 @@ class _NovelLightingListState extends State<NovelLightingList> {
     _isNested = widget.isNested ?? false;
     _scrollController = ScrollController();
     _easyRefreshController = EasyRefreshController(
-        controlFinishLoad: true, controlFinishRefresh: true);
+      controlFinishLoad: true,
+      controlFinishRefresh: true,
+    );
     _store = NovelLightingStore(
       _legacySource,
       _easyRefreshController,
@@ -123,22 +130,25 @@ class _NovelLightingListState extends State<NovelLightingList> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child:
-                  Text(':(', style: Theme.of(context).textTheme.headlineMedium),
+              child: Text(
+                ':(',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
             ),
             TextButton(
-                onPressed: () {
-                  if (_isPaged) {
-                    _store.fetchPage(_store.currentPage, force: true);
-                  } else {
-                    _store.fetch();
-                  }
-                },
-                child: Text(I18n.of(context).retry)),
+              onPressed: () {
+                if (_isPaged) {
+                  _store.fetchPage(_store.currentPage, force: true);
+                } else {
+                  _store.fetch();
+                }
+              },
+              child: Text(I18n.of(context).retry),
+            ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text('${_store.errorMessage}'),
-            )
+            ),
           ],
         ),
       );
@@ -155,15 +165,17 @@ class _NovelLightingListState extends State<NovelLightingList> {
       padding: EdgeInsets.all(0),
       itemBuilder: (context, index) {
         Novel novel = novels[index].novel!;
-        return Padding(
+        final tokens = WatercolorTokens.of(context);
+        final item = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: InkWell(
             onTap: () {
-              Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
-                  builder: (BuildContext context) => NovelViewerPage(
-                        id: novel.id,
-                        novelStore: novels[index],
-                      )));
+              Navigator.of(context, rootNavigator: true).push(
+                WetPaperPageRoute(
+                  builder: (BuildContext context) =>
+                      NovelViewerPage(id: novel.id, novelStore: novels[index]),
+                ),
+              );
             },
             child: Card(
               child: Row(
@@ -176,29 +188,45 @@ class _NovelLightingListState extends State<NovelLightingList> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: PixivImage(
-                            novel.imageUrls.medium,
-                            width: 80,
-                          ),
+                          padding: tokens == null
+                              ? const EdgeInsets.symmetric(vertical: 8.0)
+                              : const EdgeInsets.fromLTRB(10, 10, 2, 10),
+                          child: tokens == null
+                              ? PixivImage(novel.imageUrls.medium, width: 80)
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: PixivImage(
+                                    novel.imageUrls.medium,
+                                    width: 76,
+                                  ),
+                                ),
                         ),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding:
-                                    const EdgeInsets.only(top: 8.0, left: 8.0),
+                                padding: const EdgeInsets.only(
+                                  top: 8.0,
+                                  left: 8.0,
+                                ),
                                 child: Text(
                                   novel.title,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodyLarge,
+                                  style: tokens == null
+                                      ? Theme.of(context).textTheme.bodyLarge
+                                      : TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: tokens.ink,
+                                        ),
                                   maxLines: 3,
                                 ),
                               ),
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -209,31 +237,31 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                           .textTheme
                                           .bodySmall!
                                           .copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .secondary),
+                                            color:
+                                                tokens?.accent ??
+                                                Theme.of(
+                                                  context,
+                                                ).colorScheme.secondary,
+                                          ),
                                     ),
                                     Padding(
                                       padding: EdgeInsets.only(left: 8),
                                       child: Row(
                                         children: [
-                                          Icon(
+                                          WcIcon(
                                             Icons.article,
                                             size: 12,
-                                            color: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall!
-                                                .color,
+                                            color: Theme.of(
+                                              context,
+                                            ).textTheme.labelSmall!.color,
                                           ),
-                                          SizedBox(
-                                            width: 2,
-                                          ),
+                                          SizedBox(width: 2),
                                           Text(
                                             '${novel.textLength}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall,
-                                          )
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.labelSmall,
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -241,8 +269,9 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                 ),
                               ),
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
                                 child: Wrap(
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   spacing: 2,
@@ -251,20 +280,25 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                     for (var f in novel.tags)
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 1),
-                                        child: Text(
-                                          f.name,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
+                                          horizontal: 1,
                                         ),
-                                      )
+                                        child: Text(
+                                          tokens == null
+                                              ? f.name
+                                              : '#${f.name}',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                                child: NovelIntroPreview(caption: novel.caption),
+                                child: NovelIntroPreview(
+                                  caption: novel.caption,
+                                ),
                               ),
                             ],
                           ),
@@ -278,12 +312,14 @@ class _NovelLightingListState extends State<NovelLightingList> {
                       mainAxisSize: MainAxisSize.max,
                       children: [
                         NovelBookmarkButton(novel: novel),
-                        Text('${novel.totalBookmarks}',
-                            style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          '${novel.totalBookmarks}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                         IconButton(
                           key: Key('novelIntroButton_${novel.id}'),
                           tooltip: I18n.of(context).novel_details,
-                          icon: const Icon(Icons.info_outline),
+                          icon: const WcIcon(Icons.info_outline),
                           onPressed: () {
                             showNovelIntroDialog(
                               context: context,
@@ -294,12 +330,14 @@ class _NovelLightingListState extends State<NovelLightingList> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
           ),
         );
+        if (tokens == null) return item;
+        return WcEntrance(token: novels[index], index: index, child: item);
       },
       itemCount: novels.length,
     );
@@ -313,7 +351,10 @@ class _NovelLightingListState extends State<NovelLightingList> {
           onLoad: _isPaged ? null : () => _store.next(),
           onRefresh: () async {
             if (_isPaged) {
-              final ok = await _store.fetchPage(_store.currentPage, force: true);
+              final ok = await _store.fetchPage(
+                _store.currentPage,
+                force: true,
+              );
               if (ok) _notifyPage();
               return;
             }
@@ -347,7 +388,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
     final controller = TextEditingController(
       text: _store.currentPage.toString(),
     );
-    final page = await showDialog<int>(
+    final page = await showWcDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(I18n.of(context).jump_to_page),

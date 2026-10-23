@@ -11,6 +11,9 @@ import 'package:pixez/models/novel_watch_list_model.dart';
 import 'package:pixez/page/novel/new/novel_watch_list_notifier.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class NovelWatchList extends StatefulHookConsumerWidget {
   const NovelWatchList({super.key});
@@ -66,6 +69,8 @@ class NovelSeriesItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens != null) return _buildWatercolor(context, tokens);
     return GestureDetector(
       onTap: () {
         Leader.push(context, NovelSeriesPage(data.id));
@@ -168,6 +173,127 @@ class NovelSeriesItem extends StatelessWidget {
           ),
           Divider(),
         ],
+      ),
+    );
+  }
+
+  /// A paper card per series, with a pigment pill to open the latest episode.
+  Widget _buildWatercolor(BuildContext context, WatercolorTokens tokens) {
+    final pigment = tokens.pigment(data.id);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: GestureDetector(
+        onTap: () {
+          Leader.push(context, NovelSeriesPage(data.id));
+        },
+        behavior: HitTestBehavior.opaque,
+        child: WcPanel(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  WatercolorTokens.radiusSmall,
+                ),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 120),
+                  child: Stack(
+                    children: [
+                      PixivImage(
+                        data.url ?? '',
+                        width: 96,
+                        fit: BoxFit.fitWidth,
+                      ),
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: tokens.ink.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${data.publishedContentCount}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: tokens.card,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data.user?.name ?? '',
+                      style: TextStyle(fontSize: 13, color: tokens.accent),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data.lastPublishedContentDatetime.toShortTime(),
+                      style: TextStyle(fontSize: 12, color: tokens.sub),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Leader.push(
+                          context,
+                          NovelViewerPage(id: data.latestContentId),
+                        );
+                      },
+                      child: PressScale(
+                        child: SizedBox(
+                          height: 32,
+                          child: PigmentBackdrop(
+                            color: pigment,
+                            bleed: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                              vertical: 2,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              child: Text(
+                                I18n.of(context).view_latest,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: tokens.onPigment,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

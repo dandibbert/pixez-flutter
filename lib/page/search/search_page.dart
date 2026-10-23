@@ -18,6 +18,10 @@ import 'dart:async';
 import 'dart:math';
 import 'package:material_ui/material_ui.dart' hide SearchBar;
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:pixez/watercolor/watercolor_paper.dart';
+import 'package:pixez/watercolor/watercolor_tag_tile.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_widgets.dart';
 import 'package:pixez/component/pixiv_image.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
@@ -33,6 +37,8 @@ import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/page/search/trend_tags_store.dart';
 import 'package:pixez/page/webview/saucenao_webview_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -74,7 +80,8 @@ class _SearchPageState extends State<SearchPage>
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => SearchSuggestionPage(),
+        pageBuilder: (_, __, ___) =>
+            WatercolorPaper(child: SearchSuggestionPage()),
       ),
     );
   }
@@ -155,7 +162,7 @@ class _SearchPageState extends State<SearchPage>
                   ),
                   actions: <Widget>[
                     IconButton(
-                      icon: Icon(Icons.search),
+                      icon: WcIcon(Icons.search),
                       onPressed: () {
                         Navigator.of(context, rootNavigator: true).push(
                           MaterialPageRoute(
@@ -197,15 +204,17 @@ class _SearchPageState extends State<SearchPage>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          I18n.of(context).history,
-                          style: TextStyle(
-                            fontSize: 16.0,
-                            color: Theme.of(
-                              context,
-                            ).textTheme.headlineSmall!.color,
-                          ),
-                        ),
+                        WatercolorTokens.of(context) == null
+                            ? Text(
+                                I18n.of(context).history,
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall!.color,
+                                ),
+                              )
+                            : WcSectionLabel(I18n.of(context).history),
                       ],
                     ),
                   );
@@ -289,7 +298,7 @@ class _SearchPageState extends State<SearchPage>
                   return InkWell(
                     onTap: () {
                       HapticUtil.heavy();
-                      showDialog(
+                      showWcDialog(
                         context: context,
                         builder: (context) {
                           return AlertDialog(
@@ -320,7 +329,7 @@ class _SearchPageState extends State<SearchPage>
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Icon(
+                            WcIcon(
                               Icons.delete_outline,
                               size: 18.0,
                               color: Theme.of(
@@ -348,13 +357,18 @@ class _SearchPageState extends State<SearchPage>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                I18n.of(context).recommand_tag,
-                style: TextStyle(
-                  fontSize: 16.0,
-                  color: Theme.of(context).textTheme.titleLarge!.color,
-                ),
-              ),
+              child: WatercolorTokens.of(context) == null
+                  ? Text(
+                      I18n.of(context).recommand_tag,
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        color: Theme.of(context).textTheme.titleLarge!.color,
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 2),
+                      child: WcSectionLabel(I18n.of(context).recommand_tag),
+                    ),
             ),
           ),
           if (_trendTagsStore.trendTags.isNotEmpty)
@@ -384,55 +398,69 @@ class _SearchPageState extends State<SearchPage>
                         ),
                       );
                     },
-                    child: Card(
-                      clipBehavior: Clip.antiAlias,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                      ),
-                      child: Stack(
-                        children: <Widget>[
-                          PixivImage(
-                            tags[index].illust.imageUrls.squareMedium,
-                            fit: BoxFit.cover,
-                          ),
-                          Opacity(
-                            opacity: 0.4,
-                            child: Container(
-                              decoration: BoxDecoration(color: Colors.black),
-                            ),
-                          ),
-                          Align(
-                            child: Padding(
-                              padding: const EdgeInsets.all(2.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Text(
-                                    "#${tags[index].tag}",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  if (tags[index].translatedName != null &&
-                                      tags[index].translatedName!.isNotEmpty)
-                                    Text(
-                                      tags[index].translatedName!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                ],
+                    child: WatercolorTokens.of(context) != null
+                        ? WatercolorTagTile(
+                            imageUrl: tags[index].illust.imageUrls.squareMedium,
+                            tag: tags[index].tag,
+                            translatedName: tags[index].translatedName,
+                            index: index,
+                          )
+                        : Card(
+                            clipBehavior: Clip.antiAlias,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(8.0),
                               ),
                             ),
-                            alignment: Alignment.bottomCenter,
+                            child: Stack(
+                              children: <Widget>[
+                                PixivImage(
+                                  tags[index].illust.imageUrls.squareMedium,
+                                  fit: BoxFit.cover,
+                                ),
+                                Opacity(
+                                  opacity: 0.4,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        Text(
+                                          "#${tags[index].tag}",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        if (tags[index].translatedName !=
+                                                null &&
+                                            tags[index]
+                                                .translatedName!
+                                                .isNotEmpty)
+                                          Text(
+                                            tags[index].translatedName!,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  alignment: Alignment.bottomCenter,
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
                   );
                 }, childCount: _trendTagsStore.trendTags.length),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -454,7 +482,7 @@ class _SearchPageState extends State<SearchPage>
     return GestureDetector(
       onLongPress: () {
         HapticUtil.heavy();
-        showDialog(
+        showWcDialog(
           context: context,
           builder: (context) {
             return AlertDialog(

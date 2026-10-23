@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/leader.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 
 class CommonBackArea extends StatefulWidget {
   const CommonBackArea({super.key});
@@ -14,7 +15,7 @@ class _CommonBackAreaState extends State<CommonBackArea> {
   Widget build(BuildContext context) {
     return GestureDetector(
       child: IconButton(
-        icon: _isLongPress ? Icon(Icons.home) : BackButtonIcon(),
+        icon: _isLongPress ? WcIcon(Icons.home) : BackButtonIcon(),
         onPressed: () {
           Navigator.pop(context);
         },

@@ -28,6 +28,9 @@ import 'package:pixez/page/novel/component/novel_lighting_store.dart';
 import 'package:pixez/page/novel/viewer/novel_store.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 class NovelRecomPage extends StatefulWidget {
   @override
@@ -42,9 +45,13 @@ class _NovelRecomPageState extends State<NovelRecomPage>
   @override
   void initState() {
     _easyRefreshController = EasyRefreshController(
-        controlFinishLoad: true, controlFinishRefresh: true);
+      controlFinishLoad: true,
+      controlFinishRefresh: true,
+    );
     _store = NovelLightingStore(
-        () => apiClient.getNovelRecommended(), _easyRefreshController);
+      () => apiClient.getNovelRecommended(),
+      _easyRefreshController,
+    );
     super.initState();
   }
 
@@ -64,10 +71,18 @@ class _NovelRecomPageState extends State<NovelRecomPage>
             child: Padding(
               child: Text(
                 I18n.of(context).recommend,
-                style: TextStyle(
-                    color: Theme.of(context).textTheme.titleLarge!.color),
+                style: WatercolorTokens.of(context) == null
+                    ? TextStyle(
+                        color: Theme.of(context).textTheme.titleLarge!.color,
+                      )
+                    : const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
               ),
-              padding: EdgeInsets.only(left: 8.0, bottom: 10.0),
+              padding: WatercolorTokens.of(context) == null
+                  ? EdgeInsets.only(left: 8.0, bottom: 10.0)
+                  : EdgeInsets.only(left: 16.0, bottom: 10.0),
             ),
           ),
         ],
@@ -85,23 +100,25 @@ class _NovelRecomPageState extends State<NovelRecomPage>
       controller: _easyRefreshController,
       callRefreshOverOffset: 10,
       refreshOnStart: true,
-      childBuilder: (context, physics) => Observer(builder: (context) {
-        return CustomScrollView(
-          physics: physics,
-          slivers: [
-            SliverAppBar(
-              elevation: 0.0,
-              titleSpacing: 0.0,
-              automaticallyImplyLeading: false,
-              backgroundColor: Colors.transparent,
-              title: _buildFirstRow(context),
-            ),
+      childBuilder: (context, physics) => Observer(
+        builder: (context) {
+          return CustomScrollView(
+            physics: physics,
+            slivers: [
+              SliverAppBar(
+                elevation: 0.0,
+                titleSpacing: 0.0,
+                automaticallyImplyLeading: false,
+                backgroundColor: Colors.transparent,
+                title: _buildFirstRow(context),
+              ),
               if (_store.novels.isNotEmpty) _buildSliverList(),
               if (_store.novels.isEmpty && _store.errorMessage != null)
                 _buildSliverError(context),
             ],
           );
-        }),
+        },
+      ),
     );
   }
 
@@ -113,7 +130,10 @@ class _NovelRecomPageState extends State<NovelRecomPage>
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Text(':(', style: Theme.of(context).textTheme.headlineMedium),
+            child: Text(
+              ':(',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
           ),
           TextButton(
             onPressed: () => _easyRefreshController.callRefresh(),
@@ -133,23 +153,26 @@ class _NovelRecomPageState extends State<NovelRecomPage>
         .where((element) => element.novel?.hateByUser() != true)
         .toList();
     return SliverList(
-        delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-      Novel novel = novels[index].novel!;
-      return _buildItem(context, novel, novels[index]);
-    }, childCount: novels.length));
+      delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
+        Novel novel = novels[index].novel!;
+        return _buildItem(context, novel, novels[index]);
+      }, childCount: novels.length),
+    );
   }
 
   Widget _buildItem(BuildContext context, Novel novel, NovelStore store) {
+    final tokens = WatercolorTokens.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: InkWell(
         onTap: () {
           HapticUtil.selectionClick();
-          Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
-              builder: (BuildContext context) => NovelViewerPage(
-                    id: novel.id,
-                    novelStore: store,
-                  )));
+          Navigator.of(context, rootNavigator: true).push(
+            WetPaperPageRoute(
+              builder: (BuildContext context) =>
+                  NovelViewerPage(id: novel.id, novelStore: store),
+            ),
+          );
         },
         child: Card(
           child: Row(
@@ -162,11 +185,18 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: PixivImage(
-                        novel.imageUrls.medium,
-                        width: 80,
-                      ),
+                      padding: tokens == null
+                          ? const EdgeInsets.symmetric(vertical: 8.0)
+                          : const EdgeInsets.fromLTRB(10, 10, 2, 10),
+                      child: tokens == null
+                          ? PixivImage(novel.imageUrls.medium, width: 80)
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: PixivImage(
+                                novel.imageUrls.medium,
+                                width: 76,
+                              ),
+                            ),
                     ),
                     Expanded(
                       child: Column(
@@ -177,48 +207,53 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                             child: Text(
                               novel.title,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyLarge,
+                              style: tokens == null
+                                  ? Theme.of(context).textTheme.bodyLarge
+                                  : TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: tokens.ink,
+                                    ),
                               maxLines: 3,
                             ),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Text(
                                   novel.user.name,
                                   maxLines: 1,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall!
+                                  style: Theme.of(context).textTheme.bodySmall!
                                       .copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .secondary),
+                                        color:
+                                            tokens?.accent ??
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.secondary,
+                                      ),
                                 ),
                                 Padding(
                                   padding: EdgeInsets.only(left: 8),
                                   child: Row(
                                     children: [
-                                      Icon(
+                                      WcIcon(
                                         Icons.article,
                                         size: 12,
-                                        color: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall!
-                                            .color,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.labelSmall!.color,
                                       ),
-                                      SizedBox(
-                                        width: 2,
-                                      ),
+                                      SizedBox(width: 2),
                                       Text(
                                         '${novel.textLength}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall,
-                                      )
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.labelSmall,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -226,8 +261,9 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                             ),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
                             child: Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
                               spacing: 2, // gap between adjacent chips
@@ -235,16 +271,15 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                               children: [
                                 for (var f in novel.tags)
                                   Text(
-                                    f.name,
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
-                                  )
+                                    tokens == null ? f.name : '#${f.name}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
                               ],
                             ),
                           ),
-                          Container(
-                            height: 8.0,
-                          )
+                          Container(height: 8.0),
                         ],
                       ),
                     ),
@@ -257,11 +292,13 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     NovelBookmarkButton(novel: novel),
-                    Text('${novel.totalBookmarks}',
-                        style: Theme.of(context).textTheme.bodySmall)
+                    Text(
+                      '${novel.totalBookmarks}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),

@@ -1,5 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
+import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 const Key pixivImageLoadingKey = Key('pixiv-image-loading');
 const Key pixivImageErrorKey = Key('pixiv-image-error');
@@ -147,7 +150,19 @@ class PixivImageLoadingPlaceholder extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const ImageCheckerboard(),
+                if (WatercolorTokens.of(context) case final tokens?)
+                  // A wash of pigment seeping into the paper while the
+                  // picture loads.
+                  ColoredBox(
+                    color: tokens.card,
+                    child: PigmentSeep(
+                      color: tokens.pigment(
+                        (size.width * 7 + size.height).round(),
+                      ),
+                    ),
+                  )
+                else
+                  const ImageCheckerboard(),
                 Center(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -233,7 +248,7 @@ class PixivImageErrorPlaceholder extends StatelessWidget {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
+                                WcIcon(
                                   Icons.broken_image_outlined,
                                   color: scheme.error,
                                   size: _spinnerSize(width, height),
