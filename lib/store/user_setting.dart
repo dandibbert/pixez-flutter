@@ -43,6 +43,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'user_setting.g.dart';
 
+/// The value stored as [index], or [fallback] when nothing, or something
+/// out of range, was stored.
+T enumFromIndex<T>(List<T> values, int? index, T fallback) {
+  if (index == null || index < 0 || index >= values.length) return fallback;
+  return values[index];
+}
+
 /// Overall look of the app: the watercolor redesign or the original Material UI.
 enum UiStyle { watercolor, classic }
 
@@ -533,14 +540,16 @@ abstract class _UserSetting with Store {
       }
     }
     useDynamicColor = prefs.getBool(USE_DYNAMIC_COLOR_KEY) ?? true;
-    uiStyle =
-        UiStyle.values.elementAtOrNull(prefs.getInt(UI_STYLE_KEY) ?? -1) ??
-        UiStyle.watercolor;
-    paletteMode =
-        WatercolorPaletteMode.values.elementAtOrNull(
-          prefs.getInt(PALETTE_MODE_KEY) ?? -1,
-        ) ??
-        WatercolorPaletteMode.multi;
+    uiStyle = enumFromIndex(
+      UiStyle.values,
+      prefs.getInt(UI_STYLE_KEY),
+      UiStyle.watercolor,
+    );
+    paletteMode = enumFromIndex(
+      WatercolorPaletteMode.values,
+      prefs.getInt(PALETTE_MODE_KEY),
+      WatercolorPaletteMode.multi,
+    );
     var colors = prefs.getInt(SEED_COLOR_KEY);
     if (colors != null) {
       try {

@@ -1,10 +1,31 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pixez/store/user_setting.dart';
 import 'package:pixez/watercolor/watercolor_paper.dart';
 import 'package:pixez/watercolor/watercolor_theme.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 void main() {
+  test('style settings fall back when nothing was stored yet', () {
+    // A first launch after updating has no stored index; that must not throw.
+    expect(
+      enumFromIndex(UiStyle.values, null, UiStyle.watercolor),
+      UiStyle.watercolor,
+    );
+    expect(
+      enumFromIndex(UiStyle.values, -1, UiStyle.watercolor),
+      UiStyle.watercolor,
+    );
+    expect(
+      enumFromIndex(UiStyle.values, 9, UiStyle.watercolor),
+      UiStyle.watercolor,
+    );
+    expect(
+      enumFromIndex(UiStyle.values, 1, UiStyle.watercolor),
+      UiStyle.classic,
+    );
+  });
+
   test('multi palette uses the fixed pigments', () {
     final light = WatercolorTokens.resolve(
       brightness: Brightness.light,
