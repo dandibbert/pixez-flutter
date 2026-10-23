@@ -14,7 +14,6 @@
  *
  */
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -28,6 +27,7 @@ import 'package:pixez/page/soup/soup_page.dart';
 import 'package:pixez/page/user/users_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class SearchSuggestionPage extends StatefulWidget {
   final String? preword;
@@ -63,7 +63,7 @@ class _SearchSuggestionPageState extends State<SearchSuggestionPage> {
           ),
         );
       } else {
-        BotToast.showText(text: I18n.ofContext().no_result);
+        wcToast(text: I18n.ofContext().no_result);
       }
     });
     var query = widget.preword ?? '';
@@ -193,7 +193,7 @@ class _SearchSuggestionPageState extends State<SearchSuggestionPage> {
                                   Clipboard.setData(
                                     ClipboardData(text: tags[index].name),
                                   );
-                                  BotToast.showText(
+                                  wcToast(
                                     text: I18n.of(context).copied_to_clipboard,
                                   );
                                 },

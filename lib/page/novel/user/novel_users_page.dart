@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:easy_refresh/easy_refresh.dart';
@@ -31,6 +30,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class NovelUsersPage extends StatefulWidget {
   final int id;
@@ -269,7 +269,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
       );
       final bytes = await result.file.readAsBytes();
       await DocumentPlugin.save(bytes, "${widget.id}_bg.jpg");
-      BotToast.showText(text: I18n.of(context).saved);
+      wcToast(text: I18n.of(context).saved);
     } catch (e) {
       print(e);
     }
@@ -341,9 +341,9 @@ class _NovelUsersPageState extends State<NovelUsersPage>
           ),
           fileName,
         );
-        BotToast.showText(text: I18n.of(context).complete);
+        wcToast(text: I18n.of(context).complete);
       } else
-        BotToast.showText(text: I18n.of(context).failed);
+        wcToast(text: I18n.of(context).failed);
     } catch (e) {
       print(e);
     }
@@ -397,7 +397,7 @@ class _NovelUsersPageState extends State<NovelUsersPage>
                       'painter:${userStore.userDetail?.user.name ?? ''}\npid:${widget.id}',
                 ),
               );
-              BotToast.showText(text: I18n.of(context).copied_to_clipboard);
+              wcToast(text: I18n.of(context).copied_to_clipboard);
               break;
             }
           case 3:

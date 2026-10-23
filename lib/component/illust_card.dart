@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/null_hero.dart';
@@ -39,6 +38,7 @@ import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_effects.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class IllustCard extends StatefulWidget {
   final IllustStore store;
@@ -524,7 +524,7 @@ class _IllustCardState extends State<IllustCard> {
                 if (success && userSetting.followAfterStar) {
                   bool followSuccess = await store.followAfterStar();
                   if (followSuccess) {
-                    BotToast.showText(
+                    wcToast(
                       text:
                           "${store.illusts!.user.name} ${I18n.of(context).followed}",
                     );

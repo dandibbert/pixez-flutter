@@ -5,6 +5,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/network/network_mode.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NetworkPage extends StatefulWidget {
   final bool? automaticallyImplyLeading;
@@ -107,9 +108,11 @@ class _NetworkPageState extends State<NetworkPage> {
                             ),
                           ),
                           selected: userSetting.pictureSource == ImageHost,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
+                          selectedTileColor:
+                              WatercolorTokens.of(
+                                context,
+                              )?.pigment(0).withValues(alpha: 0.45) ??
+                              Theme.of(context).colorScheme.secondary,
                           onTap: () async {
                             userSetting.setPictureSource(ImageHost);
                             splashStore.setHost(ImageHost);
@@ -127,9 +130,11 @@ class _NetworkPageState extends State<NetworkPage> {
                             ),
                           ),
                           selected: userSetting.pictureSource == ImageCatHost,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
+                          selectedTileColor:
+                              WatercolorTokens.of(
+                                context,
+                              )?.pigment(0).withValues(alpha: 0.45) ??
+                              Theme.of(context).colorScheme.secondary,
                           onTap: () async {
                             userSetting.setPictureSource(ImageCatHost);
                             splashStore.setHost(ImageCatHost);
@@ -139,9 +144,11 @@ class _NetworkPageState extends State<NetworkPage> {
                           selected:
                               userSetting.pictureSource != ImageHost &&
                               userSetting.pictureSource != ImageCatHost,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
+                          selectedTileColor:
+                              WatercolorTokens.of(
+                                context,
+                              )?.pigment(0).withValues(alpha: 0.45) ??
+                              Theme.of(context).colorScheme.secondary,
                           title: Theme(
                             data: Theme.of(context).copyWith(
                               primaryColor: Theme.of(

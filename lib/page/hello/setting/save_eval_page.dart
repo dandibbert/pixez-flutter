@@ -1,12 +1,12 @@
 import 'dart:convert';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class SaveEvalPage extends StatefulWidget {
   final String? eval;
@@ -106,7 +106,7 @@ function eval(illust, index, mime) {
                 "png",
               );
               if (string.isEmpty) {
-                BotToast.showText(text: "func eval error");
+                wcToast(text: "func eval error");
                 return;
               }
               await userSetting.setNameEval(text);

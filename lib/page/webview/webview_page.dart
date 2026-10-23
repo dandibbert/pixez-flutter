@@ -1,4 +1,3 @@
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:pixez/custom_tab_plugin.dart';
@@ -6,6 +5,7 @@ import 'package:pixez/er/leader.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/weiss_plugin.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class WebViewPage extends StatefulWidget {
   final String url;
@@ -87,7 +87,7 @@ javascript:(function() {
               try {
                 CustomTabPlugin.launch(widget.url);
               } catch (e) {
-                BotToast.showText(text: e.toString());
+                wcToast(text: e.toString());
               }
             },
           ),

@@ -16,7 +16,6 @@
 
 import 'dart:io';
 import 'package:archive/archive.dart';
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:mobx/mobx.dart';
@@ -32,6 +31,7 @@ import 'package:pixez/saf_plugin.dart';
 import 'package:pixez/models/illust.dart';
 import 'package:pixez/page/picture/illust_store.dart';
 import 'package:pixez/store/save_store.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 part 'ugoira_store.g.dart';
 
@@ -76,25 +76,25 @@ abstract class _UgoiraStoreBase with Store {
             );
             uriString!;
             await SAFPlugin.writeUri(uriString, data);
-            BotToast.showText(text: "export success");
+            wcToast(text: "export success");
             return;
           } catch (e) {
-            BotToast.showText(text: "export cancelled");
+            wcToast(text: "export cancelled");
             return;
           }
         }
         final success = await DocumentPlugin.save(data, zipFileName);
         if (success == true) {
-          BotToast.showText(text: "export success");
+          wcToast(text: "export success");
         } else {
-          BotToast.showText(text: "export failed");
+          wcToast(text: "export failed");
         }
       } else {
-        BotToast.showText(text: "zip file not found, please download first");
+        wcToast(text: "zip file not found, please download first");
       }
     } catch (e) {
       LPrinter.d(e);
-      BotToast.showText(text: "export error: ${e.toString()}");
+      wcToast(text: "export error: ${e.toString()}");
     }
   }
 
@@ -102,13 +102,13 @@ abstract class _UgoiraStoreBase with Store {
   Future<void> encodeGif(Illusts illusts) async {
     if (isEncoding) return;
     if (drawPool.isEmpty || ugoiraMetadataResponse == null) {
-      BotToast.showText(text: "not ready");
+      wcToast(text: "not ready");
       return;
     }
     try {
       isEncoding = true;
       final gifName = await buildSaveFileName(illusts, 0, ".gif");
-      BotToast.showText(text: "[Encoding] $gifName");
+      wcToast(text: "[Encoding] $gifName");
       final gifPath = await _platform.invokeMethod('getBatteryLevel', {
         "path": drawPool.first.parent.path, // guarded by isEmpty check above
         "delay": ugoiraMetadataResponse!.ugoiraMetadata.frames.first.delay,
@@ -119,11 +119,11 @@ abstract class _UgoiraStoreBase with Store {
       if (gifPath != null) {
         final targetName = applySingleFolder(illusts, gifName);
         await DocumentPlugin.saveFromPath(gifPath, targetName);
-        BotToast.showText(text: "[GifSaved] $gifName");
+        wcToast(text: "[GifSaved] $gifName");
         await _autoBookmarkAfterSave(illusts);
       }
     } on PlatformException catch (e) {
-      BotToast.showText(text: "encode failed: ${e.message ?? e.toString()}");
+      wcToast(text: "encode failed: ${e.message ?? e.toString()}");
     } finally {
       isEncoding = false;
     }

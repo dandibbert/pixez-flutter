@@ -17,7 +17,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/app_widget_plugin.dart';
@@ -37,6 +36,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class SettingQualityPage extends StatefulWidget {
   @override
@@ -253,9 +253,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                       }
                       await userSetting.setCrossAdapt(false);
                       await userSetting.setCrossCount(index + 2);
-                      BotToast.showText(
-                        text: I18n.of(context).need_to_restart_app,
-                      );
+                      wcToast(text: I18n.of(context).need_to_restart_app);
                     },
                   ),
                 ),
@@ -275,9 +273,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                       }
                       await userSetting.setHCrossAdapt(false);
                       userSetting.setHCrossCount(index + 2);
-                      BotToast.showText(
-                        text: I18n.of(context).need_to_restart_app,
-                      );
+                      wcToast(text: I18n.of(context).need_to_restart_app);
                     },
                   ),
                 ),
@@ -336,7 +332,7 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   title: Text('H是不行的！'),
                   onChanged: (value) async {
                     HapticUtil.light();
-                    if (!value) BotToast.showText(text: 'H是可以的！(ˉ﹃ˉ)');
+                    if (!value) wcToast(text: 'H是可以的！(ˉ﹃ˉ)');
                     userSetting.setHIsNotAllow(value);
                   },
                 ),

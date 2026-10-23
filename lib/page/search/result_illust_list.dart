@@ -16,7 +16,6 @@
 
 import 'dart:async';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:pixez/er/prefer.dart';
@@ -32,6 +31,7 @@ import 'package:pixez/page/search/suggest/search_suggestion_page.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class ResultIllustList extends StatefulWidget {
   final IllustSearchQuery initialQuery;
@@ -703,7 +703,7 @@ class _ResultIllustSortWidgetState extends State<ResultIllustSortWidget> {
       onTap: () {
         if (accountStore.now != null && index == 2) {
           if (accountStore.now!.isPremium == 0) {
-            BotToast.showText(text: 'not premium');
+            wcToast(text: 'not premium');
             widget.onPremium();
             Navigator.of(context).pop();
             return;

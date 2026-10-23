@@ -14,7 +14,6 @@
  *
  */
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -49,6 +48,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class IllustRowPage extends StatefulWidget {
   final int id;
@@ -1056,7 +1056,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                               illusts,
                             );
                             await Clipboard.setData(ClipboardData(text: str));
-                            BotToast.showText(
+                            wcToast(
                               text: I18n.of(dialogContext).copied_to_clipboard,
                             );
                             Navigator.of(dialogContext).pop();
@@ -1087,7 +1087,7 @@ class _IllustRowPageState extends State<IllustRowPage>
                                     "https://www.pixiv.net/artworks/${widget.id}",
                               ),
                             );
-                            BotToast.showText(
+                            wcToast(
                               text: I18n.of(dialogContext).copied_to_clipboard,
                             );
                             Navigator.of(dialogContext).pop();

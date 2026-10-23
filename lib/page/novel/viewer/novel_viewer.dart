@@ -17,7 +17,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -63,6 +62,7 @@ import 'package:path/path.dart' as Path;
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class NovelViewerPage extends StatefulWidget {
   final int id;
@@ -1386,7 +1386,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         "application/txt",
       );
       await SAFPlugin.writeUri(uri!, utf8.encode(data));
-      BotToast.showText(text: "export success");
+      wcToast(text: "export success");
     } else if (Platform.isIOS) {
       final path = await getApplicationDocumentsDirectory();
       final dirPath = Path.join(path.path, "novel_export");
@@ -1417,7 +1417,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
       resultFile.writeAsStringSync(data);
       File(fileInAllPath).writeAsStringSync(data);
       LPrinter.d("path: $filePath");
-      BotToast.showText(text: "export ${filePath}");
+      wcToast(text: "export ${filePath}");
     }
   }
 }

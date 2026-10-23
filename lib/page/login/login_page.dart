@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/custom_tab_plugin.dart';
 import 'package:pixez/er/leader.dart';
@@ -31,6 +30,7 @@ import 'package:pixez/weiss_plugin.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -178,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         CustomTabPlugin.launch(url);
       } catch (e) {
-        BotToast.showText(text: e.toString());
+        wcToast(text: e.toString());
       }
       return;
     }
@@ -191,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         CustomTabPlugin.launch(url);
       } catch (e) {
-        BotToast.showText(text: e.toString());
+        wcToast(text: e.toString());
       }
     }
   }

@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
@@ -58,6 +57,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class IllustLightingPage extends StatefulWidget {
   final int id;
@@ -217,6 +218,22 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
     super.dispose();
   }
 
+  /// In the watercolor style the buttons over the picture sit on small
+  /// paper discs so they stay legible on any artwork.
+  Widget _paperDisc(Widget button) {
+    final tokens = WatercolorTokens.of(context);
+    if (tokens == null) return button;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: tokens.card.withValues(alpha: 0.85),
+        boxShadow: tokens.cardShadow,
+      ),
+      child: button,
+    );
+  }
+
   Widget _buildAppbar() {
     return Column(
       children: [
@@ -227,25 +244,29 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CommonBackArea(),
+              _paperDisc(CommonBackArea()),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DetailJumpButton(
-                    anchorKey: _detailKey,
-                    scrollController: _scrollController,
+                  _paperDisc(
+                    DetailJumpButton(
+                      anchorKey: _detailKey,
+                      scrollController: _scrollController,
+                    ),
                   ),
                   Builder(
                     builder: (buttonContext) {
-                      return IconButton(
-                        icon: WcIcon(Icons.more_vert),
-                        onPressed: () {
-                          HapticUtil.selectionClick();
-                          buildShowModalBottomSheet(
-                            buttonContext,
-                            _illustStore.illusts!,
-                          );
-                        },
+                      return _paperDisc(
+                        IconButton(
+                          icon: WcIcon(Icons.more_vert),
+                          onPressed: () {
+                            HapticUtil.selectionClick();
+                            buildShowModalBottomSheet(
+                              buttonContext,
+                              _illustStore.illusts!,
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -321,7 +342,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                             .followAfterStar();
                         if (followSuccess) {
                           userStore?.isFollow = true;
-                          BotToast.showText(
+                          wcToast(
                             text:
                                 "${_illustStore.illusts!.user.name} ${I18n.of(context).followed}",
                           );
@@ -1248,7 +1269,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                               illusts,
                             );
                             await Clipboard.setData(ClipboardData(text: str));
-                            BotToast.showText(
+                            wcToast(
                               text: I18n.of(dialogContext).copied_to_clipboard,
                             );
                             Navigator.of(dialogContext).pop();
@@ -1278,7 +1299,7 @@ class _IllustVerticalPageState extends State<IllustVerticalPage>
                                     "https://www.pixiv.net/artworks/${widget.id}",
                               ),
                             );
-                            BotToast.showText(
+                            wcToast(
                               text: I18n.of(dialogContext).copied_to_clipboard,
                             );
                             Navigator.of(dialogContext).pop();

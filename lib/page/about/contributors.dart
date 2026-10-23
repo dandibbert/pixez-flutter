@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluentui;
 import 'package:material_ui/material_ui.dart' as material;
 import 'package:flutter/widgets.dart';
@@ -11,6 +10,7 @@ import 'package:pixez/constants.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/recommend.dart';
 import 'package:pixez/network/api_client.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 /// Safe Mode (?
 final bool _safeMode = Platform.isIOS || Constants.isGooglePlay;
@@ -27,15 +27,12 @@ get _showBottomSheet {
       BoxConstraints? constraints,
       bool? enableDrag,
       AnimationController? transitionAnimationController,
-    }) =>
-        fluentui.showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (context) => Padding(
-            padding: EdgeInsets.all(128),
-            child: builder(context),
-          ),
-        );
+    }) => fluentui.showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) =>
+          Padding(padding: EdgeInsets.all(128), child: builder(context)),
+    );
   else
     return material.showBottomSheet;
 }
@@ -51,14 +48,15 @@ List<Contributor> contributors = [
       if (accountStore.now == null) return;
       if (Platform.isIOS) return;
 
-      final response =
-          await apiClient.getSearchIllust("キャル(プリコネ) 10000users入り");
+      final response = await apiClient.getSearchIllust(
+        "キャル(プリコネ) 10000users入り",
+      );
       Recommend recommend = Recommend.fromJson(response.data);
       if (recommend.illusts.isEmpty) return;
       final targetIllusts = _safeMode || userSetting.hIsNotAllow
           ? recommend.illusts
-              .where((element) => !element.tags.any((i) => i.name == "R-18"))
-              .toList()
+                .where((element) => !element.tags.any((i) => i.name == "R-18"))
+                .toList()
           : recommend.illusts;
       if (targetIllusts.isEmpty) return;
       final url = targetIllusts[Random().nextInt(targetIllusts.length)]
@@ -85,7 +83,7 @@ List<Contributor> contributors = [
     onPressed: (context) async {
       //☆:“都给我去看 FAQ！”
       String text = _safeMode ? "R！T！F！M！" : "Read The Fucking Manual!";
-      BotToast.showText(text: text);
+      wcToast(text: text);
     },
   ),
   Contributor(
@@ -99,12 +97,11 @@ List<Contributor> contributors = [
       if (_safeMode) return;
       if (userSetting.hIsNotAllow) {
         _showBottomSheet(
-            context: context,
-            builder: (context) {
-              return SafeArea(
-                child: Image.asset(Constants.no_h),
-              );
-            });
+          context: context,
+          builder: (context) {
+            return SafeArea(child: Image.asset(Constants.no_h));
+          },
+        );
         return;
       }
       final response = await apiClient.getIllustRanking('day_r18', null);
@@ -145,16 +142,13 @@ List<Contributor> contributors = [
           "别戳了,会怀孕的",
           "我有一个很好的想法,但这写不下",
         ];
-        BotToast.showText(text: RA_Tips[Random().nextInt(7)]);
+        wcToast(text: RA_Tips[Random().nextInt(7)]);
       } else {
         _showBottomSheet(
           context: context,
           builder: (context) {
             return SafeArea(
-              child: Image.asset(
-                'assets/images/fish.gif',
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset('assets/images/fish.gif', fit: BoxFit.cover),
             );
           },
         );
@@ -212,11 +206,5 @@ class Contributor {
   final String content;
   final Function(BuildContext context)? onPressed;
 
-  Contributor(
-    this.name,
-    this.avatar,
-    this.url,
-    this.content, {
-    this.onPressed,
-  });
+  Contributor(this.name, this.avatar, this.url, this.content, {this.onPressed});
 }

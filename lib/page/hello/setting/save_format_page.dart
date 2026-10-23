@@ -14,13 +14,13 @@
  *
  */
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class SaveFormatPage extends StatefulWidget {
   @override
@@ -45,7 +45,7 @@ class _SaveFormatPageState extends State<SaveFormatPage> {
         }
       });
       if (needBack) {
-        BotToast.showText(text: "illegal text");
+        wcToast(text: "illegal text");
         _textEditingController.text = beforeText;
       }
     });
@@ -100,7 +100,7 @@ class _SaveFormatPageState extends State<SaveFormatPage> {
                 }
               });
               if (!_textEditingController.text.contains('{part}')) {
-                BotToast.showText(
+                wcToast(
                   text: I18n.of(
                     context,
                   ).save_format_lose_part_warning('{part}'),

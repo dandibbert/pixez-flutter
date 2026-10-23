@@ -24,6 +24,7 @@ import 'package:pixez/page/account/edit/account_edit_store.dart';
 import 'package:pixez/page/webview/account_deletion_webview_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class AccountEditPage extends StatefulWidget {
   @override
@@ -202,9 +203,7 @@ class _AccountEditPageState extends State<AccountEditPage> {
                     Clipboard.setData(
                       ClipboardData(text: accountStore.now!.refreshToken),
                     );
-                    BotToast.showText(
-                      text: I18n.of(context).copied_to_clipboard,
-                    );
+                    wcToast(text: I18n.of(context).copied_to_clipboard);
                   },
                 ),
               ),

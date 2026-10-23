@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +21,7 @@ import 'package:pixez/page/picture/illust_store.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class PhotoZoomPage extends StatefulWidget {
   final int index;
@@ -304,9 +304,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
       );
     } catch (_) {
       if (mounted) {
-        BotToast.showText(
-          text: I18n.of(context).load_image_failed_click_to_reload,
-        );
+        wcToast(text: I18n.of(context).load_image_failed_click_to_reload);
       }
     } finally {
       if (mounted) {
@@ -540,9 +538,7 @@ class _PhotoZoomPageState extends State<PhotoZoomPage> {
                                       ),
                                     );
                                   } else {
-                                    BotToast.showText(
-                                      text: "can not find image cache",
-                                    );
+                                    wcToast(text: "can not find image cache");
                                   }
                                 },
                               );

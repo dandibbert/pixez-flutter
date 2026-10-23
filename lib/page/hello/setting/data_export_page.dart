@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +9,7 @@ import 'package:pixez/models/glance_illust_persist.dart';
 import 'package:pixez/page/history/history_store.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class DataExportPage extends HookConsumerWidget {
   const DataExportPage({super.key});
@@ -71,7 +71,7 @@ class DataExportPage extends HookConsumerWidget {
               await tagHistoryStore.importData();
             } catch (e) {
               print(e);
-              BotToast.showText(text: e.toString());
+              wcToast(text: e.toString());
             }
           },
         ),
@@ -92,7 +92,7 @@ class DataExportPage extends HookConsumerWidget {
               await bookTagStore.importData();
             } catch (e) {
               print(e);
-              BotToast.showText(text: e.toString());
+              wcToast(text: e.toString());
             }
           },
         ),
@@ -115,7 +115,7 @@ class DataExportPage extends HookConsumerWidget {
               await ref.read(historyProvider.notifier).importData();
             } catch (e) {
               print(e);
-              BotToast.showText(text: e.toString());
+              wcToast(text: e.toString());
             }
           },
         ),
@@ -138,7 +138,7 @@ class DataExportPage extends HookConsumerWidget {
               await novelHistoryStore.importData();
             } catch (e) {
               print(e);
-              BotToast.showText(text: e.toString());
+              wcToast(text: e.toString());
             }
           },
         ),
@@ -159,7 +159,7 @@ class DataExportPage extends HookConsumerWidget {
               await muteStore.importFile();
             } catch (e) {
               print(e);
-              BotToast.showText(text: e.toString());
+              wcToast(text: e.toString());
             }
           },
         ),

@@ -1,4 +1,3 @@
-import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/leader.dart';
@@ -13,6 +12,7 @@ import 'package:pixez/page/novel/search/novel_search_page.dart';
 import 'package:pixez/page/novel/search/novel_search_query.dart';
 import 'package:pixez/store/search_result_mode.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class NovelResultList extends StatefulWidget {
   final NovelSearchQuery initialQuery;
@@ -170,7 +170,7 @@ class _NovelResultListState extends State<NovelResultList> {
   bool _canUsePopular() {
     final now = accountStore.now;
     if (now != null && now.isPremium == 0) {
-      BotToast.showText(text: 'not premium');
+      wcToast(text: 'not premium');
       return false;
     }
     return true;

@@ -31,6 +31,7 @@ import 'package:pixez/page/shield/user_show_ai_setting.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class ShieldPage extends StatefulWidget {
   @override
@@ -114,9 +115,7 @@ class _ShieldPageState extends State<ShieldPage> {
                           onLongPress: () {
                             HapticUtil.heavy();
                             Clipboard.setData(ClipboardData(text: f.name));
-                            BotToast.showText(
-                              text: I18n.of(context).copied_to_clipboard,
-                            );
+                            wcToast(text: I18n.of(context).copied_to_clipboard);
                           },
                           child: ActionChip(
                             onPressed: () => deleteTag(context, f),

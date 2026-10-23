@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
@@ -25,6 +24,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/directory/directory_store.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class DirectoryPage extends StatefulWidget {
   final String? initPath;
@@ -52,7 +52,7 @@ class _DirectoryPageState extends State<DirectoryPage> {
   Future<void> _initMethod() async {
     PermissionStatus statuses = await Permission.storage.request();
     if (statuses == PermissionStatus.denied) {
-      BotToast.showText(text: I18n.of(context).permission_denied);
+      wcToast(text: I18n.of(context).permission_denied);
       Navigator.of(context).pop();
     }
     directoryStore.init(widget.initPath);

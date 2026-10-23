@@ -17,7 +17,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -37,6 +36,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 class AboutPage extends StatefulWidget {
   final bool? newVersion;
@@ -99,7 +99,7 @@ class _AboutPageState extends State<AboutPage> {
         if (purchaseDetails.status == PurchaseStatus.error) {
         } else if (purchaseDetails.status == PurchaseStatus.purchased ||
             purchaseDetails.status == PurchaseStatus.restored) {
-          BotToast.showText(text: "Thanks");
+          wcToast(text: "Thanks");
         }
         if (purchaseDetails.pendingCompletePurchase) {
           await InAppPurchase.instance.completePurchase(purchaseDetails);
@@ -460,7 +460,7 @@ class _AboutPageState extends State<AboutPage> {
                   title: Text('支持开发者工作'),
                   trailing: Text('12￥'),
                   onTap: () async {
-                    BotToast.showText(text: 'try to Purchase');
+                    wcToast(text: 'try to Purchase');
                     for (var p in products) {
                       if (p.id == "support") {
                         final PurchaseParam purchaseParam = PurchaseParam(
@@ -481,7 +481,7 @@ class _AboutPageState extends State<AboutPage> {
                   title: Text('支持开发者工作'),
                   trailing: Text('25￥'),
                   onTap: () async {
-                    BotToast.showText(text: 'try to Purchase');
+                    wcToast(text: 'try to Purchase');
                     for (var p in products) {
                       if (p.id == "support1") {
                         final PurchaseParam purchaseParam = PurchaseParam(
@@ -509,7 +509,7 @@ class _AboutPageState extends State<AboutPage> {
                     title: Text(i.description),
                     subtitle: Text(i.price),
                     onTap: () {
-                      BotToast.showText(text: 'try to Purchase');
+                      wcToast(text: 'try to Purchase');
                       final PurchaseParam purchaseParam = PurchaseParam(
                         productDetails: i,
                       );

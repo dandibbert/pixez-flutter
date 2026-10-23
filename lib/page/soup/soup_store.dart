@@ -16,7 +16,6 @@
 
 import 'dart:io';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_compatibility_layer/dio_compatibility_layer.dart';
 import 'package:mobx/mobx.dart';
@@ -26,19 +25,25 @@ import 'package:pixez/models/amwork.dart';
 import 'package:pixez/network/api_client.dart';
 import 'package:html/dom.dart';
 import 'package:rhttp/rhttp.dart' as r;
+import 'package:pixez/watercolor/watercolor_toast.dart';
 
 part 'soup_store.g.dart';
 
 class SoupStore = _SoupStoreBase with _$SoupStore;
 
 abstract class _SoupStoreBase with Store {
-  final dio = Dio(BaseOptions(headers: {
-    HttpHeaders.acceptLanguageHeader:
-        userSetting.languageNum < 5 ? ApiClient.Accept_Language : "en-US",
-    'user-agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.26 Safari/537.36 Edg/85.0.564.13',
-    HttpHeaders.refererHeader: 'https://www.pixivision.net/zh/',
-  }));
+  final dio = Dio(
+    BaseOptions(
+      headers: {
+        HttpHeaders.acceptLanguageHeader: userSetting.languageNum < 5
+            ? ApiClient.Accept_Language
+            : "en-US",
+        'user-agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.26 Safari/537.36 Edg/85.0.564.13',
+        HttpHeaders.refererHeader: 'https://www.pixivision.net/zh/',
+      },
+    ),
+  );
 
   ObservableList<AmWork> amWorks = ObservableList();
 
@@ -56,7 +61,7 @@ abstract class _SoupStoreBase with Store {
         _fetchCNTW(url);
       }
     } on DioException {
-      BotToast.showText(text: "404 NOT FOUND");
+      wcToast(text: "404 NOT FOUND");
     } catch (e) {}
   }
 
@@ -99,16 +104,19 @@ abstract class _SoupStoreBase with Store {
               segments.length > 2 &&
               segments[segments.length - 2] == 'artworks') {
             amWork.arworkLink = a;
-            amWork.showImage =
-                value.getElementsByTagName('img')[1].attributes['src']!;
+            amWork.showImage = value
+                .getElementsByTagName('img')[1]
+                .attributes['src']!;
             amWork.title = value.getElementsByTagName('h3').first.text;
           } else if (a.startsWith('https') &&
               segments.length > 2 &&
               segments[segments.length - 2] == 'users') {
             amWork.userLink = a;
             amWork.user = value.getElementsByTagName('p').first.text;
-            amWork.userImage =
-                value.getElementsByTagName('img').first.attributes['src']!;
+            amWork.userImage = value
+                .getElementsByTagName('img')
+                .first
+                .attributes['src']!;
           }
         }
         if (amWork.userLink == null || amWork.arworkLink == null) {
@@ -157,14 +165,17 @@ abstract class _SoupStoreBase with Store {
           var a = aa.attributes['href']!;
           if (a.contains('https://www.pixiv.net/artworks')) {
             amWork.arworkLink = a;
-            amWork.showImage =
-                value.getElementsByTagName('img')[1].attributes['src']!;
+            amWork.showImage = value
+                .getElementsByTagName('img')[1]
+                .attributes['src']!;
             amWork.title = value.getElementsByTagName('h3').first.text;
           } else if (a.contains('https://www.pixiv.net/users')) {
             amWork.userLink = a;
             amWork.user = value.getElementsByTagName('p').first.text;
-            amWork.userImage =
-                value.getElementsByTagName('img').first.attributes['src']!;
+            amWork.userImage = value
+                .getElementsByTagName('img')
+                .first
+                .attributes['src']!;
           }
         }
         if (amWork.userLink == null || amWork.arworkLink == null) {
