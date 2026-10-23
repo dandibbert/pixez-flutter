@@ -81,9 +81,19 @@ class _SettingPageState extends State<SettingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        // In the watercolor style the rows scroll under the floating palette
+        // bar and fade into the paper instead of stopping at its top edge.
+        bottom: WatercolorTokens.of(context) == null,
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: WatercolorTokens.of(context) == null
+                ? const EdgeInsets.all(8.0)
+                : EdgeInsets.fromLTRB(
+                    8,
+                    8,
+                    8,
+                    8 + MediaQuery.paddingOf(context).bottom,
+                  ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
@@ -26,6 +28,7 @@ class PaletteBar extends StatelessWidget {
 
   static const double height = 76;
   static const double bottomGap = 14;
+  static const double fadeHeight = 24;
 
   /// How far the bar must move down to leave the screen, beyond the safe
   /// area: its height, the gap below it and its shadow.
@@ -35,32 +38,63 @@ class PaletteBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = WatercolorTokens.of(context)!;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12, 0, 12, bottomGap + safeBottom),
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: tokens.card,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: tokens.line),
-          boxShadow: tokens.cardShadow,
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < items.length; i++)
-              Expanded(
-                child: _PaletteWell(
-                  item: items[i],
-                  pigment: tokens.pigment(i),
-                  selected: i == selectedIndex,
-                  onTap: () => onSelected(i),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Content fades into the paper above and around the floating bar
+        // instead of ending in a hard line.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: -fadeHeight,
+          bottom: 0,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [tokens.paper.withValues(alpha: 0), tokens.paper],
+                  stops: const [0, 0.45],
                 ),
               ),
-          ],
+            ),
+          ),
         ),
-      ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, 12, bottomGapFor(safeBottom)),
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              color: tokens.card,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: tokens.line),
+              boxShadow: tokens.cardShadow,
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  Expanded(
+                    child: _PaletteWell(
+                      item: items[i],
+                      pigment: tokens.pigment(i),
+                      selected: i == selectedIndex,
+                      onTap: () => onSelected(i),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
+
+  /// Space under the bar. Phones with a home indicator already reserve
+  /// [safeBottom]; the bar then sits just above the indicator instead of a
+  /// further 14px up.
+  static double bottomGapFor(double safeBottom) =>
+      safeBottom > 0 ? math.max(safeBottom - 12, 8) : bottomGap;
 }
 
 class _PaletteWell extends StatelessWidget {
