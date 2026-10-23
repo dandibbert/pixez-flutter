@@ -8,6 +8,7 @@ import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_style.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/palette_bar.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
@@ -487,8 +488,8 @@ extension on NovelReaderPageNav {
         : (currentPage / totalPages).clamp(0.0, 1.0);
     return Container(
       key: novelReaderPageNavKey,
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
           _WatercolorPageButton(
@@ -574,38 +575,17 @@ class _WatercolorPageButton extends StatelessWidget {
     required this.leading,
   });
 
-  /// Back and forward are the same paper pill. A usable button has ink text
-  /// and its arrow on a dab of pigment, like the palette bar and list icons;
-  /// an unusable one keeps the shape and fades. [leading] only decides which
-  /// side the arrow sits on.
+  /// Back and forward are small sheets of paper. A usable one has its outer
+  /// bottom corner turned up, showing pigment underneath, like a page about
+  /// to be turned; an unusable one lies flat and fades. [leading] marks the
+  /// back button, whose arrow and turned corner sit on the left.
   @override
   Widget build(BuildContext context) {
     final tokens = WatercolorTokens.of(context)!;
     final color = enabled ? tokens.ink : tokens.ink.withValues(alpha: 0.3);
-    final arrow = SizedBox(
-      width: 26,
-      height: 26,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: AnimatedOpacity(
-              opacity: enabled ? 1 : 0,
-              duration: WcMotion.medium,
-              curve: WcMotion.standard,
-              child: PigmentWash(
-                color: tokens.pigment(0),
-                opacity: 0.8,
-                shape: PigmentShape.dot,
-              ),
-            ),
-          ),
-          WcIcon(icon, size: 18, color: enabled ? tokens.onPigment : color),
-        ],
-      ),
-    );
-    final label = Text(
-      this.label,
+    final arrow = WcIcon(icon, size: 18, color: color);
+    final text = Text(
+      label,
       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
     );
     return GestureDetector(
@@ -613,27 +593,120 @@ class _WatercolorPageButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: PressScale(
         enabled: enabled,
-        child: Container(
-          height: 40,
-          padding: EdgeInsets.only(
-            left: leading ? 7 : 14,
-            right: leading ? 14 : 7,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: enabled ? 1 : 0),
+          duration: WcMotion.reduced(context) ? Duration.zero : WcMotion.medium,
+          curve: WcMotion.standard,
+          builder: (context, fold, child) => CustomPaint(
+            painter: _PageCornerPainter(
+              tokens: tokens,
+              backward: leading,
+              fold: fold,
+            ),
+            child: child,
           ),
-          decoration: BoxDecoration(
-            color: tokens.card,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: tokens.line),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: leading
-                ? [arrow, const SizedBox(width: 4), label]
-                : [label, const SizedBox(width: 4), arrow],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: SizedBox(
+              height: 42,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: leading ? [arrow, text] : [text, arrow],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// A sheet of paper whose outer bottom corner is turned up by [fold]
+/// (0 lies flat, 1 fully turned), showing a pigment-tinted flap.
+class _PageCornerPainter extends CustomPainter {
+  const _PageCornerPainter({
+    required this.tokens,
+    required this.backward,
+    required this.fold,
+  });
+
+  final WatercolorTokens tokens;
+  final bool backward;
+  final double fold;
+
+  static const double _radius = 10;
+  static const double _flap = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final flap = _flap * fold;
+    final sheet = Path()..moveTo(_radius, 0);
+    sheet
+      ..lineTo(w - _radius, 0)
+      ..quadraticBezierTo(w, 0, w, _radius);
+    // Bottom right.
+    if (!backward && flap > 0.5) {
+      sheet
+        ..lineTo(w, h - flap)
+        ..lineTo(w - flap, h);
+    } else {
+      sheet
+        ..lineTo(w, h - _radius)
+        ..quadraticBezierTo(w, h, w - _radius, h);
+    }
+    // Bottom left.
+    if (backward && flap > 0.5) {
+      sheet
+        ..lineTo(flap, h)
+        ..lineTo(0, h - flap);
+    } else {
+      sheet
+        ..lineTo(_radius, h)
+        ..quadraticBezierTo(0, h, 0, h - _radius);
+    }
+    sheet
+      ..lineTo(0, _radius)
+      ..quadraticBezierTo(0, 0, _radius, 0)
+      ..close();
+
+    canvas.drawShadow(sheet, tokens.shadow, 2 * fold, false);
+    canvas.drawPath(sheet, Paint()..color = tokens.paper);
+    canvas.drawPath(
+      sheet,
+      Paint()
+        ..color = tokens.line
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+    if (flap <= 0.5) return;
+    final flapPath = backward
+        ? (Path()
+            ..moveTo(0, h - flap)
+            ..lineTo(flap, h - flap)
+            ..lineTo(flap, h)
+            ..close())
+        : (Path()
+            ..moveTo(w, h - flap)
+            ..lineTo(w - flap, h - flap)
+            ..lineTo(w - flap, h)
+            ..close());
+    canvas.drawPath(flapPath, Paint()..color = tokens.pigment(0));
+    canvas.drawPath(
+      flapPath,
+      Paint()
+        ..color = tokens.ink.withValues(alpha: 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PageCornerPainter oldDelegate) =>
+      fold != oldDelegate.fold ||
+      backward != oldDelegate.backward ||
+      tokens != oldDelegate.tokens;
 }
 
 /// The page nav floats on a paper card above the bottom edge.
@@ -645,29 +718,29 @@ class _WatercolorDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-        // The shadow sits behind an opaque card; drawn inside the card it
-        // would grey the whole bar.
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: tokens.card,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: tokens.line),
-            boxShadow: tokens.cardShadow,
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            borderRadius: BorderRadius.circular(26),
-            clipBehavior: Clip.antiAlias,
-            child: MediaQuery.removePadding(
-              context: context,
-              removeBottom: true,
-              child: child,
-            ),
+    // Sits as low as the palette bar does: just above the home indicator.
+    final bottom = PaletteBar.bottomGapFor(
+      MediaQuery.paddingOf(context).bottom,
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, 4, 12, bottom),
+      // The shadow sits behind an opaque card; drawn inside the card it
+      // would grey the whole bar.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: tokens.card,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: tokens.line),
+          boxShadow: tokens.cardShadow,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(26),
+          clipBehavior: Clip.antiAlias,
+          child: MediaQuery.removePadding(
+            context: context,
+            removeBottom: true,
+            child: child,
           ),
         ),
       ),
