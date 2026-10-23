@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pixez/src/generated/i18n/app_localizations.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
-import 'package:pixez/watercolor/watercolor_widgets.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 const Key pixivImageLoadingKey = Key('pixiv-image-loading');
 const Key pixivImageErrorKey = Key('pixiv-image-error');
@@ -155,12 +155,10 @@ class PixivImageLoadingPlaceholder extends StatelessWidget {
                   // picture loads.
                   ColoredBox(
                     color: tokens.card,
-                    child: PigmentWash(
+                    child: PigmentSeep(
                       color: tokens.pigment(
                         (size.width * 7 + size.height).round(),
                       ),
-                      opacity: 0.35,
-                      shape: PigmentShape.wide,
                     ),
                   )
                 else

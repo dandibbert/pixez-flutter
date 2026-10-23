@@ -38,6 +38,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 class IllustCard extends StatefulWidget {
   final IllustStore store;
@@ -147,7 +148,7 @@ class _IllustCardState extends State<IllustCard> {
 
   Future _buildTap(BuildContext context) {
     return Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
+      WetPaperPageRoute(
         builder: (_) {
           return PictureListPage(
             iStores: iStores!,
@@ -298,71 +299,74 @@ class _IllustCardState extends State<IllustCard> {
     bool tooLong,
     double radio,
   ) {
-    return Container(
-      margin: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: tokens.card,
-        borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
-        border: Border.all(color: tokens.line),
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
-        clipBehavior: Clip.antiAlias,
-        child: _buildAnimationWraper(
-          context,
-          Padding(
-            padding: const EdgeInsets.all(6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                    WatercolorTokens.radiusSmall,
-                  ),
-                  child: AspectRatio(
-                    aspectRatio: radio,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(child: _buildPic(tag, tooLong)),
-                        Positioned(
-                          top: 5.0,
-                          right: 5.0,
-                          child: Row(
-                            children: [
-                              if (userSetting.feedAIBadge &&
-                                  store.illusts!.illustAIType == 2)
-                                _buildAIBadge(),
-                              _buildVisibility(),
-                            ],
-                          ),
-                        ),
-                      ],
+    return DropletPress(
+      borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+      child: Container(
+        margin: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: tokens.card,
+          borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+          border: Border.all(color: tokens.line),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(WatercolorTokens.radiusMedium),
+          clipBehavior: Clip.antiAlias,
+          child: _buildAnimationWraper(
+            context,
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(
+                      WatercolorTokens.radiusSmall,
                     ),
-                  ),
-                ),
-                _buildBottom(context),
-                if (store.illusts?.series != null)
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              IllustSeriesPage(id: store.illusts!.series!.id),
-                        ),
-                      );
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 4, bottom: 2),
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '${store.illusts?.series?.title ?? ''}',
-                        style: TextStyle(fontSize: 11, color: tokens.sub),
+                    child: AspectRatio(
+                      aspectRatio: radio,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: _buildPic(tag, tooLong)),
+                          Positioned(
+                            top: 5.0,
+                            right: 5.0,
+                            child: Row(
+                              children: [
+                                if (userSetting.feedAIBadge &&
+                                    store.illusts!.illustAIType == 2)
+                                  _buildAIBadge(),
+                                _buildVisibility(),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-              ],
+                  _buildBottom(context),
+                  if (store.illusts?.series != null)
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                IllustSeriesPage(id: store.illusts!.series!.id),
+                          ),
+                        );
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 4, bottom: 2),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${store.illusts?.series?.title ?? ''}',
+                          style: TextStyle(fontSize: 11, color: tokens.sub),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -425,7 +429,7 @@ class _IllustCardState extends State<IllustCard> {
   Future<void> _buildInkTap(BuildContext context, String heroTag) async {
     HapticUtil.selectionClick();
     await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
+      WetPaperPageRoute(
         builder: (_) {
           if (iStores != null) {
             return PictureListPage(

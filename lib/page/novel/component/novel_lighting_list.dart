@@ -32,6 +32,7 @@ import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 class NovelLightingList extends StatefulWidget {
   final FutureGet? futureGet;
@@ -170,7 +171,7 @@ class _NovelLightingListState extends State<NovelLightingList> {
           child: InkWell(
             onTap: () {
               Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute(
+                WetPaperPageRoute(
                   builder: (BuildContext context) =>
                       NovelViewerPage(id: novel.id, novelStore: novels[index]),
                 ),

@@ -49,6 +49,7 @@ import 'package:pixez/store/save_store.dart';
 import 'package:pixez/store/tag_history_store.dart';
 import 'package:pixez/store/top_store.dart';
 import 'package:pixez/store/user_setting.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_theme.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
@@ -250,6 +251,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     if (userSetting.perfProbe) {
                       child = PerfProbe(child: child);
                     }
+                    // Paints nothing in the classic style; always present so
+                    // switching styles keeps the navigator below it.
+                    child = WatercolorEffectsHost(child: child);
                     return AppKeyboardShortcuts(
                       onEscape: Platform.isMacOS
                           ? () {

@@ -56,8 +56,9 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
     highlightColor: Colors.transparent,
     hoverColor: tokens.pigment(0).withValues(alpha: 0.08),
     textTheme: _textTheme(tokens),
+    // Opaque paper: pinned and floating app bars sit over scrolling content.
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.transparent,
+      backgroundColor: tokens.paper,
       surfaceTintColor: Colors.transparent,
       foregroundColor: tokens.ink,
       elevation: 0,
@@ -109,6 +110,74 @@ ThemeData buildWatercolorTheme(WatercolorTokens tokens) {
       shape: rounded(WatercolorTokens.radiusSmall),
     ),
     dividerTheme: DividerThemeData(color: tokens.line, space: 1),
+    navigationRailTheme: NavigationRailThemeData(
+      backgroundColor: Colors.transparent,
+      indicatorColor: tokens.pigment(0),
+      selectedIconTheme: IconThemeData(color: tokens.onPigment),
+      unselectedIconTheme: IconThemeData(color: tokens.sub),
+      selectedLabelTextStyle: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: tokens.ink,
+      ),
+      unselectedLabelTextStyle: TextStyle(fontSize: 11, color: tokens.sub),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: tokens.card,
+      indicatorColor: tokens.pigment(0),
+      surfaceTintColor: Colors.transparent,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? tokens.onPigment
+              : tokens.sub,
+        ),
+      ),
+    ),
+    drawerTheme: DrawerThemeData(
+      backgroundColor: tokens.paper,
+      surfaceTintColor: Colors.transparent,
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: tokens.ink,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      textStyle: TextStyle(color: tokens.paper, fontSize: 12),
+    ),
+    bottomAppBarTheme: BottomAppBarThemeData(
+      color: tokens.card,
+      surfaceTintColor: Colors.transparent,
+    ),
+    expansionTileTheme: ExpansionTileThemeData(
+      iconColor: tokens.ink,
+      collapsedIconColor: tokens.sub,
+      shape: const Border(),
+      collapsedShape: const Border(),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        selectedBackgroundColor: tokens.pigment(0),
+        selectedForegroundColor: tokens.onPigment,
+        foregroundColor: tokens.ink,
+        side: BorderSide(color: tokens.line),
+      ),
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: tokens.card,
+      surfaceTintColor: Colors.transparent,
+      headerBackgroundColor: tokens.pigment(0),
+      headerForegroundColor: tokens.onPigment,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(WatercolorTokens.radiusLarge),
+      ),
+    ),
+    searchBarTheme: SearchBarThemeData(
+      backgroundColor: WidgetStatePropertyAll(tokens.card),
+      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+      elevation: const WidgetStatePropertyAll(0),
+      side: WidgetStatePropertyAll(BorderSide(color: tokens.ink, width: 1.5)),
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: tokens.pigment(0),

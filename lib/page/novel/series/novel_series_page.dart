@@ -20,6 +20,7 @@ import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_widgets.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 final novelSeriesProvider =
     NotifierProvider<NovelSeriesNotifier, NovelSeriesState?>(() {
@@ -462,7 +463,7 @@ class NovelSeriesPage extends HookConsumerWidget {
         child: InkWell(
           onTap: () async {
             await Navigator.of(context, rootNavigator: true).push(
-              MaterialPageRoute(
+              WetPaperPageRoute(
                 builder: (BuildContext context) =>
                     NovelViewerPage(id: novel.id, novelStore: novelStore),
               ),

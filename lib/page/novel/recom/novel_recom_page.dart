@@ -30,6 +30,7 @@ import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
+import 'package:pixez/watercolor/watercolor_effects.dart';
 
 class NovelRecomPage extends StatefulWidget {
   @override
@@ -167,7 +168,7 @@ class _NovelRecomPageState extends State<NovelRecomPage>
         onTap: () {
           HapticUtil.selectionClick();
           Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
+            WetPaperPageRoute(
               builder: (BuildContext context) =>
                   NovelViewerPage(id: novel.id, novelStore: store),
             ),
