@@ -4,7 +4,7 @@
 
 The artwork comes with rounded corners painted in. The platforms cut their
 own shape, so the painted corners are first filled with the surrounding
-paper texture. Writes the iOS app icon set, the Android legacy, round and
+paper texture. Writes the iOS app icon, the Android legacy, round and
 adaptive launcher icons, and the in-app logo (assets/images/icon.png).
 """
 
@@ -81,11 +81,11 @@ def main() -> None:
     mask = corner_mask(rgb)
     filled = Image.fromarray(fill_corners(rgb, mask))
 
-    # iOS: light and dark use the artwork, tinted a grey version of it.
+    # iOS: one icon. The painted texture compresses poorly and Xcode renders
+    # every size from each appearance, so dark and tinted are left to iOS,
+    # which derives them from this one.
     ios = ROOT / "ios/Runner/Assets.xcassets/AppIcon.appiconset"
-    filled.save(ios / "icon-1024 1.png")
-    filled.save(ios / "icon-1024.png")
-    filled.convert("L").convert("RGB").save(ios / "icon-1024 2.png")
+    filled.save(ios / "icon-1024.png", optimize=True)
 
     # Android.
     res = ROOT / "android/app/src/main/res"
