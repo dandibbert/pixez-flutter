@@ -269,12 +269,19 @@ class NovelReaderArticle extends StatefulWidget {
   final ScrollController? controller;
   final EdgeInsetsGeometry padding;
 
+  /// Identifies the content being shown, such as the current page. When it
+  /// changes the list is rebuilt from scratch instead of laying the new
+  /// blocks out from the old blocks' positions, which would otherwise shift
+  /// the scroll offset away from the top on a page turn.
+  final Key? contentKey;
+
   const NovelReaderArticle({
     super.key,
     this.child,
     this.itemCount,
     this.itemBuilder,
     this.controller,
+    this.contentKey,
     this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 24),
   }) : assert(
          child != null || (itemCount != null && itemBuilder != null),
@@ -343,6 +350,7 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
     final Widget sliver;
     if (widget.itemBuilder != null && widget.itemCount != null) {
       sliver = SliverList(
+        key: widget.contentKey,
         delegate: SliverChildBuilderDelegate(
           widget.itemBuilder!,
           childCount: widget.itemCount,
@@ -350,7 +358,7 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
         ),
       );
     } else {
-      sliver = SliverToBoxAdapter(child: widget.child);
+      sliver = SliverToBoxAdapter(key: widget.contentKey, child: widget.child);
     }
     return ColoredBox(
       key: novelReaderArticleKey,

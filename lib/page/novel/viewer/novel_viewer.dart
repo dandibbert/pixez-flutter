@@ -744,6 +744,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         },
         child: NovelReaderArticle(
           controller: _controller,
+          contentKey: ValueKey(pageIndex),
           itemCount: blocks.length,
           itemBuilder: (context, index) {
             return _buildReaderBlock(
