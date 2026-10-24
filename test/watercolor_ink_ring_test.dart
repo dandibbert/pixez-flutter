@@ -69,12 +69,12 @@ void main() {
       _app(const InkWaveBars(color: Color(0xFFC26A6A), active: false)),
     );
     await tester.pumpAndSettle();
+    expect(tester.binding.transientCallbackCount, 0);
     await tester.pumpWidget(
       _app(const InkWaveBars(color: Color(0xFFC26A6A), active: true)),
     );
-    await expectLater(
-      tester.pumpAndSettle(const Duration(milliseconds: 100)),
-      throwsA(isA<FlutterError>()),
-    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.binding.transientCallbackCount, greaterThan(0));
+    await tester.pumpWidget(const SizedBox());
   });
 }
