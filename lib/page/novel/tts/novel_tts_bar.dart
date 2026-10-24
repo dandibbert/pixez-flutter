@@ -5,6 +5,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/page/novel/tts/novel_tts_controller.dart';
 import 'package:pixez/page/novel/tts/novel_tts_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
+import 'package:pixez/watercolor/watercolor_ink_ring.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 
@@ -53,6 +54,9 @@ class NovelTtsBar extends StatelessWidget {
       NovelTtsStatus.idle => '',
     };
     final tokens = WatercolorTokens.of(context);
+    if (tokens != null) {
+      return _buildWatercolor(context, tokens, statusLabel);
+    }
     final bar = Material(
       key: novelTtsBarKey,
       color: tokens?.card ?? scheme.surfaceContainerHigh,
@@ -198,6 +202,216 @@ class NovelTtsBar extends StatelessWidget {
     );
   }
 
+  /// The watercolor bar: a wave and status line, the spoken sentence, and a
+  /// row of hand-inked ring buttons with the play button on a pigment wash.
+  Widget _buildWatercolor(
+    BuildContext context,
+    WatercolorTokens tokens,
+    String statusLabel,
+  ) {
+    final i18n = I18n.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final session = controller.session;
+    final subtitle = controller.subtitle;
+    final status = controller.status;
+    final speaking =
+        status == NovelTtsStatus.playing ||
+        status == NovelTtsStatus.synthesizing;
+    final neutral = Color.lerp(tokens.line, tokens.sub, 0.18)!;
+    final sand = Color.lerp(tokens.pigment(1), const Color(0xFFEBD3A8), 0.6)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: tokens.cardShadow,
+        ),
+        child: Material(
+          key: novelTtsBarKey,
+          color: tokens.card,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: tokens.line),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -30,
+                top: -30,
+                width: 200,
+                height: 90,
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _WashBlobPainter(
+                      tokens.pigment(4).withValues(alpha: 0.28),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        InkWaveBars(color: tokens.liked, active: speaking),
+                        if (statusLabel.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            statusLabel,
+                            style: textTheme.labelMedium?.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: status == NovelTtsStatus.error
+                                  ? scheme.error
+                                  : tokens.accent,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: session == null
+                              ? const SizedBox.shrink()
+                              : Text(
+                                  '${session.title} · ${session.page}/${session.totalPages}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: textTheme.labelMedium?.copyWith(
+                                    fontSize: 12,
+                                    color: tokens.sub,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                    if (subtitle.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: InkWell(
+                          key: novelTtsSubtitleKey,
+                          onTap: onSubtitleTap,
+                          borderRadius: BorderRadius.circular(6),
+                          child: Text(
+                            subtitle,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodyMedium?.copyWith(
+                              fontSize: 14,
+                              height: 1.6,
+                              color: tokens.ink,
+                            ),
+                          ),
+                        ),
+                      ),
+                    SizedBox(
+                      height: 64,
+                      child: _fitRow(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            InkRingButton(
+                              key: novelTtsPrevButtonKey,
+                              tooltip: i18n.novel_tts_prev,
+                              pigment: tokens.pigment(1),
+                              onPressed: () =>
+                                  controller.skip(direction: 'prev'),
+                              icon: const WcIcon(Icons.skip_previous),
+                            ),
+                            if (speaking)
+                              InkRingButton(
+                                key: novelTtsPauseButtonKey,
+                                main: true,
+                                tooltip: i18n.novel_tts_pause,
+                                pigment: tokens.pigment(0),
+                                onPressed: controller.pause,
+                                icon: const WcIcon(Icons.pause, filled: true),
+                              )
+                            else
+                              InkRingButton(
+                                key: novelTtsPlayButtonKey,
+                                main: true,
+                                tooltip: status == NovelTtsStatus.paused
+                                    ? i18n.novel_tts_resume
+                                    : i18n.novel_tts_play,
+                                pigment: tokens.pigment(0),
+                                onPressed: status == NovelTtsStatus.paused
+                                    ? controller.resume
+                                    : null,
+                                icon: const WcIcon(
+                                  Icons.play_arrow,
+                                  filled: true,
+                                ),
+                              ),
+                            InkRingButton(
+                              key: novelTtsNextButtonKey,
+                              tooltip: i18n.novel_tts_next,
+                              pigment: tokens.pigment(2),
+                              onPressed: () =>
+                                  controller.skip(direction: 'next'),
+                              icon: const WcIcon(Icons.skip_next),
+                            ),
+                            InkRingButton(
+                              key: novelTtsStopButtonKey,
+                              tooltip: i18n.novel_tts_stop,
+                              pigment: neutral,
+                              onPressed: controller.stop,
+                              icon: const WcIcon(Icons.stop),
+                            ),
+                            InkRingButton(
+                              key: novelTtsQuickVoiceKey,
+                              tooltip: i18n.novel_tts_quick_voice,
+                              pigment: tokens.pigment(3),
+                              onPressed: () => _selectVoice(context),
+                              icon: const WcIcon(
+                                Icons.record_voice_over_outlined,
+                              ),
+                            ),
+                            if (onAddReading != null &&
+                                controller.currentClip != null)
+                              InkRingButton(
+                                key: novelTtsAddReadingFromBarKey,
+                                tooltip: i18n.novel_tts_reading_add_current,
+                                pigment: tokens.pigment(4),
+                                onPressed: onAddReading,
+                                icon: const WcIcon(Icons.spellcheck),
+                              ),
+                            InkRingButton(
+                              tooltip: i18n.novel_tts_settings,
+                              pigment: sand,
+                              onPressed: onOpenSettings,
+                              icon: const WcIcon(Icons.tune),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Keeps the button row on one line, shrinking it on very narrow screens.
+  Widget _fitRow(Row row) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final needed = (row.children.length - 1) * 44.0 + 58;
+        if (constraints.maxWidth >= needed) return row;
+        return FittedBox(
+          child: SizedBox(width: needed, child: row),
+        );
+      },
+    );
+  }
+
   /// In the watercolor style the play button sits in a pigment-filled well.
   Widget _wellButton(WatercolorTokens? tokens, Widget button) {
     if (tokens == null) return button;
@@ -284,4 +498,28 @@ Future<void> openNovelTtsSettings(BuildContext context) {
       builder: (_) => Theme(data: theme, child: const NovelTtsPage()),
     ),
   );
+}
+
+/// A soft pigment blot bleeding off the bar's corner.
+class _WashBlobPainter extends CustomPainter {
+  const _WashBlobPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: size.center(Offset.zero),
+        width: size.width * 0.8,
+        height: size.height * 0.75,
+      ),
+      Paint()
+        ..color = color
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_WashBlobPainter old) => old.color != color;
 }

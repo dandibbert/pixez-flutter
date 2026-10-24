@@ -1347,3 +1347,57 @@ class _RingThumb extends SliderComponentShape {
     canvas.drawCircle(center, 4, Paint()..color = pigment);
   }
 }
+
+/// The reader's read-aloud icon in the watercolor style: a headphone that
+/// sits on a pigment wash while reading, a fainter one while paused.
+class NovelReaderTtsIcon extends StatelessWidget {
+  const NovelReaderTtsIcon({
+    required this.tokens,
+    required this.active,
+    required this.paused,
+  });
+
+  final WatercolorTokens tokens;
+  final bool active;
+  final bool paused;
+
+  @override
+  Widget build(BuildContext context) {
+    final strength = active ? 0.6 : (paused ? 0.3 : 0.0);
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: -8,
+            top: -8,
+            right: -8,
+            bottom: -8,
+            child: AnimatedOpacity(
+              opacity: strength,
+              duration: WcMotion.medium,
+              curve: WcMotion.standard,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      tokens.pigment(0),
+                      tokens.pigment(0).withValues(alpha: 0.85),
+                      tokens.pigment(0).withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.78, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const WcIcon(Icons.headphones, size: 21),
+        ],
+      ),
+    );
+  }
+}
