@@ -71,4 +71,41 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });
+
+  testWidgets('the scrollbar track is not shortened by the system insets', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3.0;
+    // An iPhone status bar and home indicator.
+    tester.view.padding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    userSetting.prefs = await SharedPreferences.getInstance();
+    final store = NovelStore(1, buildNovel());
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NovelViewerPage(id: 1, novelStore: store),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+    store.novelTextResponse = buildWebResponse(_page(80, 'A', 1));
+    store.spans = NovelSpansGenerator().buildSpans(store.novelTextResponse!);
+    store.errorMessage = null;
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    // The header and page bar take the insets; the scrollbar between them
+    // must span the whole article, so its thumb starts at the top.
+    final scrollbar = tester.element(find.byKey(novelReaderScrollbarKey));
+    expect(MediaQuery.paddingOf(scrollbar).top, 0);
+    expect(MediaQuery.paddingOf(scrollbar).bottom, 0);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

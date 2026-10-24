@@ -373,24 +373,33 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
             backgroundColor: scheme.outlineVariant,
           ),
           Expanded(
-            child: ScrollbarTheme(
-              data: ScrollbarThemeData(
-                thumbVisibility: const WidgetStatePropertyAll(true),
-                thickness: const WidgetStatePropertyAll(6),
-                radius: const Radius.circular(4),
-                thumbColor: WidgetStatePropertyAll(
-                  scheme.onSurface.withValues(alpha: 0.4),
+            // The header and the page bar already sit inside the status bar
+            // and home-indicator insets. Left in place here, the insets
+            // shrink the scrollbar track, so its thumb rests a status-bar
+            // height down even at the top of the page.
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeBottom: true,
+              child: ScrollbarTheme(
+                data: ScrollbarThemeData(
+                  thumbVisibility: const WidgetStatePropertyAll(true),
+                  thickness: const WidgetStatePropertyAll(6),
+                  radius: const Radius.circular(4),
+                  thumbColor: WidgetStatePropertyAll(
+                    scheme.onSurface.withValues(alpha: 0.4),
+                  ),
                 ),
-              ),
-              child: Scrollbar(
-                key: novelReaderScrollbarKey,
-                controller: _controller,
-                interactive: true,
-                child: CustomScrollView(
+                child: Scrollbar(
+                  key: novelReaderScrollbarKey,
                   controller: _controller,
-                  slivers: [
-                    SliverPadding(padding: resolvedPadding, sliver: sliver),
-                  ],
+                  interactive: true,
+                  child: CustomScrollView(
+                    controller: _controller,
+                    slivers: [
+                      SliverPadding(padding: resolvedPadding, sliver: sliver),
+                    ],
+                  ),
                 ),
               ),
             ),
