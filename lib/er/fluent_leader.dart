@@ -22,9 +22,7 @@ import 'package:url_launcher/url_launcher.dart';
 class FluentLeader {
   static Future<void> pushUntilHome(BuildContext context) async {
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      FluentPageRoute(
-        builder: (context) => const FluentHelloPage(),
-      ),
+      FluentPageRoute(builder: (context) => const FluentHelloPage()),
       // ignore: unnecessary_null_comparison
       (route) => route == null,
     );
@@ -43,14 +41,16 @@ class FluentLeader {
     }
     if (link.host == "eval" && link.scheme == "pixez") {
       showDialog(
-          context: context,
-          builder: (context) => SaveEvalPage(
-                eval: link.queryParameters["code"] != null
-                    ? String.fromCharCodes(
-                        base64Decode(link.queryParameters["code"]!))
-                    : null,
-              ),
-          useRootNavigator: false);
+        context: context,
+        builder: (context) => SaveEvalPage(
+          eval: link.queryParameters["code"] != null
+              ? String.fromCharCodes(
+                  base64Decode(link.queryParameters["code"]!),
+                )
+              : null,
+        ),
+        useRootNavigator: false,
+      );
       return;
     }
     if (link.host == "pixiv.me") {
@@ -75,8 +75,9 @@ class FluentLeader {
       FluentLeader.push(
         context,
         SoupPage(
-            url: link.replace(scheme: "https").toString(),
-            spotlight: null),
+          url: link.replace(scheme: "https").toString(),
+          spotlight: null,
+        ),
         icon: const Icon(FluentIcons.image_pixel),
         title: Text("${I18n.of(context).spotlight}"),
       );
@@ -89,24 +90,26 @@ class FluentLeader {
           String code = link.queryParameters['code']!;
           LPrinter.d("here we go:" + code);
           Response response = await oAuthClient.code2Token(code);
-          AccountResponse accountResponse =
-              Account.fromJson(response.data).response;
+          AccountResponse accountResponse = Account.fromJson(
+            response.data,
+          ).response;
           final user = accountResponse.user;
           AccountProvider accountProvider = new AccountProvider();
           await accountProvider.open();
           var accountPersist = AccountPersist(
-              userId: user.id,
-              userImage: user.profileImageUrls.px170x170,
-              accessToken: accountResponse.accessToken,
-              refreshToken: accountResponse.refreshToken,
-              deviceToken: "",
-              passWord: "no more",
-              name: user.name,
-              account: user.account,
-              mailAddress: user.mailAddress,
-              isPremium: user.isPremium ? 1 : 0,
-              xRestrict: user.xRestrict,
-              isMailAuthorized: user.isMailAuthorized ? 1 : 0);
+            userId: user.id,
+            userImage: user.profileImageUrls.px170x170,
+            accessToken: accountResponse.accessToken,
+            refreshToken: accountResponse.refreshToken,
+            deviceToken: "",
+            passWord: "no more",
+            name: user.name,
+            account: user.account,
+            mailAddress: user.mailAddress,
+            isPremium: user.isPremium ? 1 : 0,
+            xRestrict: user.xRestrict,
+            isMailAuthorized: user.isMailAuthorized ? 1 : 0,
+          );
           await accountProvider.insert(accountPersist);
           await accountStore.fetch();
           BotToast.showText(text: "Login Success");
@@ -226,10 +229,7 @@ class FluentLeader {
           else
             FluentLeader.push(
               context,
-              NovelViewerPage(
-                id: int.parse(id!),
-                novelStore: null,
-              ),
+              NovelViewerPage(id: int.parse(id!), novelStore: null),
               title: Text(I18n.of(context).novel + ': ${id}'),
               icon: Icon(FluentIcons.book_answers),
             );
@@ -275,8 +275,12 @@ class FluentLeader {
     }
   }
 
-  static Future<dynamic> pushWithScaffold(context, Widget widget,
-      {Widget? icon, Widget? title}) {
+  static Future<dynamic> pushWithScaffold(
+    context,
+    Widget widget, {
+    Widget? icon,
+    Widget? title,
+  }) {
     return FluentLeader.push(
       context,
       ScaffoldPage(content: widget),

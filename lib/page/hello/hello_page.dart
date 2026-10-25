@@ -122,12 +122,9 @@ class _HelloPageState extends State<HelloPage> {
   Future<void> initLinksStream() async {
     // Subscribe before asking for the cold-start URL, closing the gap in
     // which an incoming link could previously disappear.
-    _sub = DeepLinkPlugin.uriLinkStream.listen(
-      (Uri? link) {
-        if (link != null) _openDeepLink(link);
-      },
-      onError: (Object error) => debugPrint('Deep link stream: $error'),
-    );
+    _sub = DeepLinkPlugin.uriLinkStream.listen((Uri? link) {
+      if (link != null) _openDeepLink(link);
+    }, onError: (Object error) => debugPrint('Deep link stream: $error'));
     try {
       final initialLink = await DeepLinkPlugin.getInitialUri();
       if (initialLink != null) _openDeepLink(initialLink);
