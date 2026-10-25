@@ -20,6 +20,7 @@ import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/er/fluent_leader.dart';
+import 'package:pixez/er/pixiv_deep_link.dart';
 import 'package:pixez/er/lprinter.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/models/account.dart';
@@ -61,6 +62,13 @@ class Leader {
     if (Constants.isFluent) {
       FluentLeader.pushWithUri(context, link);
       return false;
+    }
+    // Both pixez:// and pixev:// work, including HTTPS links whose scheme
+    // was replaced (pixev://www.pixiv.net/novel/show.php?id=...).
+    final novelId = pixivNovelId(link);
+    if (novelId != null) {
+      Leader.push(context, NovelViewerPage(id: novelId));
+      return true;
     }
     // https://www.pixiv.net/novel/series/$id
     if (link.path.contains("novel") && link.path.contains("series")) {
@@ -130,7 +138,7 @@ class Leader {
       Leader.push(
         context,
         SoupPage(
-          url: link.toString().replaceAll("pixez://", "https://"),
+          url: link.replace(scheme: "https").toString(),
           spotlight: null,
         ),
       );
@@ -178,7 +186,7 @@ class Leader {
       }
     } else if (link.scheme.contains("http")) {
       return _parseUriContent(context, link);
-    } else if (link.scheme == "pixez") {
+    } else if (link.scheme == "pixez" || link.scheme == "pixev") {
       return _parseUriContent(context, link);
     }
     return false;

@@ -63,6 +63,7 @@ import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_toast.dart';
+import 'package:pixez/watercolor/watercolor_tokens.dart';
 
 class NovelViewerPage extends StatefulWidget {
   final int id;
@@ -693,19 +694,26 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
                 final mine = _tts.session?.novelId == widget.id;
                 final paused = mine && _tts.status == NovelTtsStatus.paused;
                 final listening = mine && _tts.isActive && !paused;
+                final tokens = WatercolorTokens.of(context);
                 return IconButton(
                   tooltip: paused
                       ? I18n.of(context).novel_tts_resume
                       : listening
                       ? I18n.of(context).novel_tts_pause
                       : I18n.of(context).novel_tts_play,
-                  icon: Icon(
-                    paused
-                        ? Icons.play_circle_outline
-                        : listening
-                        ? Icons.pause_circle_outline
-                        : Icons.headphones,
-                  ),
+                  icon: tokens == null
+                      ? Icon(
+                          paused
+                              ? Icons.play_circle_outline
+                              : listening
+                              ? Icons.pause_circle_outline
+                              : Icons.headphones,
+                        )
+                      : NovelReaderTtsIcon(
+                          tokens: tokens,
+                          active: listening,
+                          paused: paused,
+                        ),
                   onPressed: _toggleTts,
                 );
               },
@@ -744,6 +752,7 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
         },
         child: NovelReaderArticle(
           controller: _controller,
+          contentKey: ValueKey(pageIndex),
           itemCount: blocks.length,
           itemBuilder: (context, index) {
             return _buildReaderBlock(

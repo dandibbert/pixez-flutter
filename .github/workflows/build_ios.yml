@@ -49,6 +49,9 @@ jobs:
       - name: Generate app files
         run: dart run build_runner build
 
+      - name: Test Pixiv deep links
+        run: flutter test test/pixiv_deep_link_test.dart
+
       - name: Build iOS
         run: flutter build ios --release --no-codesign
 

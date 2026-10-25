@@ -269,12 +269,19 @@ class NovelReaderArticle extends StatefulWidget {
   final ScrollController? controller;
   final EdgeInsetsGeometry padding;
 
+  /// Identifies the content being shown, such as the current page. When it
+  /// changes the list is rebuilt from scratch instead of laying the new
+  /// blocks out from the old blocks' positions, which would otherwise shift
+  /// the scroll offset away from the top on a page turn.
+  final Key? contentKey;
+
   const NovelReaderArticle({
     super.key,
     this.child,
     this.itemCount,
     this.itemBuilder,
     this.controller,
+    this.contentKey,
     this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 24),
   }) : assert(
          child != null || (itemCount != null && itemBuilder != null),
@@ -343,6 +350,7 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
     final Widget sliver;
     if (widget.itemBuilder != null && widget.itemCount != null) {
       sliver = SliverList(
+        key: widget.contentKey,
         delegate: SliverChildBuilderDelegate(
           widget.itemBuilder!,
           childCount: widget.itemCount,
@@ -350,7 +358,7 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
         ),
       );
     } else {
-      sliver = SliverToBoxAdapter(child: widget.child);
+      sliver = SliverToBoxAdapter(key: widget.contentKey, child: widget.child);
     }
     return ColoredBox(
       key: novelReaderArticleKey,
@@ -365,24 +373,33 @@ class _NovelReaderArticleState extends State<NovelReaderArticle> {
             backgroundColor: scheme.outlineVariant,
           ),
           Expanded(
-            child: ScrollbarTheme(
-              data: ScrollbarThemeData(
-                thumbVisibility: const WidgetStatePropertyAll(true),
-                thickness: const WidgetStatePropertyAll(6),
-                radius: const Radius.circular(4),
-                thumbColor: WidgetStatePropertyAll(
-                  scheme.onSurface.withValues(alpha: 0.4),
+            // The header and the page bar already sit inside the status bar
+            // and home-indicator insets. Left in place here, the insets
+            // shrink the scrollbar track, so its thumb rests a status-bar
+            // height down even at the top of the page.
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeBottom: true,
+              child: ScrollbarTheme(
+                data: ScrollbarThemeData(
+                  thumbVisibility: const WidgetStatePropertyAll(true),
+                  thickness: const WidgetStatePropertyAll(6),
+                  radius: const Radius.circular(4),
+                  thumbColor: WidgetStatePropertyAll(
+                    scheme.onSurface.withValues(alpha: 0.4),
+                  ),
                 ),
-              ),
-              child: Scrollbar(
-                key: novelReaderScrollbarKey,
-                controller: _controller,
-                interactive: true,
-                child: CustomScrollView(
+                child: Scrollbar(
+                  key: novelReaderScrollbarKey,
                   controller: _controller,
-                  slivers: [
-                    SliverPadding(padding: resolvedPadding, sliver: sliver),
-                  ],
+                  interactive: true,
+                  child: CustomScrollView(
+                    controller: _controller,
+                    slivers: [
+                      SliverPadding(padding: resolvedPadding, sliver: sliver),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1328,5 +1345,59 @@ class _RingThumb extends SliderComponentShape {
         ..strokeWidth = 1.5,
     );
     canvas.drawCircle(center, 4, Paint()..color = pigment);
+  }
+}
+
+/// The reader's read-aloud icon in the watercolor style: a headphone that
+/// sits on a pigment wash while reading, a fainter one while paused.
+class NovelReaderTtsIcon extends StatelessWidget {
+  const NovelReaderTtsIcon({
+    required this.tokens,
+    required this.active,
+    required this.paused,
+  });
+
+  final WatercolorTokens tokens;
+  final bool active;
+  final bool paused;
+
+  @override
+  Widget build(BuildContext context) {
+    final strength = active ? 0.6 : (paused ? 0.3 : 0.0);
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: -8,
+            top: -8,
+            right: -8,
+            bottom: -8,
+            child: AnimatedOpacity(
+              opacity: strength,
+              duration: WcMotion.medium,
+              curve: WcMotion.standard,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      tokens.pigment(0),
+                      tokens.pigment(0).withValues(alpha: 0.85),
+                      tokens.pigment(0).withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.78, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const WcIcon(Icons.headphones, size: 21),
+        ],
+      ),
+    );
   }
 }
