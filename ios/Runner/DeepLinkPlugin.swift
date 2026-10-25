@@ -13,6 +13,8 @@ class DeepLinkPlugin : NSObject, FlutterPlugin, FlutterStreamHandler, FlutterSce
     var initialLink:String?
     var latestLink:String?
     var eventSink:FlutterEventSink?
+    // URLs received before Dart subscribes must survive app cold starts.
+    private var pendingLinks: [String] = []
     static let kMessagesChannel = "deep_links/messages";
     static let kEventsChannel = "deep_links/events";
     static let shared = DeepLinkPlugin()
@@ -20,8 +22,18 @@ class DeepLinkPlugin : NSObject, FlutterPlugin, FlutterStreamHandler, FlutterSce
     static func register(with registrar: FlutterPluginRegistrar) {
         FlutterMethodChannel(name: kMessagesChannel, binaryMessenger: registrar.messenger()).setMethodCallHandler({
             (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
-            if call.method == "getInitialLink" {
-                result(DeepLinkPlugin.shared.initialLink)
+            switch call.method {
+            case "getInitialLink":
+                // Consume exactly once: re-creating the home page must not
+                // re-open an old novel, and the stream drains the other URLs.
+                let plugin = DeepLinkPlugin.shared
+                let link: String? = plugin.pendingLinks.isEmpty
+                    ? nil : plugin.pendingLinks.removeFirst()
+                result(link)
+            case "getLatestLink":
+                result(DeepLinkPlugin.shared.latestLink)
+            default:
+                result(FlutterMethodNotImplemented)
             }
         })
         let eventChannel = FlutterEventChannel(name: kEventsChannel, binaryMessenger: registrar.messenger())
@@ -71,6 +83,12 @@ class DeepLinkPlugin : NSObject, FlutterPlugin, FlutterStreamHandler, FlutterSce
     
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         self.eventSink = events
+        // The listener may only appear after Flutter's splash/home transition.
+        let buffered = pendingLinks
+        pendingLinks.removeAll()
+        for link in buffered {
+            events(link)
+        }
         return nil
     }
     
@@ -98,7 +116,15 @@ class DeepLinkPlugin : NSObject, FlutterPlugin, FlutterStreamHandler, FlutterSce
         if setInitialIfNeeded, initialLink == nil {
             initialLink = link
         }
-        eventSink?(link)
+        if let eventSink = eventSink {
+            eventSink(link)
+        } else if pendingLinks.last != link {
+            pendingLinks.append(link)
+            // Prevent indefinite growth if the home page is unavailable.
+            if pendingLinks.count > 8 {
+                pendingLinks.removeFirst(pendingLinks.count - 8)
+            }
+        }
         return true
     }
 }

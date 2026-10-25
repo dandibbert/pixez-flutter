@@ -36,6 +36,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>pixez</string>
+				<string>pixev</string>
 			</array>
 		</dict>
 		<dict>
@@ -47,6 +48,9 @@
 			</array>
 		</dict>
 	</array>
+	<!-- The app uses its own native-to-Dart deep-link channel. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>

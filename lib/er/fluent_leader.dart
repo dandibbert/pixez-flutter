@@ -4,6 +4,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pixez/er/lprinter.dart';
+import 'package:pixez/er/pixiv_deep_link.dart';
 import 'package:pixez/fluent/navigation_framework.dart';
 import 'package:pixez/fluent/page/hello/fluent_hello_page.dart';
 import 'package:pixez/fluent/page/hello/setting/save_eval_page.dart';
@@ -30,6 +31,16 @@ class FluentLeader {
   }
 
   static Future<void> pushWithUri(BuildContext context, Uri link) async {
+    final novelId = pixivNovelId(link);
+    if (novelId != null) {
+      FluentLeader.push(
+        context,
+        NovelViewerPage(id: novelId),
+        title: Text(I18n.of(context).novel + ': $novelId'),
+        icon: Icon(FluentIcons.book_answers),
+      );
+      return;
+    }
     if (link.host == "eval" && link.scheme == "pixez") {
       showDialog(
           context: context,
@@ -64,7 +75,7 @@ class FluentLeader {
       FluentLeader.push(
         context,
         SoupPage(
-            url: link.toString().replaceAll("pixez://", "https://"),
+            url: link.replace(scheme: "https").toString(),
             spotlight: null),
         icon: const Icon(FluentIcons.image_pixel),
         title: Text("${I18n.of(context).spotlight}"),
@@ -111,7 +122,7 @@ class FluentLeader {
       }
     } else if (link.scheme.contains("http")) {
       _parseUriContent(context, link);
-    } else if (link.scheme == "pixez") {
+    } else if (link.scheme == "pixez" || link.scheme == "pixev") {
       _parseUriContent(context, link);
     }
   }
