@@ -41,6 +41,7 @@ import 'package:pixez/page/novel/search/novel_result_page.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/image_text.dart';
+import 'package:pixez/page/novel/viewer/novel_export.dart';
 import 'package:pixez/page/novel/viewer/novel_pages.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_background.dart';
 import 'package:pixez/page/novel/viewer/novel_reader_keys.dart';
@@ -1318,11 +1319,12 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
               buildListTile(
                 _novelStore.novelTextResponse!.seriesNavigation?.nextNovel,
               ),
-              if (Platform.isAndroid)
+              if (Platform.isAndroid || Platform.isIOS)
                 ListTile(
                   title: Text(I18n.of(context).export),
                   leading: const WcIcon(Icons.folder_zip),
                   onTap: () {
+                    Navigator.of(context).pop();
                     _export();
                   },
                 ),
@@ -1386,47 +1388,48 @@ class _NovelViewerPageState extends State<NovelViewerPage> {
     );
   }
 
-  void _export() async {
-    if (_novelStore.novelTextResponse == null) return;
-    if (Platform.isAndroid) {
-      final data = _novelStore.novelTextResponse!.text;
-      final uri = await SAFPlugin.createFile(
-        "${_novelStore.novel!.title.trim().toLegal()}.txt",
-        "application/txt",
-      );
-      await SAFPlugin.writeUri(uri!, utf8.encode(data));
-      wcToast(text: "export success");
-    } else if (Platform.isIOS) {
-      final path = await getApplicationDocumentsDirectory();
-      final dirPath = Path.join(path.path, "novel_export");
-      final dir = Directory(dirPath);
-      if (!dir.existsSync()) {
-        dir.createSync(recursive: true);
+  /// Saves the whole novel, all of its pages, as one .txt file: through the
+  /// system file picker on Android and the share sheet on iOS.
+  Future<void> _export() async {
+    final novel = _novelStore.novel;
+    if (novel == null || _novelStore.novelTextResponse == null) return;
+    final text = novelExportText(
+      title: novel.title,
+      author: novel.user.name,
+      novelId: novel.id,
+      seriesTitle: novel.series.title,
+      spans: _novelStore.spans,
+    );
+    final fileName = "${novel.title.trim().toLegal()}.txt";
+    try {
+      if (Platform.isAndroid) {
+        final uri = await SAFPlugin.createFile(fileName, "application/txt");
+        if (uri == null) return;
+        await SAFPlugin.writeUri(uri, utf8.encode(text));
+        wcToast(text: "export success");
+      } else if (Platform.isIOS) {
+        final dir = Directory(
+          Path.join((await getTemporaryDirectory()).path, "novel_export"),
+        );
+        await dir.create(recursive: true);
+        final file = File(Path.join(dir.path, fileName));
+        await file.writeAsString(text);
+        if (!mounted) return;
+        final size = MediaQuery.sizeOf(context);
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path, mimeType: "text/plain")],
+            sharePositionOrigin: Rect.fromCenter(
+              center: size.center(Offset.zero),
+              width: 1,
+              height: 1,
+            ),
+          ),
+        );
       }
-      final allPath = Path.join(dirPath, "All");
-      final allDir = Directory(allPath);
-      if (!allDir.existsSync()) {
-        allDir.createSync(recursive: true);
-      }
-      final novelDirPath = Path.join(
-        dirPath,
-        _novelStore.novel!.title.trim().toLegal(),
-      );
-      final novelDir = Directory(novelDirPath);
-      if (!novelDir.existsSync()) {
-        novelDir.createSync(recursive: true);
-      }
-      final fileInAllPath = Path.join(
-        allPath,
-        "${_novelStore.novel!.title.trim().toLegal()}.txt",
-      );
-      final filePath = Path.join(novelDirPath, "${_novelStore.novel!.id}.txt");
-      final resultFile = File(filePath);
-      final data = _novelStore.novelTextResponse!.text;
-      resultFile.writeAsStringSync(data);
-      File(fileInAllPath).writeAsStringSync(data);
-      LPrinter.d("path: $filePath");
-      wcToast(text: "export ${filePath}");
+    } catch (e) {
+      LPrinter.d(e);
+      wcToast(text: "export failed");
     }
   }
 }
