@@ -312,11 +312,20 @@ class _SettingPageState extends State<SettingPage> {
                         title: Text(I18n.of(context).manga),
                         onTap: () => Leader.push(context, RecomMangaPage()),
                       ),
-                      ListTile(
-                        leading: WcListIcon(Icons.book, pigment: 3),
-                        title: Text(I18n.of(context).novel),
-                        onTap: () => openNovelRail(context),
-                      ),
+                      // Inside the novel section this entry leads back to
+                      // illusts instead of reopening novels.
+                      if (Constants.type == 1)
+                        ListTile(
+                          leading: WcListIcon(Icons.image, pigment: 3),
+                          title: Text(I18n.of(context).illust),
+                          onTap: () => openIllustHome(context),
+                        )
+                      else
+                        ListTile(
+                          leading: WcListIcon(Icons.book, pigment: 3),
+                          title: Text(I18n.of(context).novel),
+                          onTap: () => openNovelRail(context),
+                        ),
                       ListTile(
                         leading: WcListIcon(Icons.headphones, pigment: 4),
                         title: Text(I18n.of(context).novel_tts_settings),

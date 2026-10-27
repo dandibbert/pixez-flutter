@@ -38,6 +38,16 @@ void openNovelRail(BuildContext context) {
   ).pushReplacement(MaterialPageRoute(builder: (context) => NovelRail()));
 }
 
+/// Leaves the novel section for the illust home.
+void openIllustHome(BuildContext context) {
+  Navigator.of(context, rootNavigator: true).pushReplacement(
+    MaterialPageRoute(
+      builder: (context) =>
+          Platform.isIOS || Platform.isMacOS ? HelloPage() : AndroidHelloPage(),
+    ),
+  );
+}
+
 class NovelRail extends StatefulWidget {
   @override
   _NovelRailState createState() => _NovelRailState();
@@ -139,18 +149,23 @@ class _NovelRailState extends State<NovelRail> {
           _preTime != null &&
               DateTime.now().difference(_preTime!) <= Duration(seconds: 2),
       child: Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => Platform.isIOS || Platform.isMacOS
-                    ? HelloPage()
-                    : AndroidHelloPage(),
+        floatingActionButton: WatercolorTokens.of(context) == null
+            ? FloatingActionButton(
+                onPressed: () => openIllustHome(context),
+                child: WcIcon(Icons.picture_in_picture),
+              )
+            : FloatingActionButton.extended(
+                onPressed: () => openIllustHome(context),
+                // The theme's round shape would clip the label.
+                shape: StadiumBorder(
+                  side: BorderSide(
+                    color: WatercolorTokens.of(context)!.ink,
+                    width: 1.5,
+                  ),
+                ),
+                icon: const WcIcon(Icons.image, size: 20),
+                label: Text(I18n.of(context).illust),
               ),
-            );
-          },
-          child: WcIcon(Icons.picture_in_picture),
-        ),
         bottomNavigationBar: _buildNavigationBar(context),
         body: _buildPages(),
       ),
