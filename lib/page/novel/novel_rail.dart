@@ -16,6 +16,7 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/constants.dart';
+import 'package:pixez/er/deep_link_router.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/hello/android_hello_page.dart';
@@ -67,10 +68,13 @@ class _NovelRailState extends State<NovelRail> {
     Constants.type = 1;
     fetcher.context = context;
     super.initState();
+    // Keep opening pixiv links (illusts included) while novels are showing.
+    DeepLinkRouter.attach(this);
   }
 
   @override
   void dispose() {
+    DeepLinkRouter.detach(this);
     _pageController?.dispose();
     super.dispose();
   }
