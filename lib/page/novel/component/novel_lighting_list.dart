@@ -26,6 +26,7 @@ import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
 import 'package:pixez/page/novel/component/novel_intro.dart';
 import 'package:pixez/page/novel/component/novel_lighting_store.dart';
 import 'package:pixez/page/novel/search/novel_search_pager.dart';
+import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/exts.dart';
 import 'package:pixez/watercolor/mingcute.dart';
@@ -230,19 +231,34 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      novel.user.name,
-                                      maxLines: 1,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall!
-                                          .copyWith(
-                                            color:
-                                                tokens?.accent ??
-                                                Theme.of(
-                                                  context,
-                                                ).colorScheme.secondary,
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        Navigator.of(
+                                          context,
+                                          rootNavigator: true,
+                                        ).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => NovelUsersPage(
+                                              id: novel.user.id,
+                                            ),
                                           ),
+                                        );
+                                      },
+                                      child: Text(
+                                        novel.user.name,
+                                        maxLines: 1,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall!
+                                            .copyWith(
+                                              color:
+                                                  tokens?.accent ??
+                                                  Theme.of(
+                                                    context,
+                                                  ).colorScheme.secondary,
+                                            ),
+                                      ),
                                     ),
                                     Padding(
                                       padding: EdgeInsets.only(left: 8),
