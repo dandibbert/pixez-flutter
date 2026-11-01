@@ -1,0 +1,7 @@
+/* Spotlight and Siri phrases (PixezShortcuts.swift). */
+"Search illusts in ${applicationName}" = "用${applicationName}搜索插画";
+"Search novels in ${applicationName}" = "用${applicationName}搜索小说";
+"Open pixiv link in ${applicationName}" = "用${applicationName}打开 pixiv 链接";
+"Open illust in ${applicationName}" = "用${applicationName}打开插画";
+"Open novel in ${applicationName}" = "用${applicationName}打开小说";
+"Open user in ${applicationName}" = "用${applicationName}打开用户";

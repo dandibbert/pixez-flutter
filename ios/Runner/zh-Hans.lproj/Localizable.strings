@@ -1,0 +1,21 @@
+/* Shortcuts and Spotlight actions (PixezShortcuts.swift). */
+"Open pixiv Link" = "打开 pixiv 链接";
+"Open Illust" = "打开插画";
+"Open Novel" = "打开小说";
+"Open User" = "打开用户";
+"Search Illusts" = "搜索插画";
+"Search Novels" = "搜索小说";
+"Link" = "链接";
+"Illust ID" = "插画 ID";
+"Novel ID" = "小说 ID";
+"User ID" = "用户 ID";
+"Keyword" = "关键词";
+"Opens a pixiv link in PixEz: illusts, novels, users, series, tag pages and pixez:// links. Text around the link is ignored." = "在 PixEz 中打开 pixiv 链接：插画、小说、用户、系列、标签页和 pixez:// 链接。链接前后的其他文字会被忽略。";
+"Opens an illust or manga by its ID." = "按 ID 打开插画或漫画。";
+"Opens a novel by its ID." = "按 ID 打开小说。";
+"Opens a user's profile by their ID." = "按 ID 打开用户主页。";
+"Searches illusts and manga for a keyword or tag." = "按关键词或标签搜索插画和漫画。";
+"Searches novels for a keyword or tag." = "按关键词或标签搜索小说。";
+"No pixiv link was found in the text." = "文本中没有找到 pixiv 链接。";
+"The ID must be a positive number." = "ID 必须是正整数。";
+"Enter a keyword to search for." = "请输入要搜索的关键词。";

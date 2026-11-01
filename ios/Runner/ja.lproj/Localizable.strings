@@ -1,0 +1,21 @@
+/* Shortcuts and Spotlight actions (PixezShortcuts.swift). */
+"Open pixiv Link" = "pixiv リンクを開く";
+"Open Illust" = "イラストを開く";
+"Open Novel" = "小説を開く";
+"Open User" = "ユーザーを開く";
+"Search Illusts" = "イラストを検索";
+"Search Novels" = "小説を検索";
+"Link" = "リンク";
+"Illust ID" = "イラスト ID";
+"Novel ID" = "小説 ID";
+"User ID" = "ユーザー ID";
+"Keyword" = "キーワード";
+"Opens a pixiv link in PixEz: illusts, novels, users, series, tag pages and pixez:// links. Text around the link is ignored." = "pixiv のリンクを PixEz で開きます（イラスト、小説、ユーザー、シリーズ、タグページ、pixez:// リンク）。リンク以外の文字は無視されます。";
+"Opens an illust or manga by its ID." = "ID でイラスト・マンガを開きます。";
+"Opens a novel by its ID." = "ID で小説を開きます。";
+"Opens a user's profile by their ID." = "ID でユーザーのプロフィールを開きます。";
+"Searches illusts and manga for a keyword or tag." = "キーワードやタグでイラスト・マンガを検索します。";
+"Searches novels for a keyword or tag." = "キーワードやタグで小説を検索します。";
+"No pixiv link was found in the text." = "テキストに pixiv のリンクが見つかりません。";
+"The ID must be a positive number." = "ID は正の整数で入力してください。";
+"Enter a keyword to search for." = "検索するキーワードを入力してください。";

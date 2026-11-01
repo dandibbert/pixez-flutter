@@ -28,6 +28,7 @@ import 'package:pixez/network/oauth_client.dart';
 import 'package:pixez/page/hello/android_hello_page.dart';
 import 'package:pixez/page/hello/hello_page.dart';
 import 'package:pixez/page/hello/setting/save_eval_page.dart';
+import 'package:pixez/page/novel/search/novel_result_page.dart';
 import 'package:pixez/page/novel/series/novel_series_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/page/picture/illust_lighting_page.dart';
@@ -62,6 +63,16 @@ class Leader {
     if (Constants.isFluent) {
       FluentLeader.pushWithUri(context, link);
       return false;
+    }
+    final search = pixivSearchLink(link);
+    if (search != null) {
+      Leader.push(
+        context,
+        search.target == PixivSearchTarget.novel
+            ? NovelResultPage(word: search.word)
+            : ResultPage(word: search.word),
+      );
+      return true;
     }
     // Both pixez:// and pixev:// work, including HTTPS links whose scheme
     // was replaced (pixev://www.pixiv.net/novel/show.php?id=...).
