@@ -27,6 +27,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/constants.dart';
 import 'package:pixez/deep_link_plugin.dart';
+import 'package:pixez/er/deep_link_router.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
@@ -394,7 +395,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         }
       }
     });
-    initPlatform();
+    DeepLinkRouter.attach(this, initialLink: _launchLink);
   }
 
   VoidCallback? _LinkCloser = null;
@@ -466,21 +467,10 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
     );
   }
 
-  late StreamSubscription _sub;
-
-  initPlatform() async {
-    try {
-      String? initLastLink = await DeepLinkPlugin.getLatestLink();
-      Uri? initialLink = initLastLink != null
-          ? Uri.tryParse(initLastLink)
-          : null;
-      if (initialLink != null) Leader.pushWithUri(context, initialLink);
-      _sub = DeepLinkPlugin.uriLinkStream.listen(
-        (Uri? link) => Leader.pushWithUri(context, link!),
-      );
-    } catch (e) {
-      print(e);
-    }
+  /// Android hands over the launch link as the "latest" link.
+  static Future<Uri?> _launchLink() async {
+    final link = await DeepLinkPlugin.getLatestLink();
+    return link == null ? null : Uri.tryParse(link);
   }
 
   initPermission(BuildContext context) async {
@@ -524,7 +514,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
   void dispose() {
     _intentDataStreamSubscription.cancel();
     _pageController.dispose();
-    _sub.cancel();
+    DeepLinkRouter.detach(this);
     super.dispose();
   }
 

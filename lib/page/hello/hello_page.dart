@@ -21,8 +21,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/constants.dart';
-import 'package:pixez/deep_link_plugin.dart';
-import 'package:pixez/er/leader.dart';
+import 'package:pixez/er/deep_link_router.dart';
 import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
@@ -45,7 +44,6 @@ class HelloPage extends StatefulWidget {
 }
 
 class _HelloPageState extends State<HelloPage> {
-  StreamSubscription<Uri?>? _sub;
   late int index;
   late PageController _pageController;
   double? bottomNavigatorHeight = null;
@@ -53,7 +51,7 @@ class _HelloPageState extends State<HelloPage> {
 
   @override
   void dispose() {
-    _sub?.cancel();
+    DeepLinkRouter.detach(this);
     _pageController.dispose();
     super.dispose();
   }
@@ -97,7 +95,7 @@ class _HelloPageState extends State<HelloPage> {
     saveStore.saveStream.listen((stream) {
       saveStore.listenBehavior(stream);
     });
-    initLinksStream();
+    DeepLinkRouter.attach(this);
     initPlatformState();
   }
 
@@ -109,28 +107,6 @@ class _HelloPageState extends State<HelloPage> {
         ).pushReplacement(MaterialPageRoute(builder: (context) => GuidePage()));
       }
     });
-  }
-
-  void _openDeepLink(Uri link) {
-    // The Navigator is not ready during initState. Open after the first
-    // frame, and do not navigate if the home page has since been disposed.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Leader.pushWithUri(context, link);
-    });
-  }
-
-  Future<void> initLinksStream() async {
-    // Subscribe before asking for the cold-start URL, closing the gap in
-    // which an incoming link could previously disappear.
-    _sub = DeepLinkPlugin.uriLinkStream.listen((Uri? link) {
-      if (link != null) _openDeepLink(link);
-    }, onError: (Object error) => debugPrint('Deep link stream: $error'));
-    try {
-      final initialLink = await DeepLinkPlugin.getInitialUri();
-      if (initialLink != null) _openDeepLink(initialLink);
-    } catch (error) {
-      debugPrint('Initial deep link: $error');
-    }
   }
 
   @override
