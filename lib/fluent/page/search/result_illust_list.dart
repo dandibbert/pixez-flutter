@@ -19,7 +19,7 @@ import 'dart:async';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show showDateRangePicker;
+import 'package:flutter/material.dart' show DateTimeRange, showDateRangePicker;
 import 'package:pixez/i18n.dart';
 import 'package:pixez/fluent/lighting/fluent_lighting_page.dart';
 import 'package:pixez/lighting/lighting_store.dart';
