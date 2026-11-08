@@ -622,5 +622,18 @@
   "novel_seen_new": "New",
   "novel_hide_seen": "Hide seen novels",
   "novel_show_seen": "Show seen novels",
-  "novel_page_all_seen": "You've seen all {count} novels on this page"
+  "novel_page_all_seen": "You've seen all {count} novels on this page",
+  "home_long_press": "Long-press the first tab",
+  "home_long_press_menu": "Shortcut menu",
+  "home_long_press_novel": "Jump to novels",
+  "home_long_press_manga": "Jump to manga",
+  "shortcut_current": "Current",
+  "shortcut_switched": "Switched to {section} · long-press again to switch back",
+  "shortcut_hint": "Long-press to switch Illust · Manga · Novel",
+  "shortcut_saucenao": "Image search",
+  "shortcut_work_id": "Work ID",
+  "shortcut_work_id_hint": "pixiv ID, e.g. 12345678",
+  "shortcut_search_novel": "Search novels",
+  "shortcut_search_illust": "Search illusts",
+  "shortcut_open": "Open"
 }

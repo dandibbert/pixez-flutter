@@ -601,5 +601,18 @@
   "novel_seen_new": "NEW",
   "novel_hide_seen": "見た作品を隠す",
   "novel_show_seen": "見た作品を表示",
-  "novel_page_all_seen": "このページの{count}作品はすべて見ました"
+  "novel_page_all_seen": "このページの{count}作品はすべて見ました",
+  "home_long_press": "最初のタブを長押し",
+  "home_long_press_menu": "ショートカットメニュー",
+  "home_long_press_novel": "小説へ移動",
+  "home_long_press_manga": "マンガへ移動",
+  "shortcut_current": "表示中",
+  "shortcut_switched": "{section}に切り替えました · もう一度長押しで戻る",
+  "shortcut_hint": "長押しでイラスト · マンガ · 小説を切り替え",
+  "shortcut_saucenao": "画像で検索",
+  "shortcut_work_id": "作品 ID",
+  "shortcut_work_id_hint": "pixiv ID（例: 12345678）",
+  "shortcut_search_novel": "小説を検索",
+  "shortcut_search_illust": "イラストを検索",
+  "shortcut_open": "開く"
 }

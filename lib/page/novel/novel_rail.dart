@@ -21,6 +21,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/hello/android_hello_page.dart';
 import 'package:pixez/page/hello/hello_page.dart';
+import 'package:pixez/page/hello/palette_shortcuts.dart';
 import 'package:pixez/page/hello/setting/setting_page.dart';
 import 'package:pixez/page/novel/new/novel_new_page.dart';
 import 'package:pixez/page/novel/novel_rail_layout.dart';
@@ -33,43 +34,68 @@ import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/palette_bar.dart';
 
 void openNovelRail(BuildContext context) {
-  Navigator.of(
-    context,
-    rootNavigator: true,
-  ).pushReplacement(MaterialPageRoute(builder: (context) => NovelRail()));
+  Navigator.of(context, rootNavigator: true).pushReplacement(novelRailRoute());
 }
 
 /// Leaves the novel section for the illust home.
 void openIllustHome(BuildContext context) {
-  Navigator.of(context, rootNavigator: true).pushReplacement(
-    MaterialPageRoute(
-      builder: (context) =>
-          Platform.isIOS || Platform.isMacOS ? HelloPage() : AndroidHelloPage(),
-    ),
+  Navigator.of(context, rootNavigator: true).pushReplacement(illustHomeRoute());
+}
+
+/// [instant] skips the page transition, for a switch that is already
+/// covered, e.g. by a section wash.
+Route<void> novelRailRoute({int initialIndex = 0, bool instant = false}) =>
+    _sectionRoute(NovelRail(initialIndex: initialIndex), instant);
+
+Route<void> illustHomeRoute({int? initialIndex, bool instant = false}) =>
+    _sectionRoute(
+      Platform.isIOS || Platform.isMacOS
+          ? HelloPage(initialIndex: initialIndex)
+          : AndroidHelloPage(initialIndex: initialIndex),
+      instant,
+    );
+
+Route<void> _sectionRoute(Widget page, bool instant) {
+  if (!instant) return MaterialPageRoute(builder: (context) => page);
+  return PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
   );
 }
 
 class NovelRail extends StatefulWidget {
+  const NovelRail({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
+
   @override
   _NovelRailState createState() => _NovelRailState();
 }
 
 class _NovelRailState extends State<NovelRail> {
-  int selectedIndex = 0;
+  late int selectedIndex = widget.initialIndex;
   DateTime? _preTime;
   PageController? _pageController;
   final Map<int, Widget> _lazyPages = <int, Widget>{};
+  late final PaletteShortcuts _shortcuts = PaletteShortcuts(
+    section: AppSection.novel,
+    selectTab: _select,
+  );
 
   @override
   void initState() {
     if (novelRailUsesSwipeablePages()) {
-      _pageController = PageController();
+      _pageController = PageController(initialPage: selectedIndex);
     }
     Constants.type = 1;
     fetcher.context = context;
     super.initState();
     // Keep opening pixiv links (illusts included) while novels are showing.
     DeepLinkRouter.attach(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) PaletteShortcuts.showHintOnce(context);
+    });
   }
 
   @override
@@ -130,6 +156,7 @@ class _NovelRailState extends State<NovelRail> {
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: (didPop, result) async {
+        if (_shortcuts.isMenuOpen) return;
         userSetting.setAnimContainer(!userSetting.animContainer);
         if (didPop) return;
         if (!userSetting.isReturnAgainToExit) {
@@ -152,48 +179,55 @@ class _NovelRailState extends State<NovelRail> {
           !userSetting.isReturnAgainToExit ||
           _preTime != null &&
               DateTime.now().difference(_preTime!) <= Duration(seconds: 2),
-      child: Scaffold(
-        floatingActionButton: WatercolorTokens.of(context) == null
-            ? FloatingActionButton(
-                onPressed: () => openIllustHome(context),
-                child: WcIcon(Icons.picture_in_picture),
-              )
-            : FloatingActionButton.extended(
-                onPressed: () => openIllustHome(context),
-                // The theme's round shape would clip the label.
-                shape: StadiumBorder(
-                  side: BorderSide(
-                    color: WatercolorTokens.of(context)!.ink,
-                    width: 1.5,
+      child: _shortcuts.wrap(
+        context,
+        Scaffold(
+          floatingActionButton: WatercolorTokens.of(context) == null
+              ? FloatingActionButton(
+                  onPressed: () => openIllustHome(context),
+                  child: WcIcon(Icons.picture_in_picture),
+                )
+              : FloatingActionButton.extended(
+                  onPressed: () => openIllustHome(context),
+                  // The theme's round shape would clip the label.
+                  shape: StadiumBorder(
+                    side: BorderSide(
+                      color: WatercolorTokens.of(context)!.ink,
+                      width: 1.5,
+                    ),
                   ),
+                  icon: const WcIcon(Icons.image, size: 20),
+                  label: Text(I18n.of(context).illust),
                 ),
-                icon: const WcIcon(Icons.image, size: 20),
-                label: Text(I18n.of(context).illust),
-              ),
-        bottomNavigationBar: _buildNavigationBar(context),
-        body: _buildPages(),
+          bottomNavigationBar: _buildNavigationBar(context),
+          body: _buildPages(),
+        ),
       ),
     );
   }
 
-  Widget _buildNavigationBar(BuildContext context) {
-    void select(int index) {
-      HapticUtil.selectionClick();
-      if (this.selectedIndex == index) {
-        topStore.setTop("${index + 1}00");
-      }
-      setState(() {
-        this.selectedIndex = index;
-      });
-      if (_pageController?.hasClients == true) {
-        _pageController!.jumpToPage(index);
-      }
+  void _select(int index) {
+    HapticUtil.selectionClick();
+    if (this.selectedIndex == index) {
+      topStore.setTop("${index + 1}00");
     }
+    setState(() {
+      this.selectedIndex = index;
+    });
+    if (_pageController?.hasClients == true) {
+      _pageController!.jumpToPage(index);
+    }
+  }
 
+  Widget _buildNavigationBar(BuildContext context) {
+    final select = _select;
     if (WatercolorTokens.of(context) != null) {
       return PaletteBar(
         items: [
-          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(
+            icon: PaletteShortcuts.sectionIcon(AppSection.novel),
+            label: PaletteShortcuts.sectionLabel(context, AppSection.novel),
+          ),
           PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
           PaletteBarItem(icon: Icons.favorite, label: I18n.of(context).news),
           PaletteBarItem(icon: Icons.search, label: I18n.of(context).search),
@@ -201,6 +235,9 @@ class _NovelRailState extends State<NovelRail> {
         ],
         selectedIndex: selectedIndex,
         onSelected: select,
+        onLongPressStart: (i, d) => _shortcuts.onLongPressStart(context, i, d),
+        onLongPressMoveUpdate: (_, d) => _shortcuts.onLongPressMoveUpdate(d),
+        onLongPressEnd: (_, d) => _shortcuts.onLongPressEnd(d),
       );
     }
 

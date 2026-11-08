@@ -41,9 +41,13 @@ class PigmentScatterMenu extends StatefulWidget {
     super.key,
     required this.child,
     required this.barInset,
+    required this.currentLabel,
   });
 
   final Widget child;
+
+  /// Tag shown beside the label of the [ScatterAction.current] entry.
+  final String currentLabel;
 
   /// Height at the bottom that stays uncovered, so the bar stays readable.
   final double barInset;
@@ -282,7 +286,11 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
         opacity: labelT,
         child: Transform.translate(
           offset: Offset((entry.labelsRight ? -8 : 8) * (1 - labelT), 0),
-          child: _Label(action: entry.actions[i], hovered: hovered),
+          child: _Label(
+            action: entry.actions[i],
+            hovered: hovered,
+            currentLabel: widget.currentLabel,
+          ),
         ),
       );
       final row = GestureDetector(
@@ -440,10 +448,15 @@ class _Drop extends StatelessWidget {
 }
 
 class _Label extends StatelessWidget {
-  const _Label({required this.action, required this.hovered});
+  const _Label({
+    required this.action,
+    required this.hovered,
+    required this.currentLabel,
+  });
 
   final ScatterAction action;
   final bool hovered;
+  final String currentLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -474,7 +487,7 @@ class _Label extends StatelessWidget {
           if (action.current) ...[
             const SizedBox(width: 6),
             Text(
-              '当前',
+              currentLabel,
               style: TextStyle(fontSize: 11, height: 1.25, color: tokens.sub),
             ),
           ],

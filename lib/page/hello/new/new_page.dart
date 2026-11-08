@@ -21,6 +21,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/page/hello/tab_jump.dart';
 import 'package:pixez/page/follow/follow_list.dart';
 import 'package:pixez/page/hello/new/illust/new_illust_page.dart';
 import 'package:pixez/page/preview/preview_page.dart';
@@ -71,7 +72,10 @@ class _NewPageState extends State<NewPage>
     super.build(context);
     return Observer(builder: (context) {
       if (accountStore.now != null)
-        return Column(
+        return TabJumpListener(
+          request: TabJumps.illustNews,
+          controller: _tabController,
+          child: Column(
           mainAxisSize: MainAxisSize.max,
           children: <Widget>[
             AppBar(
@@ -134,6 +138,7 @@ class _NewPageState extends State<NewPage>
               ),
             )
           ],
+        ),
         );
       return DefaultTabController(
           length: 3,

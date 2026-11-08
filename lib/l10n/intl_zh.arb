@@ -629,5 +629,18 @@
   "novel_seen_new": "新",
   "novel_hide_seen": "隐藏看过的",
   "novel_show_seen": "显示看过的",
-  "novel_page_all_seen": "这一页的 {count} 篇都看过了"
+  "novel_page_all_seen": "这一页的 {count} 篇都看过了",
+  "home_long_press": "长按第一个按钮",
+  "home_long_press_menu": "快捷菜单",
+  "home_long_press_novel": "直达小说",
+  "home_long_press_manga": "直达漫画",
+  "shortcut_current": "当前",
+  "shortcut_switched": "已切换到{section} · 再次长按可切回",
+  "shortcut_hint": "长按可切换 插画 · 漫画 · 小说",
+  "shortcut_saucenao": "以图搜图",
+  "shortcut_work_id": "作品 ID",
+  "shortcut_work_id_hint": "pixiv ID，例如 12345678",
+  "shortcut_search_novel": "搜小说",
+  "shortcut_search_illust": "搜插画",
+  "shortcut_open": "打开"
 }

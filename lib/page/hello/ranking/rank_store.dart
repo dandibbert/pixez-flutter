@@ -19,24 +19,31 @@ import 'package:pixez/er/prefer.dart';
 
 part 'rank_store.g.dart';
 
+/// Every ranking mode, in the order of the `mode_list` translation.
+const rankModeKeys = [
+  "day",
+  "day_male",
+  "day_female",
+  "week_original",
+  "week_rookie",
+  "week",
+  "month",
+  "day_ai",
+  "day_r18_ai",
+  "day_r18",
+  "week_r18",
+  "week_r18g",
+];
+
+/// The ranking modes the user picked, in tab order.
+List<String> savedRankModes() =>
+    Prefer.getStringList(_RankStoreBase.MODE_LIST) ?? [];
+
 class RankStore = _RankStoreBase with _$RankStore;
 
 abstract class _RankStoreBase with Store {
   static const MODE_LIST = 'mode_list';
-  List<String> intialModeList = [
-    "day",
-    "day_male",
-    "day_female",
-    "week_original",
-    "week_rookie",
-    "week",
-    "month",
-    "day_ai",
-    "day_r18_ai",
-    "day_r18",
-    "week_r18",
-    "week_r18g"
-  ];
+  List<String> intialModeList = rankModeKeys;
   @observable
   ObservableList<String> modeList = ObservableList();
   @observable

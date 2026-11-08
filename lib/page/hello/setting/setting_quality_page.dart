@@ -211,6 +211,21 @@ class _SettingQualityPageState extends State<SettingQualityPage>
                   ),
                 ),
                 ListTile(
+                  leading: const WcIcon(Icons.more_horiz),
+                  title: Text(I18n.of(context).home_long_press),
+                  trailing: SettingSelectMenu(
+                    index: userSetting.homeLongPressMode,
+                    items: [
+                      I18n.of(context).home_long_press_menu,
+                      I18n.of(context).home_long_press_novel,
+                      I18n.of(context).home_long_press_manga,
+                    ],
+                    onChange: (index) {
+                      userSetting.setHomeLongPressMode(index);
+                    },
+                  ),
+                ),
+                ListTile(
                   leading: const WcIcon(Icons.manage_search),
                   title: Text(I18n.of(context).search_result_mode),
                   trailing: SettingSelectMenu(
