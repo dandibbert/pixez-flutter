@@ -18,11 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: .fvmrc
-          cache: true
+      - name: Setup mise
+        uses: jdx/mise-action@v5
 
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -52,7 +49,7 @@ jobs:
 
       - name: Build macOS
         env:
-          # setup-rust-toolchain defaults to -D warnings; rhttp's cargokit
+          # setup-rust-toolchain defaults to -D warnings; rhttp's native
           # build would otherwise fail on compiler warnings.
           RUSTFLAGS: ""
         run: flutter build macos --release --no-pub
