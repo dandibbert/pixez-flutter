@@ -25,15 +25,17 @@ class ScatterAction {
   final bool current;
 }
 
-/// Shortcut menu for a palette bar well: drops of pigment splash out of the
-/// pressed well and settle on an arch above the bar, leaving a few specks
-/// along the way.
+/// Shortcut menu for a palette bar well: a brush stroke of the well's
+/// pigment rises straight up from it, and drops of pigment settle along the
+/// stroke, the first action nearest the well. Labels sit beside the drops on
+/// the side facing the middle of the screen.
 ///
 /// Wrap the page (bar included) with it and drive it through a
 /// `GlobalKey<PigmentScatterMenuState>`: [PigmentScatterMenuState.open] on
 /// long press, [PigmentScatterMenuState.track] while the finger moves and
-/// [PigmentScatterMenuState.release] when it lifts. Releasing on a drop picks
-/// it; releasing in place leaves the menu open so a drop can be tapped.
+/// [PigmentScatterMenuState.release] when it lifts. Sliding up onto a row and
+/// releasing picks it; releasing in place leaves the menu open so a row can
+/// be tapped.
 class PigmentScatterMenu extends StatefulWidget {
   const PigmentScatterMenu({
     super.key,
@@ -56,6 +58,7 @@ class _MenuEntry {
     required this.sourcePigment,
     required this.actions,
     required this.targets,
+    required this.labelsRight,
     required this.onSelected,
   });
 
@@ -63,13 +66,23 @@ class _MenuEntry {
   final int sourcePigment;
   final List<ScatterAction> actions;
   final List<Offset> targets;
+  final bool labelsRight;
   final ValueChanged<int> onSelected;
 }
 
 class PigmentScatterMenuState extends State<PigmentScatterMenu>
     with SingleTickerProviderStateMixin {
-  static const double dropSize = 52;
-  static const double _hitRadius = 40;
+  static const double dropSize = 48;
+
+  /// Distance between drop centers along the stroke.
+  static const double step = 62;
+
+  /// From the well center to the first drop center: past the bar's top edge
+  /// (30) plus a gap, so the first drop never touches the bar.
+  static const double _firstLift = 68;
+
+  static const double _labelGap = 10;
+  static const double _labelReach = 132;
   static const double _tapSlop = 18;
 
   late final AnimationController _controller = AnimationController(
@@ -92,7 +105,8 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
     super.dispose();
   }
 
-  /// Opens the menu from [anchor], in this widget's coordinates.
+  /// Opens the menu from [anchor], the well center in this widget's
+  /// coordinates.
   void open({
     required Offset anchor,
     required int sourcePigment,
@@ -107,7 +121,8 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
         anchor: anchor,
         sourcePigment: sourcePigment,
         actions: actions,
-        targets: layoutArch(anchor, actions.length, box.size),
+        targets: layoutColumn(anchor, actions.length),
+        labelsRight: anchor.dx <= box.size.width / 2 + 1,
         onSelected: onSelected,
       );
       _hover = null;
@@ -181,52 +196,23 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
     });
   }
 
+  /// A row is the band of [step] around a drop, spanning the drop and its
+  /// label, so the finger only has to reach the right height.
   int? _hitTest(_MenuEntry entry, Offset local) {
-    int? best;
-    var bestDistance = _hitRadius;
+    final x = entry.anchor.dx;
+    final left = entry.labelsRight ? x - dropSize : x - _labelReach;
+    final right = entry.labelsRight ? x + _labelReach : x + dropSize;
+    if (local.dx < left || local.dx > right) return null;
     for (var i = 0; i < entry.targets.length; i++) {
-      final distance = (entry.targets[i] - local).distance;
-      if (distance < bestDistance) {
-        best = i;
-        bestDistance = distance;
-      }
+      if ((local.dy - entry.targets[i].dy).abs() <= step / 2) return i;
     }
-    return best;
+    return null;
   }
 
-  /// Drop centers on an arch above [anchor]: a flat circular arc whose
-  /// center sits below the anchor, shifted sideways to stay on screen.
-  static List<Offset> layoutArch(Offset anchor, int count, Size size) {
-    if (count == 0) return const [];
-    const radius = 190.0;
-    const drop = 38.0;
-    const edge = 40.0;
-    final spread = switch (count) {
-      1 => 0.0,
-      2 => 36.0,
-      3 => 64.0,
-      _ => 76.0 + (count - 4) * 14.0,
-    };
-    final angles = [
-      for (var i = 0; i < count; i++)
-        (90 + spread / 2 - (count == 1 ? 0 : spread * i / (count - 1))) *
-            math.pi /
-            180,
-    ];
-    final halfWidth = angles
-        .map((a) => (math.cos(a) * radius).abs())
-        .fold<double>(0, math.max);
-    final minX = edge + halfWidth;
-    final maxX = size.width - edge - halfWidth;
-    final centerX = minX > maxX
-        ? size.width / 2
-        : anchor.dx.clamp(minX, maxX).toDouble();
-    final center = Offset(centerX, anchor.dy + drop);
-    return [
-      for (final a in angles)
-        center + Offset(math.cos(a) * radius, -math.sin(a) * radius),
-    ];
-  }
+  /// Drop centers straight above [anchor], the first one nearest.
+  static List<Offset> layoutColumn(Offset anchor, int count) => [
+    for (var i = 0; i < count; i++) anchor - Offset(0, _firstLift + step * i),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -236,71 +222,116 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
         widget.child,
         if (entry != null)
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) => _buildMenu(context, entry),
+            child: LayoutBuilder(
+              builder: (context, constraints) => AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) =>
+                    _buildMenu(context, entry, constraints.biggest),
+              ),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildMenu(BuildContext context, _MenuEntry entry) {
+  Widget _buildMenu(BuildContext context, _MenuEntry entry, Size size) {
     final tokens = WatercolorTokens.of(context)!;
     final reduced = WcMotion.reduced(context);
     final t = _controller.value;
     final fade = WcMotion.standard.transform(t);
     final count = entry.actions.length;
-    const stagger = 0.07;
+    const stagger = 0.08;
     final span = 1 - stagger * (count - 1);
 
     double progress(int i) =>
         ((t - stagger * i) / span).clamp(0.0, 1.0).toDouble();
 
-    final drops = <Widget>[];
+    final rows = <Widget>[];
     for (var i = 0; i < count; i++) {
-      final action = entry.actions[i];
       final local = progress(i);
       final picked = _picked == i;
-      final spreadT = reduced || picked
-          ? 1.0
-          : WcMotion.bounce.transform(local);
-      final position = Offset.lerp(entry.anchor, entry.targets[i], spreadT)!;
-      final scale = reduced
+      final rise = reduced || picked ? 1.0 : WcMotion.bounce.transform(local);
+      final center = Offset.lerp(entry.anchor, entry.targets[i], rise)!;
+      final dropScale = reduced
           ? 1.0
           : picked
-          ? 1 + 0.3 * (1 - t)
-          : 0.35 + 0.65 * spreadT;
-      final opacity = picked
+          ? 1 + 0.25 * (1 - t)
+          : 0.4 + 0.6 * rise;
+      final dropOpacity = picked
           ? t
           : reduced
           ? fade
-          : WcMotion.standard.transform(math.min(local * 1.6, 1));
-      drops.add(
-        Positioned(
-          left: position.dx - 50,
-          top: position.dy - dropSize / 2,
-          width: 100,
-          child: IgnorePointer(
-            ignoring: !_tapMode,
-            child: Opacity(
-              opacity: opacity.clamp(0.0, 1.0).toDouble(),
-              child: Transform.scale(
-                scale: scale,
-                alignment: const Alignment(0, -0.35),
-                child: _Drop(
-                  action: action,
-                  pigment: tokens.pigment(action.pigment),
-                  hovered: _hover == i,
-                  seed: i,
-                  onTap: () => _pick(i),
+          : WcMotion.standard.transform((local * 1.8).clamp(0.0, 1.0));
+      final labelT = reduced || picked
+          ? fade
+          : WcMotion.standard.transform(((local - 0.3) / 0.7).clamp(0.0, 1.0));
+      final hovered = _hover == i;
+      final drop = Opacity(
+        opacity: dropOpacity.clamp(0.0, 1.0).toDouble(),
+        child: Transform.scale(
+          scale: dropScale,
+          child: _Drop(
+            action: entry.actions[i],
+            pigment: tokens.pigment(entry.actions[i].pigment),
+            hovered: hovered,
+            seed: i,
+          ),
+        ),
+      );
+      final label = Opacity(
+        opacity: labelT,
+        child: Transform.translate(
+          offset: Offset((entry.labelsRight ? -8 : 8) * (1 - labelT), 0),
+          child: _Label(action: entry.actions[i], hovered: hovered),
+        ),
+      );
+      final row = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _pick(i),
+        child: Semantics(
+          button: true,
+          selected: entry.actions[i].current,
+          label: entry.actions[i].label,
+          excludeSemantics: true,
+          child: SizedBox(
+            height: step,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              textDirection: entry.labelsRight
+                  ? TextDirection.ltr
+                  : TextDirection.rtl,
+              children: [
+                SizedBox(
+                  width: dropSize,
+                  child: Center(child: drop),
                 ),
-              ),
+                const SizedBox(width: _labelGap),
+                label,
+              ],
             ),
           ),
         ),
       );
+      rows.add(
+        Positioned(
+          top: center.dy - step / 2,
+          left: entry.labelsRight ? center.dx - dropSize / 2 : null,
+          right: entry.labelsRight
+              ? null
+              : size.width - center.dx - dropSize / 2,
+          child: IgnorePointer(ignoring: !_tapMode, child: row),
+        ),
+      );
     }
+
+    // The stroke runs from the top of the well to just past the last drop
+    // and grows upward with the first drop.
+    final strokeBottom = entry.anchor.dy - 16;
+    final strokeTop = entry.targets.last.dy - dropSize / 2 - 10;
+    final strokeGrow = reduced
+        ? 1.0
+        : WcMotion.standard.transform((t / 0.75).clamp(0.0, 1.0));
+    final strokeOpacity = _picked == null ? fade : t;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -319,41 +350,30 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
             ),
           ),
         ),
-        if (!reduced)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _SpeckPainter(
-                  anchor: entry.anchor,
-                  targets: entry.targets,
-                  colors: [
-                    for (final a in entry.actions) tokens.pigment(a.pigment),
-                  ],
-                  progress: [for (var i = 0; i < count; i++) progress(i)],
-                  fade: _picked == null ? 1 : t,
-                ),
-              ),
-            ),
-          ),
         Positioned(
-          left: entry.anchor.dx - 44,
-          top: entry.anchor.dy - 52,
-          width: 88,
-          height: 64,
+          left: entry.anchor.dx - 30,
+          width: 60,
+          top: strokeTop,
+          height: strokeBottom - strokeTop,
           child: IgnorePointer(
             child: Opacity(
-              opacity: 0.32 * fade,
+              opacity: 0.3 * strokeOpacity,
               child: Transform.scale(
-                scale: reduced ? 1 : 0.4 + 0.6 * WcMotion.bounce.transform(t),
-                child: PigmentWash(
-                  color: tokens.pigment(entry.sourcePigment),
-                  opacity: 1,
+                scaleY: strokeGrow,
+                alignment: Alignment.bottomCenter,
+                child: RotatedBox(
+                  quarterTurns: 1,
+                  child: PigmentWash(
+                    color: tokens.pigment(entry.sourcePigment),
+                    opacity: 1,
+                    shape: PigmentShape.pill,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        ...drops,
+        ...rows,
       ],
     );
   }
@@ -365,115 +385,106 @@ class _Drop extends StatelessWidget {
     required this.pigment,
     required this.hovered,
     required this.seed,
-    required this.onTap,
   });
 
   final ScatterAction action;
   final Color pigment;
   final bool hovered;
   final int seed;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final tokens = WatercolorTokens.of(context)!;
     const size = PigmentScatterMenuState.dropSize;
-    return Semantics(
-      button: true,
-      selected: action.current,
-      label: action.label,
-      excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedScale(
-          scale: hovered ? 1.14 : 1,
-          duration: WcMotion.medium,
-          curve: WcMotion.bounce,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: size,
-                height: size,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    Positioned(
-                      left: -6,
-                      top: -5,
-                      right: -6,
-                      bottom: -7,
-                      child: PigmentWash(
-                        color: pigment,
-                        opacity: action.current || hovered ? 0.95 : 0.78,
-                      ),
-                    ),
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _InkedRingPainter(
-                          color: tokens.ink.withValues(
-                            alpha: hovered ? 0.85 : 0.5,
-                          ),
-                          width: hovered ? 2.2 : 1.3,
-                          seed: seed,
-                        ),
-                      ),
-                    ),
-                    WcIcon(
-                      action.icon,
-                      size: 22,
-                      filled: action.current || hovered,
-                      color: tokens.onPigment,
-                    ),
-                  ],
+    return AnimatedScale(
+      scale: hovered ? 1.14 : 1,
+      duration: WcMotion.medium,
+      curve: WcMotion.bounce,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              left: -5,
+              top: -4,
+              right: -5,
+              bottom: -6,
+              child: PigmentWash(
+                color: pigment,
+                opacity: action.current || hovered ? 0.95 : 0.8,
+              ),
+            ),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _InkedRingPainter(
+                  color: tokens.ink.withValues(alpha: hovered ? 0.85 : 0.5),
+                  width: hovered ? 2.2 : 1.3,
+                  seed: seed,
                 ),
               ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.fromLTRB(9, 3, 10, 3),
-                decoration: BoxDecoration(
-                  color: tokens.card,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: hovered
-                        ? tokens.ink.withValues(alpha: 0.5)
-                        : tokens.line,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (action.current) ...[
-                      WcIcon(Icons.check, size: 12, color: tokens.ink),
-                      const SizedBox(width: 3),
-                    ],
-                    Text(
-                      action.label,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.25,
-                        fontWeight: hovered || action.current
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: tokens.ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+            WcIcon(
+              action.icon,
+              size: 21,
+              filled: action.current || hovered,
+              color: tokens.onPigment,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// A circle traced by hand: the radius wobbles a little, and the stroke
-/// thins where the brush lifts.
+class _Label extends StatelessWidget {
+  const _Label({required this.action, required this.hovered});
+
+  final ScatterAction action;
+  final bool hovered;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = WatercolorTokens.of(context)!;
+    return AnimatedContainer(
+      duration: WcMotion.short,
+      padding: const EdgeInsets.fromLTRB(11, 5, 12, 5),
+      decoration: BoxDecoration(
+        color: tokens.card,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: hovered ? tokens.ink.withValues(alpha: 0.55) : tokens.line,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            action.label,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.25,
+              fontWeight: hovered ? FontWeight.w700 : FontWeight.w500,
+              color: tokens.ink,
+            ),
+          ),
+          if (action.current) ...[
+            const SizedBox(width: 6),
+            Text(
+              '当前',
+              style: TextStyle(fontSize: 11, height: 1.25, color: tokens.sub),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A circle traced by hand: the radius wobbles a little.
 class _InkedRingPainter extends CustomPainter {
   const _InkedRingPainter({
     required this.color,
@@ -517,51 +528,4 @@ class _InkedRingPainter extends CustomPainter {
       color != oldDelegate.color ||
       width != oldDelegate.width ||
       seed != oldDelegate.seed;
-}
-
-/// Small pigment specks left behind each drop on its way out of the well.
-class _SpeckPainter extends CustomPainter {
-  _SpeckPainter({
-    required this.anchor,
-    required this.targets,
-    required this.colors,
-    required this.progress,
-    required this.fade,
-  });
-
-  final Offset anchor;
-  final List<Offset> targets;
-  final List<Color> colors;
-  final List<double> progress;
-  final double fade;
-
-  static const _stops = [0.34, 0.52, 0.7];
-  static const _sizes = [1.6, 2.6, 1.9];
-  static const _offsets = [5.0, -6.0, 3.5];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (var i = 0; i < targets.length; i++) {
-      final direction = targets[i] - anchor;
-      final length = direction.distance;
-      if (length == 0) continue;
-      final normal = Offset(-direction.dy, direction.dx) / length;
-      for (var s = 0; s < _stops.length; s++) {
-        final appear = ((progress[i] - _stops[s] * 0.6) / 0.25).clamp(0.0, 1.0);
-        if (appear <= 0) continue;
-        final jitter = _offsets[(s + i) % _offsets.length];
-        final p = anchor + direction * _stops[s] + normal * jitter;
-        canvas.drawCircle(
-          p,
-          _sizes[(s + i * 2) % _sizes.length],
-          Paint()
-            ..color = colors[i].withValues(alpha: 0.7 * appear * fade)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8),
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SpeckPainter oldDelegate) => true;
 }

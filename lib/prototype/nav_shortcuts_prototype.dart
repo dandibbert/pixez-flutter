@@ -28,28 +28,24 @@ enum Section { illust, novel }
 class ProtoConfig {
   const ProtoConfig({
     this.homeLongPress = HomeLongPress.scatter,
-    this.showSectionOnHome = true,
     this.dark = false,
     this.seedPalette = false,
     this.reducedMotion = false,
   });
 
   final HomeLongPress homeLongPress;
-  final bool showSectionOnHome;
   final bool dark;
   final bool seedPalette;
   final bool reducedMotion;
 
   ProtoConfig copyWith({
     HomeLongPress? homeLongPress,
-    bool? showSectionOnHome,
     bool? dark,
     bool? seedPalette,
     bool? reducedMotion,
   }) {
     return ProtoConfig(
       homeLongPress: homeLongPress ?? this.homeLongPress,
-      showSectionOnHome: showSectionOnHome ?? this.showSectionOnHome,
       dark: dark ?? this.dark,
       seedPalette: seedPalette ?? this.seedPalette,
       reducedMotion: reducedMotion ?? this.reducedMotion,
@@ -326,12 +322,14 @@ List<String> _chipsFor(Section s, int tab) => switch ((s, tab)) {
 /// Shortcuts of each well, by section.
 List<ScatterAction> _actionsFor(Section s, int tab) {
   if (tab == 0) {
+    // The other section sits nearest the well, so a short slide up always
+    // toggles between illusts and novels.
+    final other = s == Section.illust ? Section.novel : Section.illust;
     return [
       ScatterAction(
-        icon: Icons.image,
-        label: '插画',
-        pigment: _sectionPigment[Section.illust]!,
-        current: s == Section.illust,
+        icon: _sectionIcon(other),
+        label: _sectionLabel(other),
+        pigment: _sectionPigment[other]!,
       ),
       const ScatterAction(
         icon: Icons.layers_outlined,
@@ -339,10 +337,10 @@ List<ScatterAction> _actionsFor(Section s, int tab) {
         pigment: _mangaPigment,
       ),
       ScatterAction(
-        icon: Icons.book,
-        label: '小说',
-        pigment: _sectionPigment[Section.novel]!,
-        current: s == Section.novel,
+        icon: _sectionIcon(s),
+        label: _sectionLabel(s),
+        pigment: _sectionPigment[s]!,
+        current: true,
       ),
     ];
   }
@@ -465,13 +463,15 @@ class _PhoneShellState extends State<_PhoneShell> {
 
   void _runAction(Section section, int tab, int index, Offset origin) {
     if (tab == 0) {
-      switch (index) {
-        case 0:
-          if (section != Section.illust) _switchSection(Section.illust, origin);
-        case 1:
-          _push(const _MangaPage());
-        case 2:
-          if (section != Section.novel) _switchSection(Section.novel, origin);
+      final action = _actionsFor(section, tab)[index];
+      if (action.current) return;
+      if (action.label == '漫画') {
+        _push(const _MangaPage());
+      } else {
+        _switchSection(
+          section == Section.illust ? Section.novel : Section.illust,
+          origin,
+        );
       }
       return;
     }
@@ -602,7 +602,6 @@ class _HomeState extends State<_Home> {
             final section = model.section;
             final labels = _tabLabels(section);
             final icons = _tabIcons(section);
-            final showSection = widget.config.showSectionOnHome;
             return PigmentScatterMenu(
               key: _menu,
               barInset: barInset,
@@ -635,8 +634,8 @@ class _HomeState extends State<_Home> {
                 bottomNavigationBar: PaletteBar(
                   items: [
                     PaletteBarItem(
-                      icon: showSection ? _sectionIcon(section) : icons[0],
-                      label: showSection ? _sectionLabel(section) : labels[0],
+                      icon: _sectionIcon(section),
+                      label: _sectionLabel(section),
                     ),
                     for (var i = 1; i < 5; i++)
                       PaletteBarItem(icon: icons[i], label: labels[i]),
@@ -658,10 +657,9 @@ class _HomeState extends State<_Home> {
                       actions: actions,
                       pressPosition: details.globalPosition,
                       onSelected: (picked) {
-                        final targets = PigmentScatterMenuState.layoutArch(
+                        final targets = PigmentScatterMenuState.layoutColumn(
                           anchor,
                           actions.length,
-                          size,
                         );
                         widget.onAction(
                           section,
@@ -1848,22 +1846,13 @@ class _ControlPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 group(
-                  '长按「首页」',
+                  '长按第一个按钮（将作为设置项）',
                   WcSegmented(
                     labels: const ['散开菜单', '直达小说', '直达漫画'],
                     selected: config.homeLongPress.index,
                     onSelected: (i) => onConfig(
                       config.copyWith(homeLongPress: HomeLongPress.values[i]),
                     ),
-                  ),
-                ),
-                group(
-                  '第一个按钮显示',
-                  WcSegmented(
-                    labels: const ['当前分区', '「首页」'],
-                    selected: config.showSectionOnHome ? 0 : 1,
-                    onSelected: (i) =>
-                        onConfig(config.copyWith(showSectionOnHome: i == 0)),
                   ),
                 ),
                 group(
