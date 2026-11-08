@@ -17,6 +17,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
@@ -44,42 +45,39 @@ class UgoiraWidget extends StatefulWidget {
 
 class _UgoiraWidgetState extends State<UgoiraWidget>
     with RouteAware, WidgetsBindingObserver {
+  static const int _allFrameLimit = 15;
+  static const int _streamWindowSize = 4;
   static const int _imageCacheBudgetBytes = 32 * 1024 * 1024;
 
-  final LinkedHashMap<File, _CachedUgoiraImage> _imageCache =
-      LinkedHashMap<File, _CachedUgoiraImage>();
-  int _imageCacheBytes = 0;
-  Timer? _frameTimer;
-  ModalRoute<void>? _subscribedRoute;
-  late AppLifecycleState _appLifecycleState;
-  bool _routeVisible = true;
-  bool _frameLoadInProgress = false;
-  bool _disposed = false;
-  int _playGeneration = 0;
-
-  Future<ui.Image?> _loadImage(File file) async {
-    final cached = _imageCache.remove(file);
-    if (cached != null) {
-      _imageCache[file] = cached;
-      return cached.image;
-    }
-
-    final data = await file.readAsBytes();
-    final decoded = await decodeImageFromList(data.buffer.asUint8List());
-    if (_disposed) {
-      decoded.dispose();
-      return null;
-    }
-
-    final entry = _CachedUgoiraImage(decoded);
-    _imageCache[file] = entry;
-    _imageCacheBytes += entry.bytes;
-    _trimImageCache(protectedImage: decoded, secondaryProtectedImage: image);
-    return decoded;
+  int get _effectiveCacheSize {
+    final total = widget.drawPools.length;
+    return total <= _allFrameLimit ? total : _streamWindowSize;
   }
+
+  final LinkedHashMap<int, _CachedUgoiraImage> _frameCache =
+      LinkedHashMap<int, _CachedUgoiraImage>();
+  final Map<int, Future<ui.Image?>> _loadingFutures =
+      <int, Future<ui.Image?>>{};
+  int _frameCacheBytes = 0;
 
   int point = 0;
   ui.Image? image;
+  bool _stopPainting = false;
+  bool _disposed = false;
+  bool _routeVisible = true;
+  late AppLifecycleState _appLifecycleState;
+  ModalRoute<void>? _subscribedRoute;
+  int _playSessionId = 0;
+  int _cacheEpoch = 0;
+  Timer? _timer;
+  final Stopwatch _stopwatch = Stopwatch();
+  int _expectedFrameTime = 0;
+
+  bool get _canPlay =>
+      !_disposed &&
+      mounted &&
+      _routeVisible &&
+      _appLifecycleState == AppLifecycleState.resumed;
 
   @override
   void initState() {
@@ -87,7 +85,7 @@ class _UgoiraWidgetState extends State<UgoiraWidget>
     _appLifecycleState =
         WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _resumePlayback());
+    _startPlayback();
   }
 
   @override
@@ -102,30 +100,10 @@ class _UgoiraWidgetState extends State<UgoiraWidget>
   }
 
   @override
-  void dispose() {
-    _disposed = true;
-    _pausePlayback();
-    WidgetsBinding.instance.removeObserver(this);
-    routeObserver.unsubscribe(this);
-    _subscribedRoute = null;
-    final images = HashSet<ui.Image>.identity();
-    images.addAll(_imageCache.values.map((entry) => entry.image));
-    final currentImage = image;
-    if (currentImage != null) images.add(currentImage);
-    for (final cachedImage in images) {
-      cachedImage.dispose();
-    }
-    _imageCache.clear();
-    _imageCacheBytes = 0;
-    image = null;
-    super.dispose();
-  }
-
-  @override
   void didPopNext() {
     super.didPopNext();
     _routeVisible = true;
-    _resumePlayback();
+    _startPlayback();
   }
 
   @override
@@ -133,116 +111,252 @@ class _UgoiraWidgetState extends State<UgoiraWidget>
     super.didPushNext();
     _routeVisible = false;
     _pausePlayback();
+    _trimCacheForBackground();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appLifecycleState = state;
     if (state == AppLifecycleState.resumed) {
-      _resumePlayback();
+      _startPlayback();
     } else {
       _pausePlayback();
     }
   }
 
-  bool get _canPlay =>
-      !_disposed &&
-      mounted &&
-      _routeVisible &&
-      _appLifecycleState == AppLifecycleState.resumed;
-
-  void _pausePlayback() {
-    _playGeneration++;
-    _frameTimer?.cancel();
-    _frameTimer = null;
-  }
-
-  void _resumePlayback() {
-    if (!_canPlay || _frameTimer?.isActive == true || _frameLoadInProgress) {
-      return;
-    }
-    _playGeneration++;
-    _beginNextFrame(_playGeneration);
-  }
-
-  void _beginNextFrame(int generation) {
-    if (!_canPlay ||
-        generation != _playGeneration ||
-        _frameLoadInProgress) {
-      return;
-    }
-    _frameLoadInProgress = true;
-    unawaited(_showNextFrame(generation));
-  }
-
-  Future<void> _showNextFrame(int generation) async {
-    var nextDelay = Duration(milliseconds: widget.delay);
-    try {
-      final frameCount = widget.drawPools.length <
-              widget.ugoiraMetadataResponse.ugoiraMetadata.frames.length
-          ? widget.drawPools.length
-          : widget.ugoiraMetadataResponse.ugoiraMetadata.frames.length;
-      if (frameCount == 0 || !_canPlay || generation != _playGeneration) {
-        return;
-      }
-
-      final frameIndex = point % frameCount;
-      final entity = widget.drawPools[frameIndex];
-      point = (frameIndex + 1) % frameCount;
-      nextDelay = Duration(
-        milliseconds: widget
-            .ugoiraMetadataResponse
-            .ugoiraMetadata
-            .frames[frameIndex]
-            .delay,
-      );
-      if (entity is! File) return;
-
-      final decoded = await _loadImage(entity);
-      if (decoded == null || !_canPlay || generation != _playGeneration) {
-        return;
-      }
-      setState(() {
-        image = decoded;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_disposed) _trimImageCache(protectedImage: image);
-      });
-    } catch (_) {
-      // 单帧损坏时跳过该帧，避免未处理异常终止整条播放循环。
-    } finally {
-      _frameLoadInProgress = false;
-      if (!_canPlay) return;
-      if (generation != _playGeneration) {
-        _resumePlayback();
-        return;
-      }
-      _frameTimer = Timer(nextDelay, () {
-        _frameTimer = null;
-        _beginNextFrame(generation);
-      });
+  @override
+  void didUpdateWidget(covariant UgoiraWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.drawPools != widget.drawPools) {
+      _pausePlayback();
+      _clearCache();
+      point = 0;
+      _startPlayback();
     }
   }
 
-  void _trimImageCache({
-    ui.Image? protectedImage,
-    ui.Image? secondaryProtectedImage,
-  }) {
-    while (_imageCacheBytes > _imageCacheBudgetBytes &&
-        _imageCache.length > 1) {
-      File? evictionKey;
-      for (final entry in _imageCache.entries) {
-        if (!identical(entry.value.image, protectedImage) &&
-            !identical(entry.value.image, secondaryProtectedImage)) {
+  @override
+  void dispose() {
+    _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    routeObserver.unsubscribe(this);
+    _subscribedRoute = null;
+    _pausePlayback();
+    _clearCache();
+    super.dispose();
+  }
+
+  int _getFrameDelay(int index) {
+    final frames = widget.ugoiraMetadataResponse.ugoiraMetadata.frames;
+    if (index >= 0 && index < frames.length) {
+      final d = frames[index].delay;
+      if (d > 0) return d;
+    }
+    return widget.delay > 0 ? widget.delay : 100;
+  }
+
+  ui.Image? _getFromCache(int index) {
+    final entry = _frameCache.remove(index);
+    if (entry != null) {
+      _frameCache[index] = entry;
+      return entry.image;
+    }
+    return null;
+  }
+
+  void _putInCache(int index, ui.Image img) {
+    final previous = _frameCache.remove(index);
+    if (previous != null) _frameCacheBytes -= previous.bytes;
+    final entry = _CachedUgoiraImage(img);
+    _frameCache[index] = entry;
+    _frameCacheBytes += entry.bytes;
+    _evictIfNeeded(protectedImage: img);
+  }
+
+  /// Evicts least recently used frames beyond the frame window or the byte
+  /// budget, never the frame on screen or the one just decoded.
+  void _evictIfNeeded({ui.Image? protectedImage}) {
+    final limit = _effectiveCacheSize;
+    while (_frameCache.length > limit ||
+        (_frameCacheBytes > _imageCacheBudgetBytes && _frameCache.length > 1)) {
+      int? evictionKey;
+      for (final entry in _frameCache.entries) {
+        final img = entry.value.image;
+        if (!identical(img, image) && !identical(img, protectedImage)) {
           evictionKey = entry.key;
           break;
         }
       }
       if (evictionKey == null) return;
-      final evicted = _imageCache.remove(evictionKey)!;
-      _imageCacheBytes -= evicted.bytes;
+      final evicted = _frameCache.remove(evictionKey)!;
+      _frameCacheBytes -= evicted.bytes;
       evicted.image.dispose();
     }
+  }
+
+  Future<ui.Image?> _getOrLoadFrame(int index) async {
+    final cached = _getFromCache(index);
+    if (cached != null) {
+      return cached;
+    }
+    if (_loadingFutures.containsKey(index)) {
+      return _loadingFutures[index];
+    }
+    if (index < 0 || index >= widget.drawPools.length) return null;
+
+    final entity = widget.drawPools[index];
+    if (entity is! File) return null;
+
+    final currentEpoch = _cacheEpoch;
+    final future = _decodeFile(entity);
+    _loadingFutures[index] = future;
+
+    try {
+      final decodedImage = await future;
+      if (_disposed || currentEpoch != _cacheEpoch) {
+        decodedImage?.dispose();
+        return null;
+      }
+      if (decodedImage != null) {
+        _putInCache(index, decodedImage);
+      }
+      return decodedImage;
+    } catch (_) {
+      return null;
+    } finally {
+      if (currentEpoch == _cacheEpoch) {
+        _loadingFutures.remove(index);
+      }
+    }
+  }
+
+  Future<ui.Image?> _decodeFile(File file) async {
+    try {
+      final Uint8List data = await file.readAsBytes();
+      return await decodeImageFromList(data);
+    } catch (_) {
+      // 单帧损坏时跳过该帧，避免未处理异常终止整条播放循环。
+      return null;
+    }
+  }
+
+  void _prefetch(int index) {
+    if (_disposed || _stopPainting) return;
+    if (index < 0 || index >= widget.drawPools.length) return;
+    if (!_frameCache.containsKey(index) &&
+        !_loadingFutures.containsKey(index)) {
+      _getOrLoadFrame(index);
+    }
+  }
+
+  void _startPlayback() {
+    if (!_canPlay) return;
+    _stopPainting = false;
+    _timer?.cancel();
+    _timer = null;
+    _playSessionId++;
+    final session = _playSessionId;
+    _stopwatch.reset();
+    _stopwatch.start();
+    _expectedFrameTime = 0;
+    _tick(session);
+  }
+
+  void _pausePlayback() {
+    _stopPainting = true;
+    _playSessionId++;
+    _timer?.cancel();
+    _timer = null;
+    _stopwatch.stop();
+  }
+
+  void _clearCache() {
+    _cacheEpoch++;
+    _loadingFutures.clear();
+    final images = HashSet<ui.Image>.identity()
+      ..addAll(_frameCache.values.map((entry) => entry.image));
+    if (image != null) images.add(image!);
+    for (final img in images) {
+      img.dispose();
+    }
+    _frameCache.clear();
+    _frameCacheBytes = 0;
+    image = null;
+  }
+
+  void _trimCacheForBackground() {
+    final total = widget.drawPools.length;
+    if (total == 0) return;
+
+    // 保留恢复播放时最先需要的 3 帧缓冲，以及当前屏幕上展示的静止帧 image
+    final keepIndices = <int>{
+      point % total,
+      (point + 1) % total,
+      (point + 2) % total,
+    };
+
+    _frameCache.removeWhere((idx, entry) {
+      if (!keepIndices.contains(idx) && !identical(entry.image, image)) {
+        _frameCacheBytes -= entry.bytes;
+        entry.image.dispose();
+        return true;
+      }
+      return false;
+    });
+  }
+
+  Future<void> _tick(int session) async {
+    if (session != _playSessionId ||
+        _stopPainting ||
+        !_canPlay ||
+        widget.drawPools.isEmpty) {
+      return;
+    }
+
+    final currentIndex = point;
+    final duration = _getFrameDelay(currentIndex);
+
+    final nextImage = await _getOrLoadFrame(currentIndex);
+
+    if (session != _playSessionId || _stopPainting || !_canPlay) {
+      return;
+    }
+
+    if (nextImage != null) {
+      setState(() {
+        image = nextImage;
+      });
+    }
+
+    final total = widget.drawPools.length;
+    if (total > 1) {
+      _prefetch((currentIndex + 1) % total);
+      _prefetch((currentIndex + 2) % total);
+    }
+
+    if (_expectedFrameTime == 0) {
+      _expectedFrameTime = _stopwatch.elapsedMilliseconds + duration;
+    } else {
+      _expectedFrameTime += duration;
+    }
+
+    final now = _stopwatch.elapsedMilliseconds;
+    int delayMs = _expectedFrameTime - now;
+
+    if (delayMs < -100) {
+      _expectedFrameTime = now + duration;
+      delayMs = duration;
+    } else if (delayMs < 0) {
+      delayMs = 0;
+    }
+
+    point = (currentIndex + 1) % total;
+
+    _timer = Timer(Duration(milliseconds: delayMs), () {
+      if (session == _playSessionId && !_stopPainting && _canPlay) {
+        _tick(session);
+      }
+    });
   }
 
   @override
@@ -258,20 +372,16 @@ class _UgoiraWidgetState extends State<UgoiraWidget>
 
 class UgoiraPainter extends CustomPainter {
   final ui.Image image;
-
-  final Paint _paint = Paint();
+  static final Paint _paint = Paint()..filterQuality = FilterQuality.low;
 
   UgoiraPainter(this.image);
 
   @override
   void paint(Canvas canvas, Size size) {
-    Rect dstRect =
+    final Rect srcRect =
         Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
-    canvas.drawImageRect(
-        image,
-        dstRect,
-        Rect.fromLTWH(0, 0, size.width.toDouble(), size.height.toDouble()),
-        _paint);
+    final Rect dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.drawImageRect(image, srcRect, dstRect, _paint);
   }
 
   @override
