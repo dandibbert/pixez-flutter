@@ -32,6 +32,7 @@ import 'package:pixez/page/novel/search/novel_search_page.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/palette_bar.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 
 void openNovelRail(BuildContext context) {
   Navigator.of(context, rootNavigator: true).pushReplacement(novelRailRoute());
@@ -57,11 +58,7 @@ Route<void> illustHomeRoute({int? initialIndex, bool instant = false}) =>
 
 Route<void> _sectionRoute(Widget page, bool instant) {
   if (!instant) return MaterialPageRoute(builder: (context) => page);
-  return PageRouteBuilder(
-    pageBuilder: (context, animation, secondaryAnimation) => page,
-    transitionDuration: Duration.zero,
-    reverseTransitionDuration: Duration.zero,
-  );
+  return InstantPageRoute(builder: (context) => page);
 }
 
 class NovelRail extends StatefulWidget {

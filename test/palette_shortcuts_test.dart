@@ -5,6 +5,8 @@ import 'package:pixez/page/hello/tab_jump.dart';
 import 'package:pixez/watercolor/palette_bar.dart';
 import 'package:pixez/watercolor/pigment_scatter_menu.dart';
 import 'package:pixez/watercolor/section_wash.dart';
+import 'package:pixez/watercolor/watercolor_paper.dart';
+import 'package:pixez/watercolor/watercolor_routes.dart';
 import 'package:pixez/watercolor/watercolor_theme.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 
@@ -185,4 +187,31 @@ void main() {
     await tester.tap(find.text('go'));
     expect(switched, isTrue);
   });
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets('an instant section switch still lands on paper ($platform)', (
+      tester,
+    ) async {
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          theme: _watercolor().copyWith(platform: platform),
+          home: const Text('illust'),
+        ),
+      );
+      navigator.currentState!.pushReplacement(
+        InstantPageRoute<void>(builder: (_) => const Text('novel')),
+      );
+      await tester.pump();
+      expect(find.text('illust'), findsNothing);
+      expect(
+        find.ancestor(
+          of: find.text('novel'),
+          matching: find.byType(WatercolorPaper),
+        ),
+        findsOneWidget,
+      );
+    });
+  }
 }

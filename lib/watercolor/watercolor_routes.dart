@@ -93,6 +93,20 @@ class _WatercolorDialogRoute<T> extends RawDialogRoute<T> {
   }
 }
 
+/// A [MaterialPageRoute] that shows at once, for a switch that is already
+/// covered (e.g. by a section wash). It still goes through the theme's page
+/// transitions, which put the watercolor pages on paper; their scaffolds are
+/// transparent.
+class InstantPageRoute<T> extends MaterialPageRoute<T> {
+  InstantPageRoute({required super.builder, super.settings});
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Duration get reverseTransitionDuration => Duration.zero;
+}
+
 /// Page transition of the watercolor style: the new page slides in from the
 /// right on its own sheet of paper, casting a soft shadow, while the page
 /// beneath drifts a quarter to the left and dims. Reduced motion fades.
