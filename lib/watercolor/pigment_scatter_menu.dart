@@ -199,7 +199,7 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
   static List<Offset> layoutArch(Offset anchor, int count, Size size) {
     if (count == 0) return const [];
     const radius = 190.0;
-    const drop = 60.0;
+    const drop = 38.0;
     const edge = 40.0;
     final spread = switch (count) {
       1 => 0.0,
@@ -315,20 +315,7 @@ class PigmentScatterMenuState extends State<PigmentScatterMenu>
             onTap: close,
             child: Opacity(
               opacity: fade,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      tokens.paper.withValues(alpha: 0.86),
-                      tokens.paper.withValues(alpha: 0.86),
-                      tokens.paper.withValues(alpha: 0),
-                    ],
-                    stops: const [0, 0.9, 1],
-                  ),
-                ),
-              ),
+              child: ColoredBox(color: tokens.paper.withValues(alpha: 0.86)),
             ),
           ),
         ),

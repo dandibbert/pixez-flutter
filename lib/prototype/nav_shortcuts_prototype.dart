@@ -459,7 +459,7 @@ class _PhoneShellState extends State<_PhoneShell> {
     _switchSection(
       target,
       origin,
-      toast: '已切换到${_sectionLabel(target)} · 再次长按「首页」切回',
+      toast: '已切换到${_sectionLabel(target)} · 再次长按可切回',
     );
   }
 
@@ -891,6 +891,10 @@ class _SectionWashState extends State<_SectionWash>
           final diameter = reduced ? full : full * grow;
           final opacity = (reduced ? grow : 1.0) * (1 - dry);
           final labelOpacity = math.min(grow, 1 - dry);
+          final wash = Color.alphaBlend(
+            _color.withValues(alpha: 0.55),
+            tokens.paper,
+          );
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -904,13 +908,18 @@ class _SectionWashState extends State<_SectionWash>
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      PigmentWash(
-                        color: Color.alphaBlend(
-                          _color.withValues(alpha: 0.55),
-                          tokens.paper,
+                      // The blob texture is soft all over; a solid core
+                      // hides the page while it changes underneath.
+                      Padding(
+                        padding: EdgeInsets.all(diameter * 0.14),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: wash,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                        opacity: 1,
                       ),
+                      PigmentWash(color: wash, opacity: 1),
                     ],
                   ),
                 ),
