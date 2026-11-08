@@ -27,6 +27,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/Init/guide_page.dart';
 import 'package:pixez/page/hello/new/new_page.dart';
+import 'package:pixez/page/hello/palette_shortcuts.dart';
 import 'package:pixez/page/hello/ranking/rank_page.dart';
 import 'package:pixez/page/hello/recom/recom_spotlight_page.dart';
 import 'package:pixez/page/hello/setting/setting_page.dart';
@@ -39,6 +40,11 @@ import 'package:pixez/watercolor/palette_bar.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class HelloPage extends StatefulWidget {
+  const HelloPage({super.key, this.initialIndex});
+
+  /// Tab to open on; the welcome page setting when null.
+  final int? initialIndex;
+
   @override
   _HelloPageState createState() => _HelloPageState();
 }
@@ -48,6 +54,10 @@ class _HelloPageState extends State<HelloPage> {
   late PageController _pageController;
   double? bottomNavigatorHeight = null;
   late List<Widget> _lists;
+  late final PaletteShortcuts _shortcuts = PaletteShortcuts(
+    section: AppSection.illust,
+    selectTab: _select,
+  );
 
   @override
   void dispose() {
@@ -86,10 +96,8 @@ class _HelloPageState extends State<HelloPage> {
     ];
     Constants.type = 0;
     fetcher.context = context;
-    index = userSetting.materialWelcomePageIndex;
-    _pageController = PageController(
-      initialPage: userSetting.materialWelcomePageIndex,
-    );
+    index = widget.initialIndex ?? userSetting.materialWelcomePageIndex;
+    _pageController = PageController(initialPage: index);
     super.initState();
     saveStore.ctx = this.context;
     saveStore.saveStream.listen((stream) {
@@ -105,7 +113,9 @@ class _HelloPageState extends State<HelloPage> {
         Navigator.of(
           context,
         ).pushReplacement(MaterialPageRoute(builder: (context) => GuidePage()));
+        return;
       }
+      if (mounted) PaletteShortcuts.showHintOnce(context);
     });
   }
 
@@ -117,34 +127,37 @@ class _HelloPageState extends State<HelloPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth > constraints.maxHeight;
-        return Scaffold(
-          body: Row(
-            children: <Widget>[
-              if (wide) ..._buildRail(context),
-              Expanded(child: _buildPageView(context)),
-            ],
+        return _shortcuts.wrap(
+          context,
+          Scaffold(
+            body: Row(
+              children: <Widget>[
+                if (wide) ..._buildRail(context),
+                Expanded(child: _buildPageView(context)),
+              ],
+            ),
+            extendBody: true,
+            bottomNavigationBar: wide
+                ? null
+                : Observer(
+                    builder: (context) {
+                      return AnimatedContainer(
+                        duration: WatercolorTokens.of(context) == null
+                            ? const Duration(milliseconds: 400)
+                            : WcMotion.long,
+                        transform: Matrix4.translationValues(
+                          0,
+                          fullScreenStore.fullscreen
+                              ? bottomNavigatorHeight! +
+                                    _paletteExtraOffset(context)
+                              : 0,
+                          0,
+                        ),
+                        child: _buildNavigationBar(context),
+                      );
+                    },
+                  ),
           ),
-          extendBody: true,
-          bottomNavigationBar: wide
-              ? null
-              : Observer(
-                  builder: (context) {
-                    return AnimatedContainer(
-                      duration: WatercolorTokens.of(context) == null
-                          ? const Duration(milliseconds: 400)
-                          : WcMotion.long,
-                      transform: Matrix4.translationValues(
-                        0,
-                        fullScreenStore.fullscreen
-                            ? bottomNavigatorHeight! +
-                                  _paletteExtraOffset(context)
-                            : 0,
-                        0,
-                      ),
-                      child: _buildNavigationBar(context),
-                    );
-                  },
-                ),
         );
       },
     );
@@ -157,6 +170,7 @@ class _HelloPageState extends State<HelloPage> {
           NavigationRail(
             selectedIndex: index,
             labelType: NavigationRailLabelType.all,
+            leading: _shortcuts.railSwitch(context),
             onDestinationSelected: (int index) {
               HapticUtil.selectionClick();
               if (this.index == index) {
@@ -231,22 +245,26 @@ class _HelloPageState extends State<HelloPage> {
   double _paletteExtraOffset(BuildContext context) =>
       WatercolorTokens.of(context) == null ? 0 : PaletteBar.hiddenOffset - 80;
 
-  Widget _buildNavigationBar(BuildContext context) {
-    void select(int value) {
-      HapticUtil.selectionClick();
-      if (this.index == value) {
-        topStore.setTop("${value + 1}00");
-      }
-      setState(() {
-        this.index = value;
-      });
-      if (_pageController.hasClients) _pageController.jumpToPage(value);
+  void _select(int value) {
+    HapticUtil.selectionClick();
+    if (this.index == value) {
+      topStore.setTop("${value + 1}00");
     }
+    setState(() {
+      this.index = value;
+    });
+    if (_pageController.hasClients) _pageController.jumpToPage(value);
+  }
 
+  Widget _buildNavigationBar(BuildContext context) {
+    final select = _select;
     if (WatercolorTokens.of(context) != null) {
       return PaletteBar(
         items: [
-          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(
+            icon: PaletteShortcuts.sectionIcon(AppSection.illust),
+            label: PaletteShortcuts.sectionLabel(context, AppSection.illust),
+          ),
           PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
           PaletteBarItem(
             icon: Icons.favorite,
@@ -257,6 +275,9 @@ class _HelloPageState extends State<HelloPage> {
         ],
         selectedIndex: index,
         onSelected: select,
+        onLongPressStart: (i, d) => _shortcuts.onLongPressStart(context, i, d),
+        onLongPressMoveUpdate: (_, d) => _shortcuts.onLongPressMoveUpdate(d),
+        onLongPressEnd: (_, d) => _shortcuts.onLongPressEnd(d),
       );
     }
 

@@ -90,6 +90,9 @@ abstract class _UserSetting with Store {
   static const String NOVEL_READER_BACKGROUND_KEY = "novel_reader_background";
   static const String PERF_PROBE_KEY = "perf_probe";
   static const String IS_RETURN_AGAIN_TO_EXIT_KEY = "return_again_to_exit";
+  static const String HOME_LONG_PRESS_MODE_KEY = "home_long_press_mode";
+  static const String HOME_LONG_PRESS_HINT_SHOWN_KEY =
+      "home_long_press_hint_shown";
   static const String IS_CLEAR_OLD_FORMAT_FILE_KEY = "is_clear_old_format_file";
   static const String IS_FOLLOW_AFTER_STAR = "is_follow_after_star";
   static const String IS_OVER_SANITY_LEVEL_FOLDER =
@@ -151,6 +154,10 @@ abstract class _UserSetting with Store {
   bool isClearOldFormatFile = false;
   @observable
   bool isReturnAgainToExit = false;
+
+  /// 0: shortcut menu, 1: jump to novels, 2: jump to manga.
+  @observable
+  int homeLongPressMode = 0;
   @observable
   bool? isHelplessWay = false;
   @observable
@@ -328,6 +335,18 @@ abstract class _UserSetting with Store {
     await prefs.setBool(IS_RETURN_AGAIN_TO_EXIT_KEY, value);
     this.isReturnAgainToExit = value;
   }
+
+  @action
+  setHomeLongPressMode(int value) async {
+    await prefs.setInt(HOME_LONG_PRESS_MODE_KEY, value);
+    homeLongPressMode = value;
+  }
+
+  bool get homeLongPressHintShown =>
+      prefs.getBool(HOME_LONG_PRESS_HINT_SHOWN_KEY) ?? false;
+
+  Future<void> markHomeLongPressHintShown() =>
+      prefs.setBool(HOME_LONG_PRESS_HINT_SHOWN_KEY, true);
 
   @action
   setStorePath(String path) async {
@@ -671,6 +690,10 @@ abstract class _UserSetting with Store {
     isHelplessWay = prefs.getBool(ISHELPLESSWAY_KEY);
     maxRunningTask = prefs.getInt(MAX_RUNNING_TASK_KEY) ?? 2;
     isReturnAgainToExit = prefs.getBool(IS_RETURN_AGAIN_TO_EXIT_KEY) ?? false;
+    homeLongPressMode = (prefs.getInt(HOME_LONG_PRESS_MODE_KEY) ?? 0).clamp(
+      0,
+      2,
+    );
     isClearOldFormatFile = prefs.getBool(IS_CLEAR_OLD_FORMAT_FILE_KEY) ?? false;
     overSanityLevelFolder = prefs.getBool(IS_OVER_SANITY_LEVEL_FOLDER) ?? false;
     followAfterStar = prefs.getBool(IS_FOLLOW_AFTER_STAR) ?? false;

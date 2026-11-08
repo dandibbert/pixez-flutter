@@ -230,6 +230,7 @@
   },
   "save_painter_avatar": "Save painter avatar",
   "favorited_tag": "Favorited Tags",
+  "favorited_tag_empty_hint": "No favorited tags yet. Long-press a tag on a work's detail page and choose \"Collections\" to add it here.",
   "legacy_mode_warning": "Legacy mode is not available since Android9",
   "clear_old_format_file": "Clear old format file",
   "clear_old_format_file_message": "Without _p0",
@@ -708,5 +709,25 @@
         "type": "int"
       }
     }
-  }
+  },
+  "home_long_press": "Long-press the first tab",
+  "home_long_press_menu": "Shortcut menu",
+  "home_long_press_novel": "Jump to novels",
+  "home_long_press_manga": "Jump to manga",
+  "shortcut_current": "Current",
+  "shortcut_switched": "Switched to {section} · long-press again to switch back",
+  "@shortcut_switched": {
+    "placeholders": {
+      "section": {
+        "type": "String"
+      }
+    }
+  },
+  "shortcut_hint": "Long-press to switch Illust · Manga · Novel",
+  "shortcut_saucenao": "Image search",
+  "shortcut_work_id": "Work ID",
+  "shortcut_work_id_hint": "pixiv ID, e.g. 12345678",
+  "shortcut_search_novel": "Search novels",
+  "shortcut_search_illust": "Search illusts",
+  "shortcut_open": "Open"
 }

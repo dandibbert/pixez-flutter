@@ -49,6 +49,7 @@ import com.perol.pixez.plugin.SupporterPlugin
 import com.perol.pixez.plugin.Weiss
 import com.perol.pixez.plugin.exist
 import com.perol.pixez.plugin.save
+import com.perol.pixez.plugin.writeBytesOrDelete
 import com.waynejo.androidndkgif.GifEncoder
 import io.flutter.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -183,7 +184,7 @@ class MainActivity : FlutterActivity() {
                                         if (!file.exists()) {
                                             file.createNewFile()
                                         }
-                                        file.outputStream().write(data)
+                                        file.writeBytesOrDelete(data)
                                         if (clearOld && name.contains("_p0")) {
                                             val oldFileName = name.replace("_p0", "")
                                             val oldFile = File("$helplessPath", oldFileName)
@@ -271,7 +272,12 @@ class MainActivity : FlutterActivity() {
                                         if (!dirFile.exists()) {
                                             dirFile.mkdirs()
                                         }
-                                        sourceFile.copyTo(target, overwrite = true)
+                                        try {
+                                            sourceFile.copyTo(target, overwrite = true)
+                                        } catch (e: Throwable) {
+                                            target.delete()
+                                            throw e
+                                        }
                                     }
                                     saved = true
                                     MediaScannerConnection.scanFile(
@@ -645,8 +651,17 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun wr(data: ByteArray, uri: Uri) {
-        contentResolver.openOutputStream(uri, "w")?.use {
-            it.write(data)
+        try {
+            contentResolver.openOutputStream(uri, "w")?.use {
+                it.write(data)
+            }
+        } catch (e: Throwable) {
+            // Don't leave an empty document behind, e.g. when out of space.
+            try {
+                DocumentsContract.deleteDocument(contentResolver, uri)
+            } catch (_: Throwable) {
+            }
+            throw e
         }
     }
 }

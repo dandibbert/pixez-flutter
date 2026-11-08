@@ -19,6 +19,7 @@ import 'package:pixez/component/painter_avatar.dart';
 import 'package:pixez/er/leader.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/page/hello/tab_jump.dart';
 import 'package:pixez/page/follow/follow_list.dart';
 import 'package:pixez/page/novel/bookmark/novel_bookmark_page.dart';
 import 'package:pixez/page/novel/new/novel_new_list.dart';
@@ -50,7 +51,9 @@ class _NovelNewPageState extends State<NovelNewPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Container(
+    return TabJumpListener(
+      request: TabJumps.novelNews,
+      controller: _tabController,
       child: Column(
         children: [
           AppBar(
@@ -61,18 +64,10 @@ class _NovelNewPageState extends State<NovelNewPage>
               controller: _tabController,
               isScrollable: true,
               tabs: [
-                Tab(
-                  text: I18n.of(context).news,
-                ),
-                Tab(
-                  text: I18n.of(context).bookmark,
-                ),
-                Tab(
-                  text: I18n.of(context).watchlist,
-                ),
-                Tab(
-                  text: I18n.of(context).follow,
-                )
+                Tab(text: I18n.of(context).news),
+                Tab(text: I18n.of(context).bookmark),
+                Tab(text: I18n.of(context).watchlist),
+                Tab(text: I18n.of(context).follow),
               ],
             ),
             actions: [
@@ -83,18 +78,20 @@ class _NovelNewPageState extends State<NovelNewPage>
                     height: 26,
                     width: 26,
                     decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.0)),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.0),
+                    ),
                     child: PainterAvatar(
                       url: accountStore.now!.userImage,
                       id: int.parse(accountStore.now!.userId),
                       onTap: () {
                         if (accountStore.now != null)
                           Leader.push(
-                              context,
-                              NovelUsersPage(
-                                id: int.parse(accountStore.now!.userId),
-                              ));
+                            context,
+                            NovelUsersPage(
+                              id: int.parse(accountStore.now!.userId),
+                            ),
+                          );
                       },
                     ),
                   ),
@@ -102,18 +99,21 @@ class _NovelNewPageState extends State<NovelNewPage>
             ],
           ),
           Expanded(
-              child: TabBarView(
-            controller: _tabController,
-            children: [
-              NovelNewList(),
-              NovelBookmarkPage(),
-              (accountStore.now != null) ? NovelWatchList() : Container(),
-              (accountStore.now != null)
-                  ? FollowList(
-                      id: int.parse(accountStore.now!.userId), isNovel: true)
-                  : Container()
-            ],
-          )),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                NovelNewList(),
+                NovelBookmarkPage(),
+                (accountStore.now != null) ? NovelWatchList() : Container(),
+                (accountStore.now != null)
+                    ? FollowList(
+                        id: int.parse(accountStore.now!.userId),
+                        isNovel: true,
+                      )
+                    : Container(),
+              ],
+            ),
+          ),
         ],
       ),
     );

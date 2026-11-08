@@ -21,6 +21,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
+import 'package:pixez/page/hello/tab_jump.dart';
 import 'package:pixez/page/hello/ranking/rank_store.dart';
 import 'package:pixez/page/hello/ranking/ranking_mode/rank_mode_page.dart';
 import 'package:pixez/utils/haptic_util.dart';
@@ -104,65 +105,69 @@ class _RankPageState extends State<RankPage>
           }
           return DefaultTabController(
             length: rankStore.modeList.length,
-            child: Column(
-              children: <Widget>[
-                AnimatedContainer(
-                  duration: Duration(milliseconds: 400),
-                  height: !fullScreenStore.fullscreen
-                      ? (kToolbarHeight + MediaQuery.of(context).padding.top)
-                      : 0,
-                  child: AppBar(
-                    title: TabBar(
-                      onTap: (i) {
-                        HapticUtil.selectionClick();
-                        setState(() {
-                          this.index = i;
-                        });
-                      },
-                      tabAlignment: TabAlignment.start,
-                      indicatorSize: TabBarIndicatorSize.label,
-                      isScrollable: true,
-                      tabs: <Widget>[for (var i in titles) Tab(text: i)],
-                    ),
-                    actions: <Widget>[
-                      if (Platform.isAndroid)
-                        IconButton(
-                          icon: WcIcon(Icons.fullscreen),
-                          onPressed: () {
-                            fullScreenStore.toggle();
-                          },
-                        ),
-                      Visibility(
-                        visible: index < rankStore.modeList.length,
-                        child: IconButton(
-                          icon: WcIcon(Icons.date_range),
-                          onPressed: () async {
-                            await _showTimePicker(context);
-                          },
-                        ),
-                      ),
-                      IconButton(
-                        icon: WcIcon(Icons.undo),
-                        onPressed: () {
-                          rankStore.reset();
+            child: TabJumpListener(
+              request: TabJumps.illustRank,
+              onJump: (i) => setState(() => this.index = i),
+              child: Column(
+                children: <Widget>[
+                  AnimatedContainer(
+                    duration: Duration(milliseconds: 400),
+                    height: !fullScreenStore.fullscreen
+                        ? (kToolbarHeight + MediaQuery.of(context).padding.top)
+                        : 0,
+                    child: AppBar(
+                      title: TabBar(
+                        onTap: (i) {
+                          HapticUtil.selectionClick();
+                          setState(() {
+                            this.index = i;
+                          });
                         },
+                        tabAlignment: TabAlignment.start,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        isScrollable: true,
+                        tabs: <Widget>[for (var i in titles) Tab(text: i)],
                       ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      for (var element in rankStore.modeList)
-                        RankModePage(
-                          date: dateTime,
-                          mode: element,
-                          index: rankStore.modeList.indexOf(element),
+                      actions: <Widget>[
+                        if (Platform.isAndroid)
+                          IconButton(
+                            icon: WcIcon(Icons.fullscreen),
+                            onPressed: () {
+                              fullScreenStore.toggle();
+                            },
+                          ),
+                        Visibility(
+                          visible: index < rankStore.modeList.length,
+                          child: IconButton(
+                            icon: WcIcon(Icons.date_range),
+                            onPressed: () async {
+                              await _showTimePicker(context);
+                            },
+                          ),
                         ),
-                    ],
+                        IconButton(
+                          icon: WcIcon(Icons.undo),
+                          onPressed: () {
+                            rankStore.reset();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        for (var element in rankStore.modeList)
+                          RankModePage(
+                            date: dateTime,
+                            mode: element,
+                            index: rankStore.modeList.indexOf(element),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         } else {

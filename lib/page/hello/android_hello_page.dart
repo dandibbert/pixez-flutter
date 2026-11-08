@@ -34,6 +34,7 @@ import 'package:pixez/i18n.dart';
 import 'package:pixez/main.dart';
 import 'package:pixez/page/Init/guide_page.dart';
 import 'package:pixez/page/hello/new/new_page.dart';
+import 'package:pixez/page/hello/palette_shortcuts.dart';
 import 'package:pixez/page/hello/ranking/rank_page.dart';
 import 'package:pixez/page/hello/recom/recom_spotlight_page.dart';
 import 'package:pixez/page/hello/setting/setting_page.dart';
@@ -50,7 +51,10 @@ import 'package:pixez/watercolor/palette_bar.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 
 class AndroidHelloPage extends StatefulWidget {
-  const AndroidHelloPage({Key? key}) : super(key: key);
+  const AndroidHelloPage({Key? key, this.initialIndex}) : super(key: key);
+
+  /// Tab to open on; the welcome page setting when null.
+  final int? initialIndex;
 
   @override
   _AndroidHelloPageState createState() => _AndroidHelloPageState();
@@ -60,6 +64,10 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
   late List<Widget> _pageList;
   DateTime? _preTime;
   double? bottomNavigatorHeight = null;
+  late final PaletteShortcuts _shortcuts = PaletteShortcuts(
+    section: AppSection.illust,
+    selectTab: _select,
+  );
 
   void toggleFullscreen() {
     fullScreenStore.toggle();
@@ -90,6 +98,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         final wide = constraints.maxWidth > constraints.maxHeight;
         return PopScope(
           onPopInvokedWithResult: (didPop, result) async {
+            if (_shortcuts.isMenuOpen) return;
             userSetting.setAnimContainer(!userSetting.animContainer);
             if (didPop) return;
             if (!userSetting.isReturnAgainToExit) {
@@ -112,34 +121,37 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
               !userSetting.isReturnAgainToExit ||
               _preTime != null &&
                   DateTime.now().difference(_preTime!) <= Duration(seconds: 2),
-          child: Scaffold(
-            body: Row(
-              children: [
-                if (wide) ..._buildRail(context),
-                Expanded(child: _buildPageView(context)),
-              ],
+          child: _shortcuts.wrap(
+            context,
+            Scaffold(
+              body: Row(
+                children: [
+                  if (wide) ..._buildRail(context),
+                  Expanded(child: _buildPageView(context)),
+                ],
+              ),
+              extendBody: true,
+              bottomNavigationBar: wide
+                  ? null
+                  : Observer(
+                      builder: (context) {
+                        return AnimatedContainer(
+                          duration: WatercolorTokens.of(context) == null
+                              ? const Duration(milliseconds: 400)
+                              : WcMotion.long,
+                          transform: Matrix4.translationValues(
+                            0,
+                            fullScreenStore.fullscreen
+                                ? bottomNavigatorHeight! +
+                                      _paletteExtraOffset(context)
+                                : 0,
+                            0,
+                          ),
+                          child: _buildNavigationBar(context),
+                        );
+                      },
+                    ),
             ),
-            extendBody: true,
-            bottomNavigationBar: wide
-                ? null
-                : Observer(
-                    builder: (context) {
-                      return AnimatedContainer(
-                        duration: WatercolorTokens.of(context) == null
-                            ? const Duration(milliseconds: 400)
-                            : WcMotion.long,
-                        transform: Matrix4.translationValues(
-                          0,
-                          fullScreenStore.fullscreen
-                              ? bottomNavigatorHeight! +
-                                    _paletteExtraOffset(context)
-                              : 0,
-                          0,
-                        ),
-                        child: _buildNavigationBar(context),
-                      );
-                    },
-                  ),
           ),
         );
       },
@@ -171,22 +183,26 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
   double _paletteExtraOffset(BuildContext context) =>
       WatercolorTokens.of(context) == null ? 0 : PaletteBar.hiddenOffset - 80;
 
-  Widget _buildNavigationBar(BuildContext context) {
-    void select(int index) {
-      HapticUtil.selectionClick();
-      if (this.index == index) {
-        topStore.setTop("${index + 1}00");
-      }
-      setState(() {
-        this.index = index;
-      });
-      if (_pageController.hasClients) _pageController.jumpToPage(index);
+  void _select(int index) {
+    HapticUtil.selectionClick();
+    if (this.index == index) {
+      topStore.setTop("${index + 1}00");
     }
+    setState(() {
+      this.index = index;
+    });
+    if (_pageController.hasClients) _pageController.jumpToPage(index);
+  }
 
+  Widget _buildNavigationBar(BuildContext context) {
+    final select = _select;
     if (WatercolorTokens.of(context) != null) {
       return PaletteBar(
         items: [
-          PaletteBarItem(icon: Icons.home, label: I18n.of(context).home),
+          PaletteBarItem(
+            icon: PaletteShortcuts.sectionIcon(AppSection.illust),
+            label: PaletteShortcuts.sectionLabel(context, AppSection.illust),
+          ),
           PaletteBarItem(icon: Icons.leaderboard, label: I18n.of(context).rank),
           PaletteBarItem(
             icon: Icons.favorite,
@@ -197,6 +213,9 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         ],
         selectedIndex: index,
         onSelected: select,
+        onLongPressStart: (i, d) => _shortcuts.onLongPressStart(context, i, d),
+        onLongPressMoveUpdate: (_, d) => _shortcuts.onLongPressMoveUpdate(d),
+        onLongPressEnd: (_, d) => _shortcuts.onLongPressEnd(d),
       );
     }
 
@@ -260,6 +279,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
           NavigationRail(
             selectedIndex: index,
             labelType: NavigationRailLabelType.all,
+            leading: _shortcuts.railSwitch(context),
             onDestinationSelected: (int index) {
               HapticUtil.selectionClick();
               if (this.index == index) {
@@ -348,7 +368,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
       SearchPage(),
       SettingPage(),
     ];
-    index = userSetting.materialWelcomePageIndex;
+    index = widget.initialIndex ?? userSetting.materialWelcomePageIndex;
     _pageController = PageController(initialPage: index);
     super.initState();
     saveStore.ctx = this.context;
@@ -527,6 +547,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
         );
         return;
       }
+      if (mounted) PaletteShortcuts.showHintOnce(context);
     });
     initPermission(context);
   }
