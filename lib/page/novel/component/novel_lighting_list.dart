@@ -595,18 +595,25 @@ class _SeenBadge extends StatelessWidget {
     final i18n = I18n.of(context);
     final tokens = WatercolorTokens.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final fresh = mark == NovelSeenMark.fresh;
     final label = switch (mark) {
       NovelSeenMark.read => i18n.novel_seen_read,
       NovelSeenMark.seen => i18n.novel_seen_seen,
       _ => i18n.novel_seen_new,
     };
-    final background = fresh
-        ? (tokens?.pigment(0) ?? scheme.primaryContainer)
-        : (tokens?.line ?? scheme.surfaceContainerHighest);
-    final foreground = fresh
-        ? (tokens?.onPigment ?? scheme.onPrimaryContainer)
-        : (tokens?.sub ?? scheme.onSurfaceVariant);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = switch (mark) {
+      NovelSeenMark.fresh => tokens?.pigment(0) ?? scheme.primaryContainer,
+      // A fixed blue, so "seen" stays apart from "read" in every palette.
+      NovelSeenMark.seen =>
+        dark ? const Color(0xFF243A57) : const Color(0xFFD9E7F8),
+      _ => tokens?.line ?? scheme.surfaceContainerHighest,
+    };
+    final foreground = switch (mark) {
+      NovelSeenMark.fresh => tokens?.onPigment ?? scheme.onPrimaryContainer,
+      NovelSeenMark.seen =>
+        dark ? const Color(0xFFA6C8F0) : const Color(0xFF2D5C99),
+      _ => tokens?.sub ?? scheme.onSurfaceVariant,
+    };
     return Container(
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
