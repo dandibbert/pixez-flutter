@@ -97,6 +97,12 @@ class DeepLinkPlugin : NSObject, FlutterPlugin, FlutterStreamHandler, FlutterSce
         return nil
     }
     
+    /// Opens a link that came from inside the app, such as a Shortcuts
+    /// action. Before Dart listens it waits with the other launch links.
+    func receive(link: String) {
+        setLatestLink(link, setInitialIfNeeded: eventSink == nil)
+    }
+    
     private func handle(userActivity: NSUserActivity, setInitialIfNeeded: Bool = false) -> Bool {
         guard userActivity.activityType == NSUserActivityTypeBrowsingWeb else {
             return false

@@ -594,5 +594,11 @@
   "preset_cerulean": "天青",
   "preset_lavender": "ラベンダー",
   "preset_ink": "墨",
-  "novel_font_size": "文字サイズ"
+  "novel_font_size": "文字サイズ",
+  "novel_seen_read": "既読",
+  "novel_seen_seen": "見た",
+  "novel_seen_new": "NEW",
+  "novel_hide_seen": "見た作品を隠す",
+  "novel_show_seen": "見た作品を表示",
+  "novel_page_all_seen": "このページの{count}作品はすべて見ました"
 }

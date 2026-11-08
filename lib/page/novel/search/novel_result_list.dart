@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pixez/er/leader.dart';
+import 'package:pixez/er/prefer.dart';
 import 'package:pixez/i18n.dart';
 import 'package:pixez/component/search_date_filter.dart';
 import 'package:pixez/lighting/lighting_store.dart';
@@ -33,6 +34,8 @@ class NovelResultList extends StatefulWidget {
 class _NovelResultListState extends State<NovelResultList> {
   late NovelSearchQuery _query;
   late LightSource _source;
+  static const _hideSeenKey = 'novel_search_hide_seen';
+  bool _hideSeen = Prefer.getBool(_hideSeenKey) ?? false;
 
   @override
   void initState() {
@@ -80,6 +83,19 @@ class _NovelResultListState extends State<NovelResultList> {
                         : null,
                     onChanged: _setDateRange,
                   ),
+                  IconButton(
+                    tooltip: _hideSeen
+                        ? I18n.of(context).novel_show_seen
+                        : I18n.of(context).novel_hide_seen,
+                    isSelected: _hideSeen,
+                    icon: WcIcon(
+                      _hideSeen ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() => _hideSeen = !_hideSeen);
+                      Prefer.setBool(_hideSeenKey, _hideSeen);
+                    },
+                  ),
                   _buildBookmarkMenu(),
                   IconButton(
                     icon: const WcIcon(Icons.filter_alt_outlined),
@@ -96,6 +112,8 @@ class _NovelResultListState extends State<NovelResultList> {
           child: NovelLightingList(
             source: _source,
             onPageChanged: _onPageChanged,
+            trackSeen: true,
+            hideSeen: _hideSeen,
           ),
         ),
       ],

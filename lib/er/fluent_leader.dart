@@ -295,7 +295,6 @@ class FluentLeader {
     Widget? icon,
     Widget? title,
     bool forceSkipWrap = false,
-    bool animated = true,
   }) {
     assert(icon != null);
     assert(title != null);
@@ -309,7 +308,6 @@ class FluentLeader {
       builder: (_) => _final,
       icon: icon ?? const Icon(FluentIcons.unknown),
       title: title ?? Text(I18n.of(context).undefined),
-      animated: animated,
     );
   }
 }

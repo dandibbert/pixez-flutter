@@ -695,5 +695,18 @@
   "preset_cerulean": "Cerulean",
   "preset_lavender": "Lavender",
   "preset_ink": "Ink gray",
-  "novel_font_size": "Font size"
+  "novel_font_size": "Font size",
+  "novel_seen_read": "Read",
+  "novel_seen_seen": "Seen",
+  "novel_seen_new": "New",
+  "novel_hide_seen": "Hide seen novels",
+  "novel_show_seen": "Show seen novels",
+  "novel_page_all_seen": "You've seen all {count} novels on this page",
+  "@novel_page_all_seen": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

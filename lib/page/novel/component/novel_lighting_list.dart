@@ -26,8 +26,11 @@ import 'package:pixez/page/novel/component/novel_bookmark_button.dart';
 import 'package:pixez/page/novel/component/novel_intro.dart';
 import 'package:pixez/page/novel/component/novel_lighting_store.dart';
 import 'package:pixez/page/novel/search/novel_search_pager.dart';
+import 'package:pixez/page/novel/search/novel_seen_store.dart';
+import 'package:pixez/page/novel/user/novel_users_page.dart';
 import 'package:pixez/page/novel/viewer/novel_viewer.dart';
 import 'package:pixez/exts.dart';
+import 'package:pixez/main.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_motion.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
@@ -40,12 +43,21 @@ class NovelLightingList extends StatefulWidget {
   final bool? isNested;
   final ValueChanged<int>? onPageChanged;
 
+  /// Marks novels already opened or seen here, and records what is shown.
+  final bool trackSeen;
+
+  /// With [trackSeen], leaves out what was opened or seen before this page
+  /// loaded.
+  final bool hideSeen;
+
   const NovelLightingList({
     Key? key,
     this.futureGet,
     this.source,
     this.isNested,
     this.onPageChanged,
+    this.trackSeen = false,
+    this.hideSeen = false,
   }) : assert(futureGet != null || source != null),
        super(key: key);
 
@@ -58,6 +70,14 @@ class _NovelLightingListState extends State<NovelLightingList> {
   late NovelLightingStore _store;
   late bool _isNested;
   late ScrollController _scrollController;
+
+  // What was seen or opened when the current page loaded. Marks and hiding
+  // use this snapshot, so cards do not fade or vanish while being read.
+  String? _snapshotKey;
+  Set<int> _seenAtLoad = const {};
+  Set<int> _readAtLoad = const {};
+  final Map<int, GlobalKey> _itemKeys = {};
+  final GlobalKey _viewportKey = GlobalKey();
 
   bool get _isPaged => widget.source is ApiPagedSource;
 
@@ -92,6 +112,34 @@ class _NovelLightingListState extends State<NovelLightingList> {
     if (_isNested || _isPaged) {
       _store.fetch().then(_notifyPage);
     }
+    if (widget.trackSeen) {
+      if (novelHistoryStore.data.isEmpty) novelHistoryStore.fetch();
+      novelSeenStore.load().then((_) {
+        // Take the snapshot again now that the stored marks are in.
+        if (mounted) setState(() => _snapshotKey = null);
+      });
+    }
+  }
+
+  /// Records the novels that are fully on screen, or fill most of it.
+  void _markVisible() {
+    if (!widget.trackSeen || !mounted) return;
+    final viewport =
+        _viewportKey.currentContext?.findRenderObject() as RenderBox?;
+    if (viewport == null || !viewport.attached) return;
+    final height = viewport.size.height;
+    final visible = <int>[];
+    _itemKeys.forEach((id, key) {
+      final box = key.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached) return;
+      final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
+      final bottom = top + box.size.height;
+      final shown = (bottom.clamp(0, height) - top.clamp(0, height));
+      if ((top >= -1 && bottom <= height + 1) || shown >= height * 0.6) {
+        visible.add(id);
+      }
+    });
+    if (visible.isNotEmpty) novelSeenStore.markSeen(visible);
   }
 
   void _notifyPage([void _]) {
@@ -156,15 +204,64 @@ class _NovelLightingListState extends State<NovelLightingList> {
     return _buildListBody();
   }
 
-  ListView _buildListBody() {
-    final novels = _store.novels
+  Widget _buildListBody() {
+    var novels = _store.novels
         .where((element) => element.novel?.hateByUser() != true)
         .toList();
-    return ListView.builder(
+    final marks = <int, NovelSeenMark>{};
+    var hiddenCount = 0;
+    if (widget.trackSeen) {
+      final ids = [for (final n in novels) n.novel!.id];
+      final read = {for (final h in novelHistoryStore.data) h.novelId};
+      final key = '${_store.currentPage}:${ids.join(',')}';
+      if (key != _snapshotKey) {
+        _snapshotKey = key;
+        _seenAtLoad = ids.where(novelSeenStore.ids.contains).toSet();
+        _readAtLoad = ids.where(read.contains).toSet();
+        _itemKeys.clear();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _markVisible());
+      }
+      final list = novelSeenMarks(
+        ids,
+        seen: _seenAtLoad,
+        read: {..._readAtLoad, ...ids.where(read.contains)},
+      );
+      for (var i = 0; i < ids.length; i++) {
+        marks[ids[i]] = list[i];
+      }
+      if (widget.hideSeen) {
+        final before = novels.length;
+        novels = [
+          for (final n in novels)
+            if (!_seenAtLoad.contains(n.novel!.id) &&
+                !_readAtLoad.contains(n.novel!.id))
+              n,
+        ];
+        hiddenCount = before - novels.length;
+      }
+    }
+    if (novels.isEmpty && hiddenCount > 0) {
+      return ListView(
+        controller: _scrollController,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 64, 24, 24),
+            child: Text(
+              I18n.of(context).novel_page_all_seen(hiddenCount),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      );
+    }
+    final list = ListView.builder(
+      key: _viewportKey,
       controller: _scrollController,
       padding: EdgeInsets.all(0),
       itemBuilder: (context, index) {
         Novel novel = novels[index].novel!;
+        final mark = marks[novel.id] ?? NovelSeenMark.none;
         final tokens = WatercolorTokens.of(context);
         final item = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -210,8 +307,18 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                   top: 8.0,
                                   left: 8.0,
                                 ),
-                                child: Text(
-                                  novel.title,
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      if (mark != NovelSeenMark.none)
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: _SeenBadge(mark: mark),
+                                        ),
+                                      TextSpan(text: novel.title),
+                                    ],
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                   style: tokens == null
                                       ? Theme.of(context).textTheme.bodyLarge
@@ -230,19 +337,34 @@ class _NovelLightingListState extends State<NovelLightingList> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      novel.user.name,
-                                      maxLines: 1,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall!
-                                          .copyWith(
-                                            color:
-                                                tokens?.accent ??
-                                                Theme.of(
-                                                  context,
-                                                ).colorScheme.secondary,
+                                    GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        Navigator.of(
+                                          context,
+                                          rootNavigator: true,
+                                        ).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => NovelUsersPage(
+                                              id: novel.user.id,
+                                            ),
                                           ),
+                                        );
+                                      },
+                                      child: Text(
+                                        novel.user.name,
+                                        maxLines: 1,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall!
+                                            .copyWith(
+                                              color:
+                                                  tokens?.accent ??
+                                                  Theme.of(
+                                                    context,
+                                                  ).colorScheme.secondary,
+                                            ),
+                                      ),
                                     ),
                                     Padding(
                                       padding: EdgeInsets.only(left: 8),
@@ -336,10 +458,28 @@ class _NovelLightingListState extends State<NovelLightingList> {
             ),
           ),
         );
-        if (tokens == null) return item;
-        return WcEntrance(token: novels[index], index: index, child: item);
+        Widget card = item;
+        if (mark == NovelSeenMark.seen || mark == NovelSeenMark.read) {
+          card = Opacity(opacity: 0.55, child: card);
+        }
+        if (widget.trackSeen) {
+          card = KeyedSubtree(
+            key: _itemKeys.putIfAbsent(novel.id, () => GlobalKey()),
+            child: card,
+          );
+        }
+        if (tokens == null) return card;
+        return WcEntrance(token: novels[index], index: index, child: card);
       },
       itemCount: novels.length,
+    );
+    if (!widget.trackSeen) return list;
+    return NotificationListener<ScrollEndNotification>(
+      onNotification: (_) {
+        _markVisible();
+        return false;
+      },
+      child: list,
     );
   }
 
@@ -441,5 +581,48 @@ class _NovelLightingListState extends State<NovelLightingList> {
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(0);
     }
+  }
+}
+
+/// A small label before a novel's title in search results.
+class _SeenBadge extends StatelessWidget {
+  const _SeenBadge({required this.mark});
+
+  final NovelSeenMark mark;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = I18n.of(context);
+    final tokens = WatercolorTokens.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final fresh = mark == NovelSeenMark.fresh;
+    final label = switch (mark) {
+      NovelSeenMark.read => i18n.novel_seen_read,
+      NovelSeenMark.seen => i18n.novel_seen_seen,
+      _ => i18n.novel_seen_new,
+    };
+    final background = fresh
+        ? (tokens?.pigment(0) ?? scheme.primaryContainer)
+        : (tokens?.line ?? scheme.surfaceContainerHighest);
+    final foreground = fresh
+        ? (tokens?.onPigment ?? scheme.onPrimaryContainer)
+        : (tokens?.sub ?? scheme.onSurfaceVariant);
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          height: 1.3,
+          fontWeight: FontWeight.w700,
+          color: foreground,
+        ),
+      ),
+    );
   }
 }

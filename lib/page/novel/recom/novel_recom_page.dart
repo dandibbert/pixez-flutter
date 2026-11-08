@@ -31,6 +31,7 @@ import 'package:pixez/utils/haptic_util.dart';
 import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/watercolor_tokens.dart';
 import 'package:pixez/watercolor/watercolor_effects.dart';
+import 'package:pixez/page/novel/user/novel_users_page.dart';
 
 class NovelRecomPage extends StatefulWidget {
   @override
@@ -224,17 +225,33 @@ class _NovelRecomPageState extends State<NovelRecomPage>
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Text(
-                                  novel.user.name,
-                                  maxLines: 1,
-                                  style: Theme.of(context).textTheme.bodySmall!
-                                      .copyWith(
-                                        color:
-                                            tokens?.accent ??
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.secondary,
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            NovelUsersPage(id: novel.user.id),
                                       ),
+                                    );
+                                  },
+                                  child: Text(
+                                    novel.user.name,
+                                    maxLines: 1,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall!
+                                        .copyWith(
+                                          color:
+                                              tokens?.accent ??
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                        ),
+                                  ),
                                 ),
                                 Padding(
                                   padding: EdgeInsets.only(left: 8),
