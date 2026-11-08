@@ -170,6 +170,7 @@ class _HelloPageState extends State<HelloPage> {
           NavigationRail(
             selectedIndex: index,
             labelType: NavigationRailLabelType.all,
+            leading: _shortcuts.railSwitch(context),
             onDestinationSelected: (int index) {
               HapticUtil.selectionClick();
               if (this.index == index) {

@@ -279,6 +279,7 @@ class _AndroidHelloPageState extends State<AndroidHelloPage> {
           NavigationRail(
             selectedIndex: index,
             labelType: NavigationRailLabelType.all,
+            leading: _shortcuts.railSwitch(context),
             onDestinationSelected: (int index) {
               HapticUtil.selectionClick();
               if (this.index == index) {

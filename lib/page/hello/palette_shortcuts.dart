@@ -18,6 +18,7 @@ import 'package:pixez/page/picture/illust_lighting_page.dart';
 import 'package:pixez/page/saucenao/sauce_nao_modal.dart';
 import 'package:pixez/page/task/job_page.dart';
 import 'package:pixez/page/webview/saucenao_webview_page.dart';
+import 'package:pixez/watercolor/mingcute.dart';
 import 'package:pixez/watercolor/palette_bar.dart';
 import 'package:pixez/watercolor/pigment_scatter_menu.dart';
 import 'package:pixez/watercolor/section_wash.dart';
@@ -129,6 +130,28 @@ class PaletteShortcuts {
       actions: [for (final s in shortcuts) s.action],
       pressPosition: details.globalPosition,
       onSelected: (i) => shortcuts[i].run(box.localToGlobal(targets[i])),
+    );
+  }
+
+  /// Switch to the other section for the navigation rail of wide layouts,
+  /// which has no palette bar to long-press.
+  Widget railSwitch(BuildContext context) {
+    final other = section == AppSection.illust
+        ? AppSection.novel
+        : AppSection.illust;
+    return Builder(
+      builder: (context) => IconButton(
+        tooltip: sectionLabel(context, other),
+        icon: WcIcon(sectionIcon(other)),
+        onPressed: () {
+          final box = context.findRenderObject() as RenderBox;
+          _switchSection(
+            context,
+            other,
+            box.localToGlobal(box.size.center(Offset.zero)),
+          );
+        },
+      ),
     );
   }
 
