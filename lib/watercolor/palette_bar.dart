@@ -20,11 +20,23 @@ class PaletteBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    this.onLongPressStart,
+    this.onLongPressMoveUpdate,
+    this.onLongPressEnd,
   });
 
   final List<PaletteBarItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// Long-press callbacks for a well, by index. The move and end callbacks
+  /// let a caller follow the finger after the press, e.g. to drag onto a
+  /// shortcut and release.
+  final void Function(int index, LongPressStartDetails details)?
+  onLongPressStart;
+  final void Function(int index, LongPressMoveUpdateDetails details)?
+  onLongPressMoveUpdate;
+  final void Function(int index, LongPressEndDetails details)? onLongPressEnd;
 
   static const double height = 76;
   static const double bottomGap = 14;
@@ -80,6 +92,15 @@ class PaletteBar extends StatelessWidget {
                       pigment: tokens.pigment(i),
                       selected: i == selectedIndex,
                       onTap: () => onSelected(i),
+                      onLongPressStart: onLongPressStart == null
+                          ? null
+                          : (details) => onLongPressStart!(i, details),
+                      onLongPressMoveUpdate: onLongPressMoveUpdate == null
+                          ? null
+                          : (details) => onLongPressMoveUpdate!(i, details),
+                      onLongPressEnd: onLongPressEnd == null
+                          ? null
+                          : (details) => onLongPressEnd!(i, details),
                     ),
                   ),
               ],
@@ -103,12 +124,18 @@ class _PaletteWell extends StatelessWidget {
     required this.pigment,
     required this.selected,
     required this.onTap,
+    this.onLongPressStart,
+    this.onLongPressMoveUpdate,
+    this.onLongPressEnd,
   });
 
   final PaletteBarItem item;
   final Color pigment;
   final bool selected;
   final VoidCallback onTap;
+  final GestureLongPressStartCallback? onLongPressStart;
+  final GestureLongPressMoveUpdateCallback? onLongPressMoveUpdate;
+  final GestureLongPressEndCallback? onLongPressEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +149,9 @@ class _PaletteWell extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
+        onLongPressStart: onLongPressStart,
+        onLongPressMoveUpdate: onLongPressMoveUpdate,
+        onLongPressEnd: onLongPressEnd,
         child: PressScale(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
